@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('_layouts/head') %>
+    <title>Region Management | <%= title %>
+    </title>
+
+    <style>
+      /* Minimal addition for row click - only cursor, no style change */
+      tr.region-row {
+        cursor: pointer;
+      }
+
+      td.actions-column {
+        cursor: default;
+      }
+    </style>
+</head>
+
+<body>
+  <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+      <div class="row">
+        <div id="breadcrumbs-wrapper">
+          <div class="container">
+            <div class="row">
+              <%- include('messages', { messages: messages }) %>
+                <div class="col s12 m6 l6">
+                  <h6 class="breadcrumbs-title">Region Management</h6>
+                </div>
+                <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                  <ol class="breadcrumbs mb-0">
+                    <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Region</li>
+                  </ol>
+                </div>
+            </div>
+
+            <div id="breadcrumbs-wrapper" style="background-color: white;">
+              <div class="container">
+                <div class="row">
+                  <div class="col s12 right-align-md">
+                    <a href="/admin/regions/create" class="btn right">Add Region</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="container">
+          <div class="card">
+            <div class="card-content">
+              <table class="highlight">
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>State</th>
+                    <th>Zipcodes</th>
+                    <th>Customers</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% regions.forEach(region=> { %>
+                    <!-- Added class & data-href for row click -->
+                    <tr class="region-row" data-href="/admin/regions/view/<%= region._id %>">
+                      <td>
+                        <%= region.regionCode %>
+                      </td>
+                      <td>
+                        <%= region.regionName %>
+                      </td>
+                      <td>
+                        <%= region.state %>
+                      </td>
+                      <td>
+                        <%= region.zipcodes.length %>
+                      </td>
+                      <td>
+                        <%= region.customerCount %> Customers
+                      </td>
+                      <!-- Protected actions column -->
+                      <td class="actions-column">
+                        <a href="/admin/regions/view/<%= region._id %>"
+                          class="waves-effect waves-light accent-2 btn-edit">
+                          <i class="material-icons">visibility</i>
+                        </a>
+                        &nbsp;&nbsp;
+                        <a href="/admin/regions/edit/<%= region._id %>" class="btn-floating green">
+                          <i class="material-icons">edit</i>
+                        </a>
+                        <form action="/admin/regions/delete/<%= region._id %>" method="POST" style="display:inline;">
+                          <button type="submit" class="btn-floating red" onclick="return confirm('Delete region?')">
+                            <i class="material-icons">delete</i>
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+
+      <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          // Make entire row clickable (except actions column)
+          document.querySelectorAll('tr.region-row').forEach(row => {
+            row.addEventListener('click', function (e) {
+              // Prevent navigation if clicked on actions column
+              if (e.target.closest('.actions-column')) {
+                return;
+              }
+
+              const href = this.getAttribute('data-href');
+              if (href) {
+                window.location.href = href;
+              }
+            });
+          });
+        });
+      </script>
+</body>
+
+</html>

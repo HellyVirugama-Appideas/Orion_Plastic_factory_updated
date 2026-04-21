@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+  <%- include('_layouts/head') %>
+    <title>Region Details | <%= title %>
+    </title>
+
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css"
+      href="/app-assets/vendors/data-tables/extensions/responsive/css/responsive.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
+
+    <style>
+      .info-card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .section-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #2196F3;
+        padding-bottom: 8px;
+      }
+
+      .zipcode-badge {
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 5px 12px;
+        border-radius: 16px;
+        font-size: 0.9rem;
+        margin: 4px;
+        display: inline-block;
+      }
+
+      .customer-count {
+        font-size: 2.8rem;
+        font-weight: bold;
+        color: #2196F3;
+        text-align: center;
+      }
+
+      .status-badge {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+      }
+
+      table tr td,
+      th {
+        text-align: center;
+      }
+
+      @media (max-width: 768px) {
+        .customer-count {
+          font-size: 2rem;
+        }
+      }
+    </style>
+</head>
+
+<body
+  class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+  data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+  <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+      <div class="row">
+        <!-- Breadcrumbs -->
+        <div id="breadcrumbs-wrapper" style="background-color: white;">
+          <div class="container">
+            <div class="row">
+              <%- include('messages', { messages: messages }) %>
+                <div class="col s12 m6 l6">
+                  <h5 class="breadcrumbs-title"><span>Region Details</span></h5>
+                </div>
+                <div class="col s12 m6 l6 right-align-md">
+                  <ol class="breadcrumbs mb-0">
+                    <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="/admin/regions">Region</a></li>
+                    <li class="breadcrumb-item active">View</li>
+                  </ol>
+                </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col s12">
+          <div class="container">
+            <div class="section users-view">
+
+              <!-- HEADER CARD (Region Overview) -->
+              <div class="card-panel">
+                <div class="row">
+                  <div class="col s12 m8">
+                    <div class="display-flex media">
+                      <div class="media-body" style="margin-left: 10px;">
+                        <h5>
+                          <%= region.regionName %> (<%= region.regionCode %>)
+                        </h5>
+                        <span>State:</span> <span class="users-view-id">
+                          <%= region.state %>
+                        </span><br>
+                        <span>Status:</span>
+                        <span class="status-badge <%= region.isActive ? 'green white-text' : 'red white-text' %>">
+                          <%= region.isActive ? 'ACTIVE' : 'INACTIVE' %>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- RIGHT SIDE: Customer Count -->
+                  <!-- <div class="col s12 m4" style="text-align: right;">
+                  <div class="customer-count"><%= customerCount %></div>
+                  <p class="grey-text">Assigned Customers</p>
+                </div> -->
+                </div>
+              </div>
+
+              <!-- Region Details -->
+              <div class="info-card">
+                <h5 class="section-title">Region Details</h5>
+                <div class="row">
+                  <div class="col s12 m6">
+                    <table class="striped">
+                      <tbody>
+                        <tr>
+                          <th style="width: 200px;">Region Code</th>
+                          <td>
+                            <%= region.regionCode %>
+                          </td>
+                        </tr>
+                        <tr>
+                          <th>Name</th>
+                          <td>
+                            <%= region.regionName %>
+                          </td>
+                        </tr>
+                        <tr>
+                          <th>State</th>
+                          <td>
+                            <%= region.state %>
+                          </td>
+                        </tr>
+                        <tr>
+                          <th>Created At</th>
+                          <td>
+                            <%= new Date(region.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) %>
+                          </td>
+                        </tr>
+                        <tr>
+                          <th>Last Updated</th>
+                          <td>
+                            <%= new Date(region.updatedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) %>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="col s12 m6">
+                    <p><strong>Description:</strong>
+                      <%= region.description || 'Not provided' %>
+                    </p>
+                    <p><strong>Notes:</strong>
+                      <%= region.notes || 'None' %>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Zipcodes Section -->
+              <div class="info-card">
+                <h5 class="section-title">Zipcodes (<%= region.zipcodes.length %>)</h5>
+                <% if (region.zipcodes.length> 0) { %>
+                  <div>
+                    <% region.zipcodes.forEach(zip=> { %>
+                      <span class="zipcode-badge">
+                        <%= zip.zipcode %>
+                          <% if (zip.area || zip.city) { %>
+                            (<%= [zip.area, zip.city].filter(Boolean).join(', ') %>)
+                      <% } %>
+                    </span>
+                  <% }) %>
+                </div>
+              <% } else { %>
+                <p class="grey-text">No zipcodes added yet.</p>
+              <% } %>
+            </div>
+
+            <!-- Recent Customers -->
+            <div class="info-card">
+              <h5 class="section-title">Recent Assigned Customers (<%= recentCustomers.length %>)</h5>
+              <% if (recentCustomers.length > 0) { %>
+                <table class="highlight responsive-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Assigned Zipcode</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% recentCustomers.forEach(customer => { %>
+                      <tr>
+                        <td><%= customer.companyName || customer.name || ' N/A' %>
+                              </td>
+                              <td>
+                                <%= customer.phone || 'N/A' %>
+                              </td>
+                              <td>
+                                <%= customer.locations[0]?.zipcode || 'N/A' %>
+                              </td>
+                              </tr>
+                              <% }) %>
+                                </tbody>
+                                </table>
+                                <% } else { %>
+                                  <p class="grey-text">No customers assigned yet.</p>
+                                  <% } %>
+                  </div>
+
+                  <!-- Actions -->
+                  <div class="row">
+                    <div class="col s12">
+                      <a href="/admin/regions/edit/<%= region._id %>" class="btn blue waves-effect waves-light">
+                        <i class="material-icons left">edit</i> Edit Region
+                      </a>
+                      <a href="/admin/regions" class="btn-flat waves-effect">Back to List</a>
+                    </div>
+                  </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%- include('_layouts/commonJs') %>
+        <script src="/app-assets/vendors/data-tables/js/jquery.dataTables.min.js"></script>
+        <script src="/app-assets/js/scripts/data-tables.js"></script>
+
+        <script>
+          $(document).ready(function () {
+            $('.responsive-table').DataTable({
+              responsive: true,
+              paging: false,
+              searching: false,
+              ordering: false
+            });
+          });
+        </script>
+</body>
+
+</html>

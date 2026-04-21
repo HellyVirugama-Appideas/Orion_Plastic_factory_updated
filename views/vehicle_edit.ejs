@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+<head>
+  <%- include('_layouts/head') %>
+  <title>Edit Vehicle | <%= title %></title>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns" data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+  <%- include('_layouts/sidenavbar') %>
+
+  <!-- BEGIN: Page Main-->
+  <div id="main">
+    <div class="row">
+      <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+        <div class="container">
+          <div class="row">
+            <%- include('messages', { messages: messages }) %>
+            <div class="col s12 m6 l6">
+              <h6 class="breadcrumbs-title"><span>Edit Vehicle</span></h6>
+            </div>
+            <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+              <ol class="breadcrumbs mb-0">
+                <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="/admin/vehicles">Vehicles</a></li>
+                <li class="breadcrumb-item active">Edit Vehicle</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container pl-2 pr-2">
+        <div class="card">
+          <div class="card-content">
+            <form method="POST" action="/admin/vehicles/edit/<%= vehicle._id %>" class="formValidate" id="formValidate">
+
+              <!-- Basic Information -->
+              <div class="row">
+                <div class="input-field col s12 m6">
+                  <input id="vehicleNumber" name="vehicleNumber" type="text" value="<%= vehicle.vehicleNumber %>" required>
+                  <label for="vehicleNumber" class="active">Vehicle Number *</label>
+                </div>
+               
+              </div>
+
+              <div class="row">
+                <div class="input-field col s12 m6">
+                  <select name="vehicleType" required>
+                    <option value="car" <%= vehicle.vehicleType === 'car' ? 'selected' : '' %>>Car</option>
+                    <option value="bike" <%= vehicle.vehicleType === 'bike' ? 'selected' : '' %>>Bike</option>
+                    <option value="auto" <%= vehicle.vehicleType === 'auto' ? 'selected' : '' %>>Auto</option>
+                    <option value="truck" <%= vehicle.vehicleType === 'truck' ? 'selected' : '' %>>Truck</option>
+                    <option value="van" <%= vehicle.vehicleType === 'van' ? 'selected' : '' %>>Van</option>
+                    <option value="tempo" <%= vehicle.vehicleType === 'tempo' ? 'selected' : '' %>>Tempo</option>
+                  </select>
+                  <label class="active">Vehicle Type *</label>
+                </div>
+
+                <div class="input-field col s12 m6">
+                  <input id="manufacturer" name="manufacturer" type="text" value="<%= vehicle.manufacturer %>" required>
+                  <label for="manufacturer" class="active">Manufacturer *</label>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="input-field col s12 m6">
+                  <input id="model" name="model" type="text" value="<%= vehicle.model %>" required>
+                  <label for="model" class="active">Model *</label>
+                </div>
+                <div class="input-field col s12 m6">
+                  <input id="year" name="year" type="number" value="<%= vehicle.year %>" required>
+                  <label for="year" class="active">Year *</label>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="input-field col s12 m6">
+                  <input id="color" name="color" type="text" value="<%= vehicle.color %>" required>
+                  <label for="color" class="active">Color *</label>
+                </div>
+                <div class="input-field col s12 m6">
+                  <select name="fuelType" required>
+                    <option value="petrol" <%= vehicle.fuelType === 'petrol' ? 'selected' : '' %>>Petrol</option>
+                    <option value="diesel" <%= vehicle.fuelType === 'diesel' ? 'selected' : '' %>>Diesel</option>
+                    <option value="cng" <%= vehicle.fuelType === 'cng' ? 'selected' : '' %>>CNG</option>
+                    <option value="electric" <%= vehicle.fuelType === 'electric' ? 'selected' : '' %>>Electric</option>
+                    <option value="hybrid" <%= vehicle.fuelType === 'hybrid' ? 'selected' : '' %>>Hybrid</option>
+                  </select>
+                  <label class="active">Fuel Type *</label>
+                </div>
+              </div>
+
+              <!-- Registration & Insurance -->
+              <div class="row">
+                <div class="input-field col s12 m6">
+                  <input id="registrationDate" name="registrationDate" type="date" value="<%= vehicle.registrationDate ? vehicle.registrationDate.toISOString().split('T')[0] : '' %>" required>
+                  <label for="registrationDate" class="active">Registration Date *</label>
+                </div>
+                <div class="input-field col s12 m6">
+                  <input id="registrationExpiryDate" name="registrationExpiryDate" type="date" value="<%= vehicle.registrationExpiryDate ? vehicle.registrationExpiryDate.toISOString().split('T')[0] : '' %>" required>
+                  <label for="registrationExpiryDate" class="active">Registration Expiry Date *</label>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="input-field col s12 m6">
+                  <input id="insuranceProvider" name="insuranceProvider" type="text" value="<%= vehicle.insuranceProvider %>" required>
+                  <label for="insuranceProvider" class="active">Insurance Provider *</label>
+                </div>
+                <div class="input-field col s12 m6">
+                  <input id="insurancePolicyNumber" name="insurancePolicyNumber" type="text" value="<%= vehicle.insurancePolicyNumber %>" required>
+                  <label for="insurancePolicyNumber" class="active">Insurance Policy Number *</label>
+                </div>
+              </div>
+              
+              <div class="row">
+                <div class="input-field col s12 m6">
+                  <input id="insuranceExpiryDate" name="insuranceExpiryDate" type="date" value="<%= vehicle.insuranceExpiryDate ? vehicle.insuranceExpiryDate.toISOString().split('T')[0] : '' %>" required>
+                  <label for="insuranceExpiryDate" class="active">Insurance Expiry Date *</label>
+                </div>
+                <div class="input-field col s12 m6">
+                  <input id="insuranceAmount" name="insuranceAmount" type="number" min="0" step="0.01" value="<%= vehicle.insuranceAmount %>" required>
+                  <label for="insuranceAmount" class="active">Insurance Amount *</label>
+                </div>
+              </div>
+
+              <!-- Optional fields -->
+              <div class="row">
+                <div class="input-field col s12 m6">
+                  <input id="currentMeterReading" name="currentMeterReading" type="number" min="0" value="<%= vehicle.currentMeterReading || 0 %>">
+                  <label for="currentMeterReading">Current Meter Reading</label>
+                </div>
+
+                <div class="input-field col s12 m6">
+                  <select name="assignedTo">
+                    <option value="">Unassigned</option>
+                    <% drivers.forEach(driver => { %>
+                      <option value="<%= driver._id %>" <%= vehicle.assignedTo && vehicle.assignedTo.equals(driver._id) ? 'selected' : '' %>>
+                        <%= driver.name %> (<%= driver.phone %>)
+                      </option>
+                    <% }) %>
+                  </select>
+                  <label class="active">Assign to Driver</label>
+                </div>
+              </div>
+
+              <!-- Submit Buttons -->
+              <div class="row" style="margin-top: 30px;">
+                <div class="col s12 display-flex justify-content-end">
+                  <button class="btn green" type="submit">Update Vehicle</button>
+                  &nbsp;&nbsp;&nbsp;
+                  <a href="/admin/vehicles" class="btn-flat">Cancel</a>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%- include('_layouts/commonJs') %>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      M.updateTextFields();
+      M.FormSelect.init(document.querySelectorAll('select'));
+    });
+  </script>
+</body>
+</html>

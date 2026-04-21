@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+<!-- BEGIN: Head-->
+
+<head>
+    <%- include('_layouts/head') %>
+        <title>Edit Sub Admin | <%= title %>
+        </title>
+</head>
+<!-- END: Head-->
+
+<body
+    class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+    data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+        <!-- BEGIN: Page Main-->
+        <div id="main">
+            <div class="row">
+                <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col s12 m6 l6">
+                                <h6 class="breadcrumbs-title"><span>Edit Sub Admin</span></h6>
+                            </div>
+                            <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                                <ol class="breadcrumbs mb-0">
+                                    <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                                    <li class="breadcrumb-item"><a href="/admin/sub-admin/list">Sub Admin</a></li>
+                                    <li class="breadcrumb-item active">Edit Sub Admin</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="container pl-2 pr-2">
+                <div class="card">
+                    <div class="row">
+                        <div class="col s12">
+                            <div id="basic-form" class="card-default scrollspy">
+                                <div class="card-content">
+                                    <form method="POST" action="/admin/sub-admin/edit/<%= admin._id %>"
+                                        class="formValidate0" id="formValidate0">
+
+                                        <!-- Basic Information -->
+                                        <div class="row">
+                                            <div class="input-field col s12 m6">
+                                                <input class="validate" id="name" name="name" type="text"
+                                                    value="<%= admin.name %>" required>
+                                                <label for="name" class="active">Name *</label>
+                                                <div class="error-message" id="nameError"></div>
+                                            </div>
+
+                                            <div class="input-field col s12 m6">
+                                                <input class="validate" id="email" name="email" type="email"
+                                                    value="<%= admin.email %>" required>
+                                                <label for="email" class="active">Email Address *</label>
+                                                <div class="error-message" id="emailError"></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="input-field col s12 m6">
+                                                <input class="validate" id="phone" name="phone" type="text"
+                                                    value="<%= admin.phone || '' %>" pattern="[0-9]{10}" maxlength="10">
+                                                <label for="phone" class="<%= admin.phone ? 'active' : '' %>">Phone
+                                                    Number (10 digits)</label>
+                                                <div class="error-message" id="phoneError"></div>
+                                            </div>
+
+                                            <div class="input-field col s12 m6">
+                                                <input class="validate" id="password" name="password" type="password"
+                                                    minlength="6" placeholder="Leave blank to keep current password">
+                                                <label for="password">New Password (Leave blank to keep current)</label>
+                                                <div class="error-message" id="passwordError"></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="input-field col s12 m6">
+                                                <input class="validate" id="department" name="department" type="text"
+                                                    value="<%= admin.department || '' %>">
+                                                <label for="department"
+                                                    class="<%= admin.department ? 'active' : '' %>">Department</label>
+                                            </div>
+
+                                            <div class="input-field col s12 m6">
+                                                <input class="validate" id="employeeId" name="employeeId" type="text"
+                                                    value="<%= admin.employeeId || '' %>">
+                                                <label for="employeeId"
+                                                    class="<%= admin.employeeId ? 'active' : '' %>">Employee ID</label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Permissions Section -->
+                                        <div class="row">
+                                            <div class="col s12">
+                                                <h6 style="margin-top: 30px; margin-bottom: 20px;"><b>Set
+                                                        Permissions</b></h6>
+                                                <div class="row"
+                                                    style="padding: 0%; background-color: #f5f5f5; padding: 10px; border-radius: 4px;">
+                                                    <div class="col s4">
+                                                        <h6><b>Module Name</b></h6>
+                                                    </div>
+                                                    <div class="col s2 center-align">
+                                                        <h6><b>View</b></h6>
+                                                    </div>
+                                                    <div class="col s2 center-align">
+                                                        <h6><b>Add</b></h6>
+                                                    </div>
+                                                    <div class="col s2 center-align">
+                                                        <h6><b>Edit</b></h6>
+                                                    </div>
+                                                    <div class="col s2 center-align">
+                                                        <h6><b>Delete</b></h6>
+                                                    </div>
+                                                </div>
+
+                                                <% if (modules && modules.length> 0) { %>
+                                                    <% for(let i=0; i < modules.length; i++) { %>
+                                                        <% // Find existing permission for this module let
+                                                            existingPerm=admin.permission.find(p=> p.key ===
+                                                            modules[i].key);
+                                                            let isView = existingPerm ? existingPerm.isView : false;
+                                                            let isAdd = existingPerm ? existingPerm.isAdd : false;
+                                                            let isEdit = existingPerm ? existingPerm.isEdit : false;
+                                                            let isDelete = existingPerm ? existingPerm.isDelete : false;
+                                                            %>
+                                                            <div class="row"
+                                                                style="padding: 0%; margin-top: 15px; border-bottom: 1px solid #e0e0e0; padding-bottom: 15px;">
+                                                                <div class="col s4">
+                                                                    <h6 style="margin-top: 10px;"><b>
+                                                                            <%= modules[i].name %>
+                                                                        </b></h6>
+                                                                </div>
+                                                                <div class="col s2 center-align">
+                                                                    <div class="switch">
+                                                                        <label>
+                                                                            <input type="checkbox"
+                                                                                name="permissions[<%= i %>][isView]"
+                                                                                value="true" <%=isView ? 'checked' : ''
+                                                                                %>>
+                                                                            <span class="lever"></span>
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col s2 center-align">
+                                                                    <div class="switch">
+                                                                        <label>
+                                                                            <input type="checkbox"
+                                                                                name="permissions[<%= i %>][isAdd]"
+                                                                                value="true" <%=isAdd ? 'checked' : ''
+                                                                                %>>
+                                                                            <span class="lever"></span>
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col s2 center-align">
+                                                                    <div class="switch">
+                                                                        <label>
+                                                                            <input type="checkbox"
+                                                                                name="permissions[<%= i %>][isEdit]"
+                                                                                value="true" <%=isEdit ? 'checked' : ''
+                                                                                %>>
+                                                                            <span class="lever"></span>
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col s2 center-align">
+                                                                    <div class="switch">
+                                                                        <label>
+                                                                            <input type="checkbox"
+                                                                                name="permissions[<%= i %>][isDelete]"
+                                                                                value="true" <%=isDelete ? 'checked'
+                                                                                : '' %>>
+                                                                            <span class="lever"></span>
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+                                                                <input type="hidden"
+                                                                    name="permissions[<%= i %>][module]"
+                                                                    value="<%= modules[i].key %>">
+                                                                <input type="hidden"
+                                                                    name="permissions[<%= i %>][moduleName]"
+                                                                    value="<%= modules[i].name %>">
+                                                            </div>
+                                                            <% } %>
+                                                                <% } %>
+                                            </div>
+                                        </div>
+
+                                        <!-- Submit Buttons -->
+                                        <div class="row" style="margin-top: 30px;">
+                                            <div class="col s12 display-flex justify-content-end">
+                                                <button class="btn btn-edit" type="submit" name="action">Update</button>
+                                                &nbsp;&nbsp;&nbsp;
+                                                <a type="button" class="btn btn-delete"
+                                                    href="/admin/sub-admin/list">Cancel</a>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- END: Page Main-->
+
+        <%- include('_layouts/commonJs') %>
+
+            <script>
+                $(document).ready(function () {
+                    // Name Validation
+                    function validateName() {
+                        const value = $('#name').val().trim();
+                        if (!value) {
+                            $('#name').addClass('error-field');
+                            $('#nameError').text('Please enter name.');
+                            return false;
+                        } else if (value.length < 2) {
+                            $('#name').addClass('error-field');
+                            $('#nameError').text('Name must be at least 2 characters.');
+                            return false;
+                        } else {
+                            $('#name').removeClass('error-field');
+                            $('#nameError').text('');
+                            return true;
+                        }
+                    }
+                    // Email Validation
+                    function validateEmail() {
+                        const value = $('#email').val().trim();
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!value) {
+                            $('#email').addClass('error-field');
+                            $('#emailError').text('Please enter email address.');
+                            return false;
+                        } else if (!emailRegex.test(value)) {
+                            $('#email').addClass('error-field');
+                            $('#emailError').text('Please enter a valid email address.');
+                            return false;
+                        } else {
+                            $('#email').removeClass('error-field');
+                            $('#emailError').text('');
+                            return true;
+                        }
+                    }
+
+                    // Phone Validation
+                    function validatePhone() {
+                        const value = $('#phone').val().trim();
+                        if (value && !/^[0-9]{10}$/.test(value)) {
+                            $('#phone').addClass('error-field');
+                            $('#phoneError').text('Please enter a valid 10-digit phone number.');
+                            return false;
+                        } else {
+                            $('#phone').removeClass('error-field');
+                            $('#phoneError').text('');
+                            return true;
+                        }
+                    }
+
+                    // Password Validation (Optional on edit)
+                    function validatePassword() {
+                        const value = $('#password').val().trim();
+                        if (value && value.length < 6) {
+                            $('#password').addClass('error-field');
+                            $('#passwordError').text('Password must be at least 6 characters.');
+                            return false;
+                        } else {
+                            $('#password').removeClass('error-field');
+                            $('#passwordError').text('');
+                            return true;
+                        }
+                    }
+
+                    // Real-time validation
+                    $('#name').on('input blur', validateName);
+                    $('#email').on('input blur', validateEmail);
+                    $('#phone').on('input blur', validatePhone);
+                    $('#password').on('input blur', validatePassword);
+
+                    // Form Submission Validation
+                    $('#formValidate0').on('submit', function (e) {
+                        let valid = true;
+                        valid = validateName() && valid;
+                        valid = validateEmail() && valid;
+                        valid = validatePhone() && valid;
+                        valid = validatePassword() && valid;
+
+                        if (!valid) {
+                            e.preventDefault();
+                            // Scroll to first error
+                            $('html, body').animate({
+                                scrollTop: $('.error-field').first().offset().top - 100
+                            }, 500);
+                        }
+                    });
+                });
+            </script>
+
+            <style>
+                .error-field {
+                    border-bottom: 1px solid #f44336 !important;
+                    box-shadow: 0 1px 0 0 #f44336 !important;
+                }
+
+                .error-message {
+                    color: #f44336;
+                    font-size: 12px;
+                    margin-top: -15px;
+                    margin-bottom: 10px;
+                }
+
+                .switch label input[type=checkbox]:checked+.lever {
+                    background-color: #84c7c1;
+                }
+
+                .switch label input[type=checkbox]:checked+.lever:after {
+                    background-color: #26a69a;
+                }
+            </style>
+</body>
+
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+    <title>Edit Predefined Remark | <%= title %></title>
+
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="row">
+            <!-- Breadcrumbs -->
+            <div id="breadcrumbs-wrapper" style="background-color: white;">
+                <div class="container">
+                    <div class="row">
+                        <div class="col s12 m6 l6">
+                            <h5 class="breadcrumbs-title"><span>Edit Predefined Remark</span></h5>
+                        </div>
+                        <div class="col s12 m6 l6 right-align-md">
+                            <a href="/admin/remarks" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">
+                                <i class="material-icons left">arrow_back</i> Back to Remarks
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <%- include('messages', { messages: messages }) %>
+
+            <div class="col s12">
+                <div class="container">
+                    <div class="section users-view">
+                        <div class="card-panel">
+                            <div class="card-content">
+                                <form id="editRemarkForm" method="POST" action="/admin/remarks/<%= remark._id %>/edit">
+                                    <div class="row">
+
+                                        <!-- Basic Remark Information -->
+                                        <div class="col s12">
+                                            <h5>Basic Remark Information</h5>
+                                        </div>
+
+                                        <div class="input-field col s12 m12">
+                                            <input id="remarkText" name="remarkText" type="text" value="<%= remark.remarkText %>" required>
+                                            <label for="remarkText" class="active">Remark Text <span class="red-text">*</span></label>
+                                        </div>
+
+                                        <div class="input-field col s12 m6">
+                                            <select name="category" required>
+                                                <option value="<%= remark.category %>" selected><%= remark.category %></option>
+                                                <option value="delivery_status">Delivery Status</option>
+                                                <option value="customer_interaction">Customer Interaction</option>
+                                                <option value="vehicle_issue">Vehicle Issue</option>
+                                                <option value="traffic_weather">Traffic & Weather</option>
+                                                <option value="documentation">Documentation</option>
+                                                <option value="quality">Quality</option>
+                                                <option value="payment">Payment</option>
+                                                <option value="route">Route</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                            <label>Category <span class="red-text">*</span></label>
+                                        </div>
+
+                                        <div class="input-field col s12 m6">
+                                            <select name="severity">
+                                                <option value="low" <%= remark.severity === 'low' ? 'selected' : '' %>>Low</option>
+                                                <option value="medium" <%= remark.severity === 'medium' ? 'selected' : '' %>>Medium</option>
+                                                <option value="high" <%= remark.severity === 'high' ? 'selected' : '' %>>High</option>
+                                                <option value="critical" <%= remark.severity === 'critical' ? 'selected' : '' %>>Critical</option>
+                                            </select>
+                                            <label>Severity</label>
+                                        </div>
+
+                                        <!-- Display & Visual Settings -->
+                                        <div class="col s12">
+                                            <h5>Display & Visual Settings</h5>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="displayOrder" name="displayOrder" type="number" value="<%= remark.displayOrder || 0 %>" min="0">
+                                            <label for="displayOrder" class="active">Display Order</label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="icon" name="icon" type="text" value="<%= remark.icon || '' %>" placeholder="e.g. warning">
+                                            <label for="icon">Material Icon Name (optional)</label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="color" name="color" type="text" value="<%= remark.color || '#666666' %>" placeholder="#666666">
+                                            <label for="color">Color (HEX)</label>
+                                        </div>
+
+                                        <!-- Additional Information -->
+                                        <div class="col s12">
+                                            <h5>Additional Information</h5>
+                                        </div>
+
+                                        <div class="input-field col s12">
+                                            <textarea id="description" name="description" class="materialize-textarea"><%= remark.description || '' %></textarea>
+                                            <label for="description" class="active">Description / Notes (optional)</label>
+                                        </div>
+
+                                        <!-- Active Status -->
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" name="isActive" <%= remark.isActive ? 'checked' : '' %> value="true" />
+                                                <span>Is Active</span>
+                                            </label>
+                                        </div>
+
+                                        <!-- Submit Buttons -->
+                                        <div class="col s12 right-align mt-5">
+                                            <button type="submit" class="btn gradient-45deg-purple-deep-orange waves-effect waves-light">
+                                                <i class="material-icons left">save</i> Update Remark
+                                            </button>
+                                            <a href="/admin/remarks" class="btn grey waves-effect waves-light ml-2">
+                                                Cancel
+                                            </a>
+                                        </div>
+
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <%- include('_layouts/commonJs') %>
+
+        <script>
+            $(document).ready(function() {
+                // Initialize Materialize components
+                $('select').formSelect();
+                M.updateTextFields();
+                M.textareaAutoResize($('#description'));
+            });
+        </script>
+</body>
+</html>

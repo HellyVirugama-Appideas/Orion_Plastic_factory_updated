@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+    <title>Chat with <%= driver.name %> | <%= title %></title>
+
+    <style>
+        body { background: #f0f2f5; }
+        .chat-card { display: flex; flex-direction: column; }
+        .chat-header { padding: 14px 18px; background: #ffffff; border-bottom: 1px solid #e0e0e0; }
+        .chat-header h6 { margin: 0; font-weight: 600; }
+        .chat-sub { font-size: 12px; color: #777; margin-top: 2px; }
+        .chat-container { flex: 1; overflow-y: auto; padding: 16px; background: #efeae2; }
+        .message { margin-bottom: 14px; padding: 10px 14px; border-radius: 14px; max-width: 75%; font-size: 14px; line-height: 1.4; position: relative; word-wrap: break-word; }
+        .message.sent { background: #dcf8c6; margin-left: auto; border-bottom-right-radius: 4px; }
+        .message.received { background: #ffffff; margin-right: auto; border-bottom-left-radius: 4px; }
+        .message img { max-width: 100%; border-radius: 10px; margin-top: 8px; }
+        .msg-time { font-size: 11px; color: #666; text-align: right; margin-top: 4px; white-space: nowrap; }
+        .msg-actions { position: absolute; top: 4px; right: 8px; display: none; background: rgba(0, 0, 0, 0.1); border-radius: 50%; padding: 4px; }
+        .message.sent:hover .msg-actions { display: flex; }
+        .action-btn { cursor: pointer; color: #555; font-size: 18px; margin: 0 4px; }
+        .action-btn:hover { color: #000; }
+        .chat-footer { padding: 10px; background: #ffffff; border-top: 1px solid #e0e0e0; }
+        .chat-input { display: flex; align-items: center; gap: 10px; }
+        .chat-input input { flex: 1; margin: 0; background: #f1f3f4; border-radius: 30px; padding: 0 16px; height: 42px; }
+        .icon-btn { height: 42px; width: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .icon-btn:hover { background: #f0f0f0; }
+        .send-btn { background: #25d366; color: white; }
+        @media (max-width: 600px) { .chat-card { height: calc(100vh - 160px); } .message { max-width: 90%; } }
+        .chat-container::-webkit-scrollbar { width: 5px; }
+        .chat-container::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 10px; }
+    </style>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="container">
+            <div class="section">
+
+                <!-- SINGLE CORRECT BREADCRUMB -->
+                <div id="breadcrumbs-wrapper" style="background-color: white; margin-bottom: 20px;">
+                    <div class="container">
+                        <div class="row">
+                            <%- include('messages', { messages: messages }) %>
+                            <div class="col s12 m6 l6">
+                                <h6 class="breadcrumbs-title">Chat with <%= driver.name %></h6>
+                            </div>
+                            <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                                <ol class="breadcrumbs mb-0">
+                                    <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                                    <li class="breadcrumb-item"><a href="/admin/chat">Chat</a></li>
+                                    <li class="breadcrumb-item active">Conversation</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Card -->
+                <div class="card chat-card">
+                    <!-- HEADER -->
+                    <div class="chat-header">
+                        <h6><%= driver.name %></h6>
+                        <div class="chat-sub">
+                            Vehicle: <%= driver.vehicleNumber || 'N/A' %> | 
+                            Phone: <%= driver.phone || 'N/A' %>
+                        </div>
+                    </div>
+
+                    <!-- MESSAGES -->
+                    <div class="chat-container" id="chatMessages">
+                        <% if (chatMessages && chatMessages.length > 0) { %>
+                            <% chatMessages.forEach(msg => { %>
+                                <div class="message <%= msg.senderType === 'Admin' ? 'sent' : 'received' %>"
+                                     data-message-id="<%= msg._id %>"
+                                     data-is-admin="<%= msg.senderType === 'Admin' %>">
+
+                                    <% if (msg.isDeleted) { %>
+                                        <em class="grey-text">This message was deleted</em>
+                                    <% } else { %>
+                                        <% if (msg.messageType === 'text') { %>
+                                            <div class="msg-content"><%= msg.content %></div>
+                                        <% } else if (msg.messageType === 'image' && msg.mediaUrl) { %>
+                                            <img src="<%= msg.mediaUrl %>" alt="Shared Image">
+                                        <% } else if (msg.messageType === 'document' && msg.mediaUrl) { %>
+                                            <a href="<%= msg.mediaUrl %>" target="_blank" class="btn-small blue">
+                                                <i class="material-icons left">insert_drive_file</i>
+                                                <%= msg.fileName || 'Download' %>
+                                            </a>
+                                        <% } %>
+
+                                        <div class="msg-time">
+                                            <%= new Date(msg.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) %>
+                                            <% if (msg.isEdited) { %> · edited <% } %>
+                                        </div>
+
+                                        <% if (msg.senderType === 'Admin') { %>
+                                            <div class="msg-actions">
+                                                <i class="material-icons action-btn edit-btn" title="Edit">edit</i>
+                                                <i class="material-icons action-btn delete-btn" title="Delete">delete</i>
+                                            </div>
+                                        <% } %>
+                                    <% } %>
+                                </div>
+                            <% }) %>
+                        <% } else { %>
+                            <div class="center-align grey-text" style="margin-top: 80px;">
+                                <i class="material-icons large">chat_bubble_outline</i>
+                                <p>No messages yet. Start the conversation!</p>
+                            </div>
+                        <% } %>
+                    </div>
+
+                    <!-- FOOTER -->
+                    <div class="chat-footer">
+                        <form id="sendMessageForm" enctype="multipart/form-data">
+                            <div class="chat-input">
+                                <label class="icon-btn" for="fileInput">
+                                    <i class="material-icons grey-text">attach_file</i>
+                                </label>
+
+                                <input type="text" id="messageInput" placeholder="Type a message..." required>
+
+                                <button class="icon-btn send-btn" type="submit">
+                                    <i class="material-icons">send</i>
+                                </button>
+
+                                <input type="file" id="fileInput" name="file" hidden>
+                            </div>
+
+                            <input type="hidden" name="driverId" value="<%= driver._id %>">
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+
+     <script>
+                const form = document.getElementById('sendMessageForm');
+                const messageInput = document.getElementById('messageInput');
+                const fileInput = document.getElementById('fileInput');
+                const chatContainer = document.getElementById('chatMessages');
+
+                // 1. Send Message (same as before)
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData();
+                    formData.append('driverId', "<%= driver._id %>");
+                    formData.append('content', messageInput.value.trim());
+                    if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
+
+                    try {
+                        const res = await fetch('/admin/chat/send', { method: 'POST', body: formData });
+                        const data = await res.json();
+                        if (data.success) {
+                            messageInput.value = '';
+                            fileInput.value = '';
+                            location.reload(); // Simple reload - baad mein socket se replace kar sakte ho
+                        } else {
+                            M.toast({ html: data.message || 'Message send nahi hua', classes: 'red' });
+                        }
+                    } catch (err) {
+                        M.toast({ html: 'Network error', classes: 'red' });
+                    }
+                });
+
+                // 2. Edit + Delete ke liye **Event Delegation** (ek hi listener sab buttons pe)
+                chatContainer.addEventListener('click', async function (e) {
+                    const target = e.target;
+
+                    // === EDIT BUTTON ===
+                    if (target.classList.contains('edit-btn') || target.closest('.edit-btn')) {
+                        const btn = target.closest('.edit-btn') || target;
+                        const messageDiv = btn.closest('.message');
+                        const messageId = messageDiv.dataset.messageId;
+                        const contentDiv = messageDiv.querySelector('.msg-content');
+                        if (!contentDiv) return;
+
+                        const originalContent = contentDiv.textContent;
+
+                        // Text ko textarea mein badlo
+                        const textarea = document.createElement('textarea');
+                        textarea.value = originalContent;
+                        textarea.className = 'materialize-textarea';
+                        textarea.style.width = '100%';
+                        contentDiv.replaceWith(textarea);
+
+                        textarea.focus();
+                        textarea.select();
+
+                        // Save on blur (click outside) or Enter
+                        const saveEdit = async () => {
+                            const newContent = textarea.value.trim();
+                            if (newContent === originalContent.trim()) {
+                                // No change → wapas div bana do
+                                const p = document.createElement('div');
+                                p.className = 'msg-content';
+                                p.textContent = originalContent;
+                                textarea.replaceWith(p);
+                                return;
+                            }
+
+                            try {
+                                const res = await fetch(`/admin/chat/message/${messageId}/edit`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ content: newContent })
+                                });
+
+                                const data = await res.json();
+                                if (data.success) {
+                                    const p = document.createElement('div');
+                                    p.className = 'msg-content';
+                                    p.textContent = newContent;
+                                    textarea.replaceWith(p);
+
+                                    // Edited tag add karo agar nahi hai
+                                    if (!messageDiv.querySelector('.edited-tag')) {
+                                        const time = messageDiv.querySelector('.msg-time');
+                                        time.innerHTML += ' · <span class="edited-tag">edited</span>';
+                                    }
+                                    M.toast({ html: 'Message edit ho gaya!', classes: 'green' });
+                                } else {
+                                    M.toast({ html: data.message || 'Edit nahi hua', classes: 'red' });
+                                }
+                            } catch (err) {
+                                M.toast({ html: 'Network error', classes: 'red' });
+                            }
+                        };
+
+                        textarea.addEventListener('blur', saveEdit);
+                        textarea.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                textarea.blur();
+                            } else if (e.key === 'Escape') {
+                                textarea.value = originalContent;
+                                textarea.blur();
+                            }
+                        });
+                    }
+
+                    // === DELETE BUTTON ===
+                    if (target.classList.contains('delete-btn') || target.closest('.delete-btn')) {
+                        const btn = target.closest('.delete-btn') || target;
+                        const messageDiv = btn.closest('.message');
+                        const messageId = messageDiv.dataset.messageId;
+
+                        if (!confirm('Is message ko delete karna chahte ho?')) return;
+
+                        const deleteForEveryone = confirm('Sabke liye delete karein? (Yeh wapas nahi hoga)');
+
+                        try {
+                            const res = await fetch(`/admin/chat/message/${messageId}`, {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ deleteForEveryone })
+                            });
+
+                            const data = await res.json();
+                            if (data.success) {
+                                if (deleteForEveryone) {
+                                    messageDiv.innerHTML = '<em class="grey-text">Message sabke liye delete ho gaya</em>';
+                                } else {
+                                    messageDiv.innerHTML = '<em class="grey-text">Message delete ho gaya (sirf aapke liye)</em>';
+                                }
+                                M.toast({ html: data.message, classes: 'green' });
+                            } else {
+                                M.toast({ html: data.message || 'Delete nahi hua', classes: 'red' });
+                            }
+                        } catch (err) {
+                            M.toast({ html: 'Network error', classes: 'red' });
+                        }
+                    }
+                });
+
+                // Auto-scroll to bottom
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            </script>
+</body>
+</html>

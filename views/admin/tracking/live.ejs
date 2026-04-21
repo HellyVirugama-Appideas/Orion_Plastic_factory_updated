@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+  <%- include('../../_layouts/head') %>
+  <title>Live Driver Tracking | Orion Admin</title>
+
+  <style>
+    /* =========== FULL PAGE MAP LAYOUT =========== */
+    body { margin: 0; padding: 0; overflow: hidden; }
+    .page-content { padding: 0 !important; margin: 0 !important; }
+
+    #tracking-wrapper {
+      display: flex;
+      height: calc(100vh - 75px);
+      width: 100%;
+      position: relative;
+    }
+
+    /* =========== LEFT SIDEBAR PANEL =========== */
+    #driver-panel {
+      width: 320px;
+      min-width: 280px;
+      background: #fff;
+      box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      transition: transform 0.3s ease;
+    }
+
+    #driver-panel.collapsed {
+      transform: translateX(-320px);
+    }
+
+    .panel-header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .panel-header h6 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .panel-header .badge-count {
+      background: #00c853;
+      color: white;
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex;
+      background: #f8f9fa;
+      border-bottom: 1px solid #e0e0e0;
+      flex-shrink: 0;
+    }
+
+    .stat-item {
+      flex: 1;
+      text-align: center;
+      padding: 10px 5px;
+      border-right: 1px solid #e0e0e0;
+    }
+
+    .stat-item:last-child { border-right: none; }
+
+    .stat-number {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-online { color: #00c853; }
+    .stat-total  { color: #1565c0; }
+    .stat-busy   { color: #f57c00; }
+
+    /* Search box */
+    .search-box {
+      padding: 10px 14px;
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      flex-shrink: 0;
+    }
+
+    .search-box input {
+      width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      padding: 7px 14px;
+      font-size: 13px;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    .search-box input:focus { border-color: #1565c0; }
+
+    /* Drivers list */
+    #drivers-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    #drivers-list::-webkit-scrollbar { width: 4px; }
+    #drivers-list::-webkit-scrollbar-track { background: #f1f1f1; }
+    #drivers-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+
+    .driver-card {
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .driver-card:hover { background: #f5f9ff; }
+    .driver-card.active { background: #e3f2fd; border-left: 3px solid #1565c0; }
+
+    .driver-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 10px;
+      flex-shrink: 0;
+      border: 2px solid #eee;
+    }
+
+    .driver-info { flex: 1; min-width: 0; }
+
+    .driver-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #222;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin: 0 0 2px;
+    }
+
+    .driver-vehicle {
+      font-size: 11px;
+      color: #888;
+      margin: 0 0 3px;
+    }
+
+    .driver-speed {
+      font-size: 11px;
+      color: #555;
+      margin: 0;
+    }
+
+    .online-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-left: 6px;
+    }
+
+    .online-dot.online  { background: #00c853; box-shadow: 0 0 0 2px rgba(0,200,83,0.3); animation: pulse-dot 1.5s infinite; }
+    .online-dot.offline { background: #bdbdbd; }
+
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 2px rgba(0,200,83,0.3); }
+      50%       { box-shadow: 0 0 0 5px rgba(0,200,83,0.1); }
+    }
+
+    .no-drivers-msg {
+      text-align: center;
+      padding: 40px 20px;
+      color: #aaa;
+    }
+
+    .no-drivers-msg i { font-size: 48px; display: block; margin-bottom: 12px; color: #ddd; }
+
+    /* =========== MAP AREA =========== */
+    #map-container {
+      flex: 1;
+      position: relative;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Toggle panel button */
+    #toggle-panel-btn {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 20;
+      background: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      transition: background 0.2s;
+    }
+
+    #toggle-panel-btn:hover { background: #f0f0f0; }
+
+    /* Map top info bar */
+    #map-topbar {
+      position: absolute;
+      top: 12px;
+      left: 62px;
+      right: 12px;
+      z-index: 15;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .map-badge {
+      background: white;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .map-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* Selected driver info box */
+    #driver-info-box {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      border-radius: 16px;
+      padding: 14px 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      display: none;
+      min-width: 260px;
+      max-width: 340px;
+      z-index: 15;
+    }
+
+    #driver-info-box.show { display: block; }
+
+    .info-box-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .info-box-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 10px;
+      border: 2px solid #1565c0;
+    }
+
+    .info-box-name { font-size: 14px; font-weight: 700; margin: 0; color: #1a1a2e; }
+    .info-box-vehicle { font-size: 12px; color: #888; margin: 0; }
+
+    .info-box-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .info-stat {
+      text-align: center;
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 8px 5px;
+    }
+
+    .info-stat-value { font-size: 16px; font-weight: 700; color: #1565c0; margin: 0; }
+    .info-stat-label { font-size: 10px; color: #888; margin: 0; text-transform: uppercase; }
+
+    #close-info-box {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #888;
+      line-height: 1;
+    }
+
+    /* Connection status indicator */
+    #conn-status {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      background: white;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    #conn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f44336;
+    }
+
+    #conn-dot.connected { background: #00c853; animation: pulse-dot 1.5s infinite; }
+
+    /* Refresh button */
+    #refresh-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.2s;
+    }
+
+    #refresh-btn:hover { background: #f0f0f0; }
+
+    /* Driver trail (path line) - handled via JS */
+    .last-update-label {
+      font-size: 10px;
+      color: #aaa;
+      margin: 4px 0 0;
+    }
+  </style>
+</head>
+
+<body class="horizontal-layout horizontal-menu" data-open="hover" data-menu="horizontal-menu" data-col="2-columns">
+
+  <%- include('../../_layouts/sidenavbar', { url: '/admin/tracking/live' }) %>
+
+  <div class="app-content content">
+    <div class="content-wrapper" style="padding:0;">
+      <div id="tracking-wrapper">
+
+        <!-- ========== LEFT PANEL ========== -->
+        <div id="driver-panel">
+          <div class="panel-header">
+            <h6>🚗 Live Drivers</h6>
+            <span class="badge-count" id="online-count-badge">0 Online</span>
+          </div>
+
+          <!-- Stats Bar -->
+          <div class="stats-bar">
+            <div class="stat-item">
+              <div class="stat-number stat-online" id="stat-online">0</div>
+              <div class="stat-label">Online</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number stat-total" id="stat-total">0</div>
+              <div class="stat-label">Total</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number stat-busy" id="stat-busy">0</div>
+              <div class="stat-label">Moving</div>
+            </div>
+          </div>
+
+          <!-- Search -->
+          <div class="search-box">
+            <input type="text" id="driver-search" placeholder="🔍 Search driver or vehicle...">
+          </div>
+
+          <!-- Drivers List -->
+          <div id="drivers-list">
+            <div class="no-drivers-msg" id="no-drivers-msg">
+              <i class="material-icons">directions_car</i>
+              <p>Connecting to live feed...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== MAP AREA ========== -->
+        <div id="map-container">
+
+          <!-- Toggle Panel Button -->
+          <button id="toggle-panel-btn" title="Toggle Driver List">☰</button>
+
+          <!-- Top Info Bar -->
+          <div id="map-topbar">
+            <div class="map-badge">
+              <span class="dot" style="background:#00c853;"></span>
+              Live Tracking
+            </div>
+            <div class="map-badge" id="active-count-badge">
+              0 drivers on map
+            </div>
+          </div>
+
+          <!-- Refresh Button -->
+          <button id="refresh-btn">↻ Refresh</button>
+
+          <!-- Google Map -->
+          <div id="map"></div>
+
+          <!-- Selected Driver Info Box -->
+          <div id="driver-info-box">
+            <button id="close-info-box" onclick="closeInfoBox()">✕</button>
+            <div class="info-box-header">
+              <img id="info-avatar" class="info-box-avatar" src="/img/default-driver.jpg" alt="Driver">
+              <div>
+                <p class="info-box-name" id="info-name">Driver Name</p>
+                <p class="info-box-vehicle" id="info-vehicle">Vehicle</p>
+              </div>
+            </div>
+            <div class="info-box-stats">
+              <div class="info-stat">
+                <p class="info-stat-value" id="info-speed">0</p>
+                <p class="info-stat-label">km/h</p>
+              </div>
+              <div class="info-stat">
+                <p class="info-stat-value" id="info-heading">—</p>
+                <p class="info-stat-label">heading</p>
+              </div>
+              <div class="info-stat">
+                <p class="info-stat-value" id="info-updated">—</p>
+                <p class="info-stat-label">ago</p>
+              </div>
+            </div>
+            <p class="last-update-label" id="info-coords">—</p>
+          </div>
+
+          <!-- Connection Status -->
+          <div id="conn-status">
+            <div id="conn-dot"></div>
+            <span id="conn-label">Connecting...</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%- include('../../_layouts/commonJs') %>
+
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- Google Maps -->
+  <script>
+    const GOOGLE_MAPS_API_KEY = '<%= googleMapsApiKey %>';
+    (function () {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    })();
+  </script>
+
+  <script>
+    // ============================================================
+    //  GLOBAL STATE
+    // ============================================================
+    const driversMap   = {};   // driverId -> { marker, info, trail[] }
+    let   map          = null;
+    let   selectedId   = null;
+    let   socket       = null;
+    let   isConnected  = false;
+    let   panelOpen    = true;
+
+    // ============================================================
+    //  GOOGLE MAPS INIT
+    // ============================================================
+    function initMap() {
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: 23.0225, lng: 72.5714 },  // Gujarat default – auto-adjusts
+        zoom: 11,
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: true,
+        zoomControl: true,
+        styles: [
+          { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }
+        ]
+      });
+
+      // Init socket + load initial data
+      initSocket();
+      loadInitialDriverLocations();
+
+      // Refresh button
+      document.getElementById('refresh-btn').addEventListener('click', loadInitialDriverLocations);
+
+      // Toggle panel
+      document.getElementById('toggle-panel-btn').addEventListener('click', () => {
+        panelOpen = !panelOpen;
+        document.getElementById('driver-panel').classList.toggle('collapsed', !panelOpen);
+        document.getElementById('toggle-panel-btn').textContent = panelOpen ? '☰' : '▶';
+      });
+
+      // Search
+      document.getElementById('driver-search').addEventListener('input', e => {
+        filterDriverList(e.target.value.toLowerCase());
+      });
+    }
+
+    // ============================================================
+    //  SOCKET.IO REAL-TIME CONNECTION
+    // ============================================================
+    function initSocket() {
+      socket = io({ transports: ['websocket', 'polling'] });
+
+      socket.on('connect', () => {
+        isConnected = true;
+        setConnStatus(true);
+        socket.emit('join-admin-room');
+        console.log('✅ Socket connected, joined admin-room');
+      });
+
+      socket.on('disconnect', () => {
+        isConnected = false;
+        setConnStatus(false);
+        console.warn('⚠️ Socket disconnected');
+      });
+
+      // ── Admin drivers list (on join) ──────────────────────────
+      socket.on('admin:drivers:list', (list) => {
+        console.log('📋 Received initial drivers list:', list.length);
+        list.forEach(d => {
+          if (d.location && d.location.latitude && d.location.longitude) {
+            upsertDriver(d.driverId, {
+              driverName:   d.driverName,
+              vehicleNumber: d.vehicleNumber,
+              profileImage: null,
+              isOnline: true,
+              location: {
+                latitude:  d.location.latitude,
+                longitude: d.location.longitude,
+                speed:     d.location.speed || 0,
+                heading:   d.location.heading || 0,
+                accuracy:  d.location.accuracy || 0,
+                timestamp: d.location.timestamp || new Date()
+              }
+            });
+          }
+        });
+        fitAllMarkers();
+        refreshSidebar();
+      });
+
+      // ── Real-time location update (Uber-style smooth) ─────────
+      socket.on('driver:location:update', (data) => {
+        const { driverId, driverName, vehicleNumber, location, speed, heading, accuracy, timestamp } = data;
+        if (!location || !location.latitude || !location.longitude) return;
+
+        const existing = driversMap[driverId];
+        upsertDriver(driverId, {
+          driverName:    driverName   || (existing ? existing.info.driverName   : 'Driver'),
+          vehicleNumber: vehicleNumber || (existing ? existing.info.vehicleNumber : 'N/A'),
+          profileImage:  existing ? existing.info.profileImage : null,
+          isOnline: true,
+          location: {
+            latitude:  location.latitude,
+            longitude: location.longitude,
+            speed:     speed     || 0,
+            heading:   heading   || 0,
+            accuracy:  accuracy  || 0,
+            timestamp: timestamp || new Date()
+          }
+        });
+
+        // Update info box if this driver is selected
+        if (selectedId === driverId) {
+          updateInfoBox(driverId);
+        }
+        refreshSidebar();
+      });
+
+      // ── Legacy event support ──────────────────────────────────
+      socket.on('driver-location-update', (data) => {
+        if (!data.driverId) return;
+        socket.emit('driver:location:update', {
+          driverId:   data.driverId.toString(),
+          location:   data.location,
+          speed:      data.speed,
+          heading:    data.heading,
+          timestamp:  data.timestamp
+        });
+      });
+
+      // ── Driver came online ────────────────────────────────────
+      socket.on('driver:online', (data) => {
+        const { driverId, driverName, vehicleNumber } = data;
+        if (driversMap[driverId]) {
+          driversMap[driverId].info.isOnline = true;
+          refreshSidebar();
+        }
+        showToast(`🟢 ${driverName} (${vehicleNumber}) is now online`);
+      });
+
+      // ── Driver went offline ───────────────────────────────────
+      socket.on('driver:offline', (data) => {
+        const { driverId, driverName } = data;
+        if (driversMap[driverId]) {
+          driversMap[driverId].info.isOnline = false;
+          // Make marker grey
+          const marker = driversMap[driverId].marker;
+          if (marker) {
+            marker.setIcon(buildMarkerIcon('#9e9e9e', ''));
+          }
+          refreshSidebar();
+        }
+        showToast(`🔴 ${driverName} went offline`, 'orange');
+      });
+    }
+
+    // ============================================================
+    //  LOAD INITIAL DRIVER LOCATIONS FROM DB API
+    // ============================================================
+    async function loadInitialDriverLocations() {
+      try {
+        const res  = await fetch('/admin/tracking/all-driver-locations');
+        const data = await res.json();
+        if (!data.success) return;
+
+        data.data.forEach(d => {
+          upsertDriver(d.driverId, {
+            driverName:    d.driverName,
+            vehicleNumber: d.vehicleNumber,
+            profileImage:  d.profileImage,
+            phone:         d.phone,
+            isAvailable:   d.isAvailable,
+            isOnline:      d.isOnline,
+            location: {
+              latitude:  d.location.latitude,
+              longitude: d.location.longitude,
+              speed:     d.location.speed    || 0,
+              heading:   d.location.heading  || 0,
+              accuracy:  d.location.accuracy || 0,
+              timestamp: d.location.timestamp
+            }
+          });
+        });
+
+        fitAllMarkers();
+        refreshSidebar();
+
+        console.log(`✅ Loaded ${data.total} driver(s) from DB`);
+      } catch (err) {
+        console.error('❌ Failed to load driver locations:', err);
+      }
+    }
+
+    // ============================================================
+    //  UPSERT DRIVER MARKER (create or update)
+    // ============================================================
+    function upsertDriver(driverId, info) {
+      const dId    = driverId.toString();
+      const latLng = { lat: info.location.latitude, lng: info.location.longitude };
+      const color  = info.isOnline ? '#1565c0' : '#9e9e9e';
+      const initials = (info.driverName || 'D').charAt(0).toUpperCase();
+
+      if (driversMap[dId]) {
+        // ── UPDATE existing marker (smooth animated move) ──────
+        const entry = driversMap[dId];
+
+        // Smooth animation: interpolate from old position
+        animateMarker(entry.marker, entry.marker.getPosition(), new google.maps.LatLng(latLng.lat, latLng.lng), dId);
+
+        // Update heading rotation
+        entry.marker.setIcon(buildMarkerIcon(color, initials, info.location.heading));
+
+        // Add trail point
+        if (entry.trail && entry.trail.length > 0) {
+          const lastPt = entry.trail[entry.trail.length - 1];
+          entry.trailLine.getPath().push(new google.maps.LatLng(latLng.lat, latLng.lng));
+
+          // Keep trail to max 30 points
+          if (entry.trailLine.getPath().getLength() > 30) {
+            entry.trailLine.getPath().removeAt(0);
+          }
+        }
+
+        entry.trail.push(latLng);
+        entry.info = { ...entry.info, ...info };
+
+      } else {
+        // ── CREATE new marker ──────────────────────────────────
+        const marker = new google.maps.Marker({
+          position: latLng,
+          map: map,
+          title: info.driverName,
+          icon: buildMarkerIcon(color, initials, info.location.heading),
+          animation: google.maps.Animation.DROP,
+          zIndex: 100
+        });
+
+        // Info window
+        const infoWindow = new google.maps.InfoWindow();
+
+        marker.addListener('click', () => {
+          selectDriver(dId);
+        });
+
+        // Trail polyline
+        const trailLine = new google.maps.Polyline({
+          map: map,
+          path: [latLng],
+          strokeColor: '#1565c0',
+          strokeOpacity: 0.5,
+          strokeWeight: 3,
+          icons: [{
+            icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 2 },
+            offset: '100%'
+          }]
+        });
+
+        driversMap[dId] = {
+          marker,
+          infoWindow,
+          trailLine,
+          trail: [latLng],
+          info: { ...info, driverId: dId }
+        };
+      }
+    }
+
+    // ============================================================
+    //  BUILD CUSTOM TRUCK MARKER ICON (rotates with heading)
+    // ============================================================
+    function buildMarkerIcon(color, initials, heading) {
+      heading = heading || 0;
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="42" height="52" viewBox="0 0 42 52">
+          <g transform="rotate(${heading}, 21, 21)">
+            <circle cx="21" cy="21" r="19" fill="${color}" stroke="white" stroke-width="2.5"/>
+            <polygon points="21,2 17,10 25,10" fill="white" opacity="0.9"/>
+            <text x="21" y="27" text-anchor="middle" fill="white" font-size="14" font-family="Arial" font-weight="bold">${initials}</text>
+          </g>
+          <circle cx="21" cy="48" r="3" fill="${color}" opacity="0.7"/>
+          <line x1="21" y1="40" x2="21" y2="45" stroke="${color}" stroke-width="2"/>
+        </svg>`;
+      return {
+        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+        scaledSize: new google.maps.Size(42, 52),
+        anchor: new google.maps.Point(21, 48)
+      };
+    }
+
+    // ============================================================
+    //  SMOOTH MARKER ANIMATION — Uber-style (easing + heading)
+    // ============================================================
+    const _animating = {}; // track ongoing animations per driverId
+
+    function animateMarker(marker, from, to, driverId) {
+      if (!from) { marker.setPosition(to); return; }
+
+      // Cancel any existing animation for this driver
+      if (_animating[driverId]) {
+        cancelAnimationFrame(_animating[driverId]);
+        delete _animating[driverId];
+      }
+
+      const duration  = 1800;  // ms — smooth over ~1.8 seconds
+      const startTime = performance.now();
+      const fromLat   = from.lat();
+      const fromLng   = from.lng();
+      const toLat     = to.lat();
+      const toLng     = to.lng();
+
+      // Easing: ease-in-out cubic
+      function easeInOut(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      }
+
+      function step(now) {
+        const elapsed  = now - startTime;
+        const raw      = Math.min(elapsed / duration, 1);
+        const progress = easeInOut(raw);
+
+        marker.setPosition({
+          lat: fromLat + (toLat - fromLat) * progress,
+          lng: fromLng + (toLng - fromLng) * progress
+        });
+
+        if (raw < 1) {
+          _animating[driverId] = requestAnimationFrame(step);
+        } else {
+          marker.setPosition(to);
+          delete _animating[driverId];
+        }
+      }
+
+      _animating[driverId] = requestAnimationFrame(step);
+    }
+
+    // ============================================================
+    //  SELECT DRIVER (click → focus map + show info box)
+    // ============================================================
+    function selectDriver(dId) {
+      // Deselect previous
+      if (selectedId && driversMap[selectedId]) {
+        const prev = driversMap[selectedId];
+        const prevColor = prev.info.isOnline ? '#1565c0' : '#9e9e9e';
+        const prevInit  = (prev.info.driverName || 'D').charAt(0).toUpperCase();
+        prev.marker.setIcon(buildMarkerIcon(prevColor, prevInit, prev.info.location.heading));
+        prev.marker.setZIndex(100);
+      }
+
+      selectedId = dId;
+
+      // Highlight selected marker
+      const entry = driversMap[dId];
+      if (!entry) return;
+
+      entry.marker.setIcon(buildMarkerIcon('#e53935', (entry.info.driverName || 'D').charAt(0).toUpperCase(), entry.info.location.heading));
+      entry.marker.setZIndex(200);
+
+      // Pan map
+      map.panTo(entry.marker.getPosition());
+      map.setZoom(14);
+
+      // Highlight sidebar card
+      document.querySelectorAll('.driver-card').forEach(c => c.classList.remove('active'));
+      const card = document.getElementById(`card-${dId}`);
+      if (card) { card.classList.add('active'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+
+      // Show info box
+      updateInfoBox(dId);
+      document.getElementById('driver-info-box').classList.add('show');
+    }
+
+    function updateInfoBox(dId) {
+      const entry = driversMap[dId];
+      if (!entry) return;
+      const { info } = entry;
+
+      document.getElementById('info-name').textContent    = info.driverName    || 'Unknown';
+      document.getElementById('info-vehicle').textContent = info.vehicleNumber || 'N/A';
+      document.getElementById('info-avatar').src          = info.profileImage  || '/img/default-driver.jpg';
+
+      const speedKmh = info.location.speed ? (info.location.speed < 10 ? (info.location.speed * 3.6).toFixed(0) : info.location.speed.toFixed(0)) : 0;
+      document.getElementById('info-speed').textContent   = speedKmh;
+      document.getElementById('info-heading').textContent = headingToCompass(info.location.heading);
+
+      const ago = info.location.timestamp ? timeSince(new Date(info.location.timestamp)) : '—';
+      document.getElementById('info-updated').textContent = ago;
+      document.getElementById('info-coords').textContent  =
+        `${info.location.latitude?.toFixed(5)}, ${info.location.longitude?.toFixed(5)}`;
+    }
+
+    function closeInfoBox() {
+      document.getElementById('driver-info-box').classList.remove('show');
+      if (selectedId && driversMap[selectedId]) {
+        const entry = driversMap[selectedId];
+        const color = entry.info.isOnline ? '#1565c0' : '#9e9e9e';
+        entry.marker.setIcon(buildMarkerIcon(color, (entry.info.driverName || 'D').charAt(0).toUpperCase(), entry.info.location.heading));
+        entry.marker.setZIndex(100);
+      }
+      selectedId = null;
+      document.querySelectorAll('.driver-card').forEach(c => c.classList.remove('active'));
+    }
+
+    // ============================================================
+    //  REFRESH SIDEBAR LIST
+    // ============================================================
+    function refreshSidebar() {
+      const list     = document.getElementById('drivers-list');
+      const noMsg    = document.getElementById('no-drivers-msg');
+      const keys     = Object.keys(driversMap);
+      const search   = document.getElementById('driver-search').value.toLowerCase();
+
+      if (keys.length === 0) {
+        noMsg.style.display = 'block';
+        list.innerHTML = '';
+        list.appendChild(noMsg);
+        updateStats(0, 0, 0);
+        return;
+      }
+
+      noMsg.style.display = 'none';
+
+      let onlineCount = 0, movingCount = 0;
+      let html = '';
+
+      keys.forEach(dId => {
+        const { info } = driversMap[dId];
+        if (info.isOnline) onlineCount++;
+        if ((info.location.speed || 0) > 1) movingCount++;
+
+        const name    = info.driverName    || 'Unknown';
+        const vehicle = info.vehicleNumber || 'N/A';
+        const speed   = info.location.speed ? (info.location.speed < 10 ? (info.location.speed * 3.6).toFixed(1) : parseFloat(info.location.speed).toFixed(1)) : 0;
+        const ago     = info.location.timestamp ? timeSince(new Date(info.location.timestamp)) : '—';
+        const isOnline = info.isOnline;
+
+        // Filter by search
+        if (search && !name.toLowerCase().includes(search) && !vehicle.toLowerCase().includes(search)) return;
+
+        const isSelected = selectedId === dId;
+        html += `
+          <div class="driver-card ${isSelected ? 'active' : ''}" id="card-${dId}" onclick="selectDriver('${dId}')">
+            <img class="driver-avatar"
+                 src="${info.profileImage || '/img/default-driver.jpg'}"
+                 onerror="this.src='/img/default-driver.jpg'">
+            <div class="driver-info">
+              <p class="driver-name">${name}</p>
+              <p class="driver-vehicle">🚗 ${vehicle}</p>
+              <p class="driver-speed">⚡ ${speed} km/h &nbsp;·&nbsp; ${ago}</p>
+            </div>
+            <div class="online-dot ${isOnline ? 'online' : 'offline'}" title="${isOnline ? 'Online' : 'Offline'}"></div>
+          </div>`;
+      });
+
+      list.innerHTML = html || '<div class="no-drivers-msg"><i class="material-icons">search_off</i><p>No drivers match search</p></div>';
+
+      updateStats(onlineCount, keys.length, movingCount);
+    }
+
+    function filterDriverList(query) {
+      refreshSidebar();
+    }
+
+    function updateStats(online, total, moving) {
+      document.getElementById('stat-online').textContent = online;
+      document.getElementById('stat-total').textContent  = total;
+      document.getElementById('stat-busy').textContent   = moving;
+      document.getElementById('online-count-badge').textContent = `${online} Online`;
+      document.getElementById('active-count-badge').textContent = `${total} driver${total !== 1 ? 's' : ''} on map`;
+    }
+
+    // ============================================================
+    //  FIT MAP TO ALL MARKERS
+    // ============================================================
+    function fitAllMarkers() {
+      const keys = Object.keys(driversMap);
+      if (keys.length === 0) return;
+      if (keys.length === 1) {
+        const pos = driversMap[keys[0]].marker.getPosition();
+        map.setCenter(pos);
+        map.setZoom(13);
+        return;
+      }
+      const bounds = new google.maps.LatLngBounds();
+      keys.forEach(dId => bounds.extend(driversMap[dId].marker.getPosition()));
+      map.fitBounds(bounds, { top: 60, right: 20, bottom: 80, left: 20 });
+    }
+
+    // ============================================================
+    //  HELPERS
+    // ============================================================
+    function setConnStatus(connected) {
+      document.getElementById('conn-dot').className = connected ? 'connected' : '';
+      document.getElementById('conn-label').textContent = connected ? 'Live Connected' : 'Disconnected';
+    }
+
+    function timeSince(date) {
+      const sec = Math.floor((Date.now() - date.getTime()) / 1000);
+      if (sec < 60)  return `${sec}s ago`;
+      if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+      return `${Math.floor(sec / 3600)}h ago`;
+    }
+
+    function headingToCompass(deg) {
+      if (!deg && deg !== 0) return '—';
+      const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+      return dirs[Math.round(deg / 45) % 8];
+    }
+
+    function showToast(msg, color = 'green') {
+      if (typeof M !== 'undefined') {
+        M.toast({ html: msg, classes: color, displayLength: 3000 });
+      }
+    }
+
+    // Auto-refresh sidebar every 30s to update "ago" times
+    setInterval(() => {
+      Object.keys(driversMap).forEach(dId => {
+        if (selectedId === dId) updateInfoBox(dId);
+      });
+      refreshSidebar();
+    }, 30000);
+  </script>
+
+</body>
+</html>

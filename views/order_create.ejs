@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+    <title>Create New Order | <%= title %></title>
+
+    <style>
+        .btn-gradient { background: linear-gradient(45deg, #667eea, #764ba2) !important; }
+
+        .item-card {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .remove-item-btn { position: absolute; top: 12px; right: 12px; }
+
+        /* Pickup location list inside modal */
+        .pickup-loc-item {
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .pickup-loc-item.is-default { border-color: #a5d6a7; background: #e8f5e9; }
+        .badge-default {
+            background: #43a047; color: white;
+            font-size: 0.68rem; padding: 1px 8px;
+            border-radius: 10px; font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* Selected pickup preview */
+        .pickup-preview {
+            display: none;
+            background: #e8f5e9;
+            border: 1px solid #a5d6a7;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 8px;
+        }
+        .pickup-preview.show { display: block; }
+        .pickup-preview p { margin: 3px 0; font-size: 0.87rem; color: #2e7d32; }
+
+        .modal { max-height: 92vh !important; overflow-y: auto; }
+        .section-divider { border: none; border-top: 2px solid #ede7f6; margin: 12px 0 18px; }
+        
+        #addNewPickupForm { display: none; }
+        #addNewPickupForm.show { display: block; }
+    </style>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="row">
+
+            <div id="breadcrumbs-wrapper" style="background-color: white;">
+                <div class="container">
+                    <div class="row valign-wrapper">
+                        <div class="col s12 m6 l6">
+                            <h5 class="breadcrumbs-title mb-0"><span>Create New Order</span></h5>
+                        </div>
+                        <div class="col s12 m6 l6 right-align-md">
+                            <a href="/admin/orders"
+                               class="btn gradient-45deg-purple-deep-orange waves-effect waves-light pull-right">
+                                Back to Orders
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <%- include('messages', { messages: messages }) %>
+
+            <div class="col s12">
+                <div class="container">
+                    <div class="card-panel" style="padding:0; border-radius:8px; overflow:hidden;">
+                        <div class="card-content" style="padding:30px;">
+                            <form id="createOrderForm" method="POST" action="/admin/orders/create">
+                                <div class="row">
+
+                                    <!-- ===== CUSTOMER ===== -->
+                                    <div class="col s12">
+                                        <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
+                                            <i class="material-icons left tiny" style="color:#667eea;">person</i>
+                                            Customer Information
+                                        </h5>
+                                    </div>
+
+                                    <div class="input-field col s12 m8 l6">
+                                        <select name="customerId" id="customerId" required>
+                                            <option value="" disabled selected>Select Customer</option>
+                                            <% customers.forEach(c => { %>
+                                                <option value="<%= c._id %>">
+                                                    <%= c.companyName || c.name %> — <%= c.phone %>
+                                                </option>
+                                            <% }) %>
+                                        </select>
+                                        <label>Customer <span style="color:red">*</span></label>
+                                    </div>
+
+                                    <!-- ===== PICKUP LOCATION ===== -->
+                                    <div class="col s12" style="margin-top:20px;">
+                                        <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
+                                            <i class="material-icons left tiny" style="color:#667eea;">store</i>
+                                            Pickup Location
+                                        </h5>
+                                    </div>
+
+                                    <div class="col s12 m8 l6">
+                                        <div style="display:flex; align-items:center; gap:10px;">
+                                            <div class="input-field" style="flex:1; margin:0;">
+                                                <select name="pickupLocationId" id="pickupLocationId" required>
+                                                    <option value="" disabled selected>-- Select Pickup Location --</option>
+                                                    <% if (pickupLocations && pickupLocations.length > 0) { %>
+                                                        <% pickupLocations.forEach(loc => { %>
+                                                            <option value="<%= loc._id %>"
+                                                                    data-name="<%= loc.name %>"
+                                                                    data-address="<%= loc.address %>"
+                                                                    data-contact-person="<%= loc.contactPerson || '' %>"
+                                                                    data-contact-phone="<%= loc.contactPhone || '' %>"
+                                                                    data-default="<%= loc.isDefault ? '1' : '0' %>">
+                                                                <%= loc.name %><% if(loc.isDefault){ %> (Default)<% } %>
+                                                            </option>
+                                                        <% }) %>
+                                                    <% } %>
+                                                </select>
+                                                <label>Pickup Location <span style="color:red">*</span></label>
+                                            </div>
+                                            <!-- Manage button — opens modal -->
+                                            <a href="#pickupModal" class="modal-trigger btn blue darken-1 waves-effect waves-light"
+                                               style="margin-top:0; white-space:nowrap;">
+                                                <i class="material-icons left">edit_location</i> Manage
+                                            </a>
+                                        </div>
+
+                                        <!-- Preview card -->
+                                        <div class="pickup-preview" id="pickupPreview">
+                                            <p><strong id="previewName"></strong></p>
+                                            <p><i class="material-icons tiny">location_on</i> <span id="previewAddress"></span></p>
+                                            <p id="previewContactRow" style="display:none;">
+                                                <i class="material-icons tiny">person</i> <span id="previewContact"></span>
+                                            </p>
+                                            <p id="previewPhoneRow" style="display:none;">
+                                                <i class="material-icons tiny">phone</i> <span id="previewPhone"></span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- ===== ORDER ITEMS ===== -->
+                                    <div class="col s12" style="margin-top:24px;">
+                                        <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
+                                            <i class="material-icons left tiny" style="color:#667eea;">inventory_2</i>
+                                            Order Items
+                                        </h5>
+                                    </div>
+
+                                    <div class="col s12">
+                                        <div id="itemsContainer"></div>
+                                        <button type="button" onclick="addItem()"
+                                                class="btn btn-gradient waves-effect waves-light mt-2">
+                                            <i class="material-icons left">add_circle_outline</i> Add New Item
+                                        </button>
+                                    </div>
+
+                                    <!-- ===== DELIVERY INFORMATION ===== -->
+                                    <div class="col s12" style="margin-top:24px;">
+                                        <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
+                                            <i class="material-icons left tiny" style="color:#667eea;">local_shipping</i>
+                                            Delivery Information
+                                        </h5>
+                                    </div>
+
+                                    <div class="input-field col s12 m6">
+                                        <input id="contactPerson" name="deliveryLocation[contactPerson]" type="text" required>
+                                        <label for="contactPerson">Contact Person <span style="color:red">*</span></label>
+                                    </div>
+                                    <div class="input-field col s12 m6">
+                                        <input id="contactPhone" name="deliveryLocation[contactPhone]" type="tel" required>
+                                        <label for="contactPhone">Contact Phone <span style="color:red">*</span></label>
+                                    </div>
+                                    <div class="input-field col s12">
+                                        <textarea id="delAddress" name="deliveryLocation[address]" class="materialize-textarea" required></textarea>
+                                        <label for="delAddress">Full Delivery Address <span style="color:red">*</span></label>
+                                    </div>
+                                    <div class="input-field col s12 m4">
+                                        <input id="city" name="deliveryLocation[city]" type="text" required>
+                                        <label for="city">City <span style="color:red">*</span></label>
+                                    </div>
+                                    <div class="input-field col s12 m4">
+                                        <input id="state" name="deliveryLocation[state]" type="text" required>
+                                        <label for="state">State <span style="color:red">*</span></label>
+                                    </div>
+                                    <div class="input-field col s12 m4">
+                                        <input id="pincode" name="deliveryLocation[pincode]" type="text" maxlength="6" required>
+                                        <label for="pincode">Pincode <span style="color:red">*</span></label>
+                                    </div>
+                                    
+
+                                    <!-- ===== ORDER DETAILS ===== -->
+                                    <div class="col s12" style="margin-top:16px;">
+                                        <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
+                                            <i class="material-icons left tiny" style="color:#667eea;">tune</i>
+                                            Order Details
+                                        </h5>
+                                    </div>
+
+                                    <div class="input-field col s12 m6">
+                                        <select name="orderType">
+                                            <option value="retail" selected>Retail</option>
+                                            <option value="wholesale">Wholesale</option>
+                                            <option value="bulk">Bulk</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                        <label>Order Type</label>
+                                    </div>
+                                    <div class="input-field col s12 m6">
+                                        <select name="priority">
+                                            <option value="low">Low</option>
+                                            <option value="medium" selected>Medium</option>
+                                            <option value="high">High</option>
+                                            <option value="urgent">Urgent</option>
+                                        </select>
+                                        <label>Priority</label>
+                                    </div>
+                                
+
+                                    <!-- ===== SPECIAL INSTRUCTIONS ===== -->
+                                    <div class="col s12" style="margin-top:16px;">
+                                        <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
+                                            <i class="material-icons left tiny" style="color:#667eea;">note</i>
+                                            Special Instructions
+                                        </h5>
+                                    </div>
+                                    <div class="input-field col s12">
+                                        <textarea name="specialInstructions" class="materialize-textarea"></textarea>
+                                        <label>Special Instructions (Optional)</label>
+                                    </div>
+                                    <div class="input-field col s12">
+                                        <textarea name="packagingInstructions" class="materialize-textarea"></textarea>
+                                        <label>Packaging Instructions (Optional)</label>
+                                    </div>
+
+                                    <input type="hidden" name="items" id="itemsJSON">
+
+                                    <!-- Submit -->
+                                    <div class="col s12 right-align" style="margin-top:24px;">
+                                        <a href="/admin/orders" class="btn grey waves-effect waves-light" style="margin-right:10px;">Cancel</a>
+                                        <button type="submit" class="btn btn-gradient waves-effect waves-light">
+                                            <i class="material-icons left">check_circle</i> Create Order
+                                        </button>
+                                    </div>
+
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         PICKUP LOCATION MODAL — add/edit/delete, page change nahi hoga
+    ================================================================ -->
+    <div id="pickupModal" class="modal" style="width:620px; max-width:95vw;">
+        <div class="modal-content">
+            <h5 style="font-weight:600; color:#424242; margin-bottom:4px;">
+                <i class="material-icons left" style="color:#667eea;">location_on</i>
+                Manage Pickup Locations
+            </h5>
+            <hr class="section-divider">
+
+            <!-- Existing locations list -->
+            <div id="pickupLocList">
+                <!-- JS se render hoga -->
+            </div>
+
+            <!-- Toggle add form -->
+            <button type="button" id="toggleAddBtn" onclick="toggleAddForm()"
+                    class="btn btn-gradient waves-effect waves-light" style="margin-bottom:16px;">
+                <i class="material-icons left">add</i> Add New Location
+            </button>
+
+            <!-- Add New Location Form (hidden by default) -->
+            <div id="addNewPickupForm">
+                <hr class="section-divider">
+                <p style="font-weight:600; color:#424242; margin-bottom:12px;">New Pickup Location</p>
+                <div class="row" style="margin-bottom:0;">
+                    <div class="input-field col s12 m6">
+                        <input type="text" id="n_name">
+                        <label for="n_name">Location Name <span style="color:red">*</span></label>
+                    </div>
+                    <div class="input-field col s12 m6">
+                        <input type="text" id="n_contactPerson">
+                        <label for="n_contactPerson">Contact Person</label>
+                    </div>
+                    <div class="input-field col s12">
+                        <textarea id="n_address" class="materialize-textarea"></textarea>
+                        <label for="n_address">Full Address <span style="color:red">*</span></label>
+                    </div>
+                    <div class="input-field col s12 m4">
+                        <input type="text" id="n_city">
+                        <label for="n_city">City</label>
+                    </div>
+                    <div class="input-field col s12 m4">
+                        <input type="text" id="n_state">
+                        <label for="n_state">State</label>
+                    </div>
+                    <div class="input-field col s12 m4">
+                        <input type="text" id="n_pincode" maxlength="6">
+                        <label for="n_pincode">Pincode</label>
+                    </div>
+                    <div class="input-field col s12 m6">
+                        <input type="text" id="n_contactPhone">
+                        <label for="n_contactPhone">Contact Phone</label>
+                    </div>
+                    <div class="input-field col s12 m3">
+                        <input type="number" id="n_lat" step="any">
+                        <label for="n_lat">Latitude <span style="color:red">*</span></label>
+                    </div>
+                    <div class="input-field col s12 m3">
+                        <input type="number" id="n_lng" step="any">
+                        <label for="n_lng">Longitude <span style="color:red">*</span></label>
+                    </div>
+                    <div class="col s12" style="margin-bottom:12px;">
+                        <label>
+                            <input type="checkbox" id="n_isDefault" class="filled-in">
+                            <span>Set as Default</span>
+                        </label>
+                    </div>
+                    <div class="col s12">
+                        <button type="button" onclick="saveNewPickup()"
+                                class="btn btn-gradient waves-effect waves-light">
+                            <i class="material-icons left">save</i> Save Location
+                        </button>
+                        <button type="button" onclick="toggleAddForm()"
+                                class="btn grey waves-effect waves-light" style="margin-left:8px;">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit form (hidden, shown when edit clicked) -->
+            <div id="editPickupForm" style="display:none;">
+                <hr class="section-divider">
+                <p style="font-weight:600; color:#424242; margin-bottom:12px;">Edit Location</p>
+                <input type="hidden" id="e_id">
+                <div class="row" style="margin-bottom:0;">
+                    <div class="input-field col s12 m6">
+                        <input type="text" id="e_name">
+                        <label for="e_name" class="active">Location Name <span style="color:red">*</span></label>
+                    </div>
+                    <div class="input-field col s12 m6">
+                        <input type="text" id="e_contactPerson">
+                        <label for="e_contactPerson" class="active">Contact Person</label>
+                    </div>
+                    <div class="input-field col s12">
+                        <textarea id="e_address" class="materialize-textarea"></textarea>
+                        <label for="e_address" class="active">Full Address <span style="color:red">*</span></label>
+                    </div>
+                    <div class="input-field col s12 m4">
+                        <input type="text" id="e_city">
+                        <label for="e_city" class="active">City</label>
+                    </div>
+                    <div class="input-field col s12 m4">
+                        <input type="text" id="e_state">
+                        <label for="e_state" class="active">State</label>
+                    </div>
+                    <div class="input-field col s12 m4">
+                        <input type="text" id="e_pincode" maxlength="6">
+                        <label for="e_pincode" class="active">Pincode</label>
+                    </div>
+                    <div class="input-field col s12 m6">
+                        <input type="text" id="e_contactPhone">
+                        <label for="e_contactPhone" class="active">Contact Phone</label>
+                    </div>
+                    <div class="input-field col s12 m3">
+                        <input type="number" id="e_lat" step="any">
+                        <label for="e_lat" class="active">Latitude <span style="color:red">*</span></label>
+                    </div>
+                    <div class="input-field col s12 m3">
+                        <input type="number" id="e_lng" step="any">
+                        <label for="e_lng" class="active">Longitude <span style="color:red">*</span></label>
+                    </div>
+                    <div class="col s12 m6" style="margin-bottom:12px;">
+                        <label>
+                            <input type="checkbox" id="e_isDefault" class="filled-in">
+                            <span>Set as Default</span>
+                        </label>
+                    </div>
+                    <div class="col s12 m6" style="margin-bottom:12px;">
+                        <label>
+                            <input type="checkbox" id="e_isActive" class="filled-in" checked>
+                            <span>Active</span>
+                        </label>
+                    </div>
+                    <div class="col s12">
+                        <button type="button" onclick="updatePickup()"
+                                class="btn btn-gradient waves-effect waves-light">
+                            <i class="material-icons left">save</i> Update
+                        </button>
+                        <button type="button" onclick="cancelEdit()"
+                                class="btn grey waves-effect waves-light" style="margin-left:8px;">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-close btn grey waves-effect waves-light">Close</button>
+        </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+
+    <script>
+        // ================================================================
+        // In-memory store — page reload nahi hoga
+        // Server se initial data mila, baaki AJAX se handle hoga
+        // ================================================================
+        let pickupLocations = <%- JSON.stringify(pickupLocations || []) %>;
+        let itemCounter = 0;
+
+        // ===== INIT =====
+        document.addEventListener('DOMContentLoaded', function () {
+            M.FormSelect.init(document.querySelectorAll('select'));
+            M.Modal.init(document.querySelectorAll('.modal'));
+            M.updateTextFields();
+            addItem();
+            renderPickupDropdown();
+
+            document.getElementById('pickupLocationId').addEventListener('change', updatePickupPreview);
+        });
+
+        // ===== PICKUP DROPDOWN RENDER =====
+        function renderPickupDropdown(selectId) {
+            const sel = document.getElementById('pickupLocationId');
+            const prev = sel.value;
+            sel.innerHTML = '<option value="" disabled>-- Select Pickup Location --</option>';
+            pickupLocations.forEach(loc => {
+                const opt = document.createElement('option');
+                opt.value = loc._id;
+                opt.dataset.name          = loc.name;
+                opt.dataset.address       = loc.address;
+                opt.dataset.contactPerson = loc.contactPerson || '';
+                opt.dataset.contactPhone  = loc.contactPhone || '';
+                opt.dataset.default       = loc.isDefault ? '1' : '0';
+                opt.textContent = loc.name + (loc.isDefault ? ' (Default)' : '');
+                sel.appendChild(opt);
+            });
+
+            // Restore previous or select default
+            if (selectId) {
+                sel.value = selectId;
+            } else if (prev) {
+                sel.value = prev;
+            } else {
+                const def = pickupLocations.find(l => l.isDefault);
+                if (def) sel.value = def._id;
+            }
+
+            M.FormSelect.init(sel);
+            updatePickupPreview();
+        }
+
+        function updatePickupPreview() {
+            const sel = document.getElementById('pickupLocationId');
+            const opt = sel.options[sel.selectedIndex];
+            if (!opt || !opt.value) return;
+
+            document.getElementById('previewName').textContent    = opt.dataset.name || '';
+            document.getElementById('previewAddress').textContent = opt.dataset.address || '';
+
+            const cr = document.getElementById('previewContactRow');
+            const pr = document.getElementById('previewPhoneRow');
+            if (opt.dataset.contactPerson) {
+                document.getElementById('previewContact').textContent = opt.dataset.contactPerson;
+                cr.style.display = 'block';
+            } else { cr.style.display = 'none'; }
+
+            if (opt.dataset.contactPhone) {
+                document.getElementById('previewPhone').textContent = opt.dataset.contactPhone;
+                pr.style.display = 'block';
+            } else { pr.style.display = 'none'; }
+
+            document.getElementById('pickupPreview').classList.add('show');
+        }
+
+        // ===== MODAL LIST RENDER =====
+        function renderPickupList() {
+            const el = document.getElementById('pickupLocList');
+            if (pickupLocations.length === 0) {
+                el.innerHTML = '<p style="color:#999; margin-bottom:12px;">Koi location nahi hai. Neeche add karein.</p>';
+                return;
+            }
+            el.innerHTML = pickupLocations.map(loc => `
+                <div class="pickup-loc-item ${loc.isDefault ? 'is-default' : ''}">
+                    <div style="flex:1; min-width:0;">
+                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                            <strong style="font-size:0.92rem;">${loc.name}</strong>
+                            ${loc.isDefault ? '<span class="badge-default">Default</span>' : ''}
+                            ${!loc.isActive ? '<span style="color:#999;font-size:0.75rem;">(Inactive)</span>' : ''}
+                        </div>
+                        <div style="color:#666; font-size:0.82rem; margin-top:2px;">
+                            ${loc.address}${loc.city ? ', ' + loc.city : ''}
+                        </div>
+                        ${loc.contactPhone ? `<div style="color:#888; font-size:0.8rem;">${loc.contactPhone}</div>` : ''}
+                    </div>
+                    <div style="display:flex; gap:6px; flex-shrink:0;">
+                        <button type="button" class="btn-small btn-gradient waves-effect"
+                                onclick="openEdit('${loc._id}')">
+                            <i class="material-icons tiny">edit</i>
+                        </button>
+                        <button type="button" class="btn-small red darken-1 waves-effect"
+                                onclick="deletePickup('${loc._id}', '${loc.name.replace(/'/g, "\\'")}')">
+                            <i class="material-icons tiny">delete</i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Open modal — render list fresh
+        document.getElementById('pickupModal').addEventListener('M_Modal_Open', renderPickupList);
+        // Materialize modal open event
+        document.querySelector('a[href="#pickupModal"]').addEventListener('click', function() {
+            setTimeout(renderPickupList, 100);
+        });
+
+        // ===== TOGGLE ADD FORM =====
+        function toggleAddForm() {
+            const f = document.getElementById('addNewPickupForm');
+            f.classList.toggle('show');
+            cancelEdit();
+            if (f.classList.contains('show')) {
+                // Clear fields
+                ['n_name','n_contactPerson','n_address','n_city','n_state','n_pincode','n_contactPhone','n_lat','n_lng'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
+                document.getElementById('n_isDefault').checked = false;
+                M.updateTextFields();
+            }
+        }
+
+        // ===== SAVE NEW PICKUP (AJAX) =====
+        async function saveNewPickup() {
+            const name    = document.getElementById('n_name').value.trim();
+            const address = document.getElementById('n_address').value.trim();
+            const lat     = document.getElementById('n_lat').value;
+            const lng     = document.getElementById('n_lng').value;
+
+            if (!name || !address || !lat || !lng) {
+                M.toast({ html: 'Name, Address, Latitude & Longitude required!', classes: 'red rounded' });
+                return;
+            }
+
+            const body = {
+                name, address,
+                city:          document.getElementById('n_city').value.trim(),
+                state:         document.getElementById('n_state').value.trim(),
+                pincode:       document.getElementById('n_pincode').value.trim(),
+                contactPerson: document.getElementById('n_contactPerson').value.trim(),
+                contactPhone:  document.getElementById('n_contactPhone').value.trim(),
+                latitude:      parseFloat(lat),
+                longitude:     parseFloat(lng),
+                isDefault:     document.getElementById('n_isDefault').checked
+            };
+
+            try {
+                const res  = await fetch('/admin/orders/pickup-locations/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message);
+
+                // Agar default set kiya to baaki sab ka isDefault false karo
+                if (body.isDefault) pickupLocations.forEach(l => l.isDefault = false);
+                pickupLocations.push(data.location);
+
+                M.toast({ html: 'Location added!', classes: 'green rounded' });
+                toggleAddForm();
+                renderPickupList();
+                renderPickupDropdown(data.location._id);
+
+            } catch (err) {
+                M.toast({ html: err.message || 'Failed to save', classes: 'red rounded' });
+            }
+        }
+
+        // ===== OPEN EDIT =====
+        function openEdit(id) {
+            const loc = pickupLocations.find(l => l._id === id);
+            if (!loc) return;
+
+            cancelAddForm();
+            document.getElementById('e_id').value              = loc._id;
+            document.getElementById('e_name').value            = loc.name;
+            document.getElementById('e_address').value         = loc.address;
+            document.getElementById('e_city').value            = loc.city || '';
+            document.getElementById('e_state').value           = loc.state || '';
+            document.getElementById('e_pincode').value         = loc.pincode || '';
+            document.getElementById('e_contactPerson').value   = loc.contactPerson || '';
+            document.getElementById('e_contactPhone').value    = loc.contactPhone || '';
+            document.getElementById('e_lat').value             = loc.coordinates?.latitude || '';
+            document.getElementById('e_lng').value             = loc.coordinates?.longitude || '';
+            document.getElementById('e_isDefault').checked     = !!loc.isDefault;
+            document.getElementById('e_isActive').checked      = loc.isActive !== false;
+
+            document.getElementById('editPickupForm').style.display = 'block';
+            M.updateTextFields();
+        }
+
+        function cancelEdit() {
+            document.getElementById('editPickupForm').style.display = 'none';
+        }
+        function cancelAddForm() {
+            document.getElementById('addNewPickupForm').classList.remove('show');
+        }
+
+        // ===== UPDATE PICKUP (AJAX) =====
+        async function updatePickup() {
+            const id      = document.getElementById('e_id').value;
+            const name    = document.getElementById('e_name').value.trim();
+            const address = document.getElementById('e_address').value.trim();
+            const lat     = document.getElementById('e_lat').value;
+            const lng     = document.getElementById('e_lng').value;
+
+            if (!name || !address || !lat || !lng) {
+                M.toast({ html: 'Name, Address, Latitude & Longitude required!', classes: 'red rounded' });
+                return;
+            }
+
+            const body = {
+                name, address,
+                city:          document.getElementById('e_city').value.trim(),
+                state:         document.getElementById('e_state').value.trim(),
+                pincode:       document.getElementById('e_pincode').value.trim(),
+                contactPerson: document.getElementById('e_contactPerson').value.trim(),
+                contactPhone:  document.getElementById('e_contactPhone').value.trim(),
+                latitude:      parseFloat(lat),
+                longitude:     parseFloat(lng),
+                isDefault:     document.getElementById('e_isDefault').checked,
+                isActive:      document.getElementById('e_isActive').checked
+            };
+
+            try {
+                const res  = await fetch(`/admin/orders/pickup-locations/${id}/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message);
+
+                // Update in-memory
+                if (body.isDefault) pickupLocations.forEach(l => l.isDefault = false);
+                const idx = pickupLocations.findIndex(l => l._id === id);
+                if (idx > -1) pickupLocations[idx] = data.location;
+
+                M.toast({ html: 'Location updated!', classes: 'green rounded' });
+                cancelEdit();
+                renderPickupList();
+                renderPickupDropdown();
+
+            } catch (err) {
+                M.toast({ html: err.message || 'Failed to update', classes: 'red rounded' });
+            }
+        }
+
+        // ===== DELETE PICKUP (AJAX) =====
+        async function deletePickup(id, name) {
+            if (!confirm(`"${name}" ko delete karna chahte hain?`)) return;
+            try {
+                const res  = await fetch(`/admin/orders/pickup-locations/${id}/delete`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message);
+
+                pickupLocations = pickupLocations.filter(l => l._id !== id);
+                M.toast({ html: 'Location deleted!', classes: 'green rounded' });
+                renderPickupList();
+                renderPickupDropdown();
+
+            } catch (err) {
+                M.toast({ html: err.message || 'Failed to delete', classes: 'red rounded' });
+            }
+        }
+
+        // ================================================================
+        // ORDER ITEMS
+        // ================================================================
+        function addItem() {
+            itemCounter++;
+            const id   = itemCounter;
+            const html = `
+                <div class="item-card" id="item-${id}">
+                    <button type="button" class="btn-small red remove-item-btn waves-effect"
+                            onclick="removeItem('item-${id}')">
+                        <i class="material-icons">close</i>
+                    </button>
+                    <div class="row">
+                        <div class="input-field col s12 m6">
+                            <input id="productName-${id}" type="text" required>
+                            <label for="productName-${id}">Product Name <span style="color:red">*</span></label>
+                        </div>
+                        <div class="input-field col s12 m6">
+                            <input id="productCode-${id}" type="text">
+                            <label for="productCode-${id}">Product Code (Optional)</label>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="input-field col s12 m4">
+                            <select id="category-${id}">
+                                <option value="containers">Containers</option>
+                                <option value="bottles">Bottles</option>
+                                <option value="bags">Bags</option>
+                                <option value="sheets">Sheets</option>
+                                <option value="custom">Custom</option>
+                                <option value="other" selected>Other</option>
+                            </select>
+                            <label>Category</label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                            <input id="quantity-${id}" type="number" min="1" value="1" required>
+                            <label for="quantity-${id}">Quantity <span style="color:red">*</span></label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                            <input id="description-${id}" type="text">
+                            <label for="description-${id}">Description (Optional)</label>
+                        </div>
+                    </div>
+                </div>`;
+            document.getElementById('itemsContainer').insertAdjacentHTML('beforeend', html);
+            M.updateTextFields();
+            M.FormSelect.init(document.querySelectorAll(`#item-${id} select`));
+        }
+
+        function removeItem(itemId) {
+            const el = document.getElementById(itemId);
+            if (el) el.remove();
+        }
+
+        // ================================================================
+        // FORM SUBMIT
+        // ================================================================
+        document.getElementById('createOrderForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const items = [];
+            document.querySelectorAll('.item-card').forEach(card => {
+                const id   = card.id.split('-')[1];
+                const name = document.getElementById(`productName-${id}`)?.value?.trim();
+                if (!name) return;
+                items.push({
+                    productName:  name,
+                    productCode:  document.getElementById(`productCode-${id}`)?.value?.trim() || '',
+                    category:     document.getElementById(`category-${id}`)?.value || 'other',
+                    quantity:     parseInt(document.getElementById(`quantity-${id}`)?.value) || 1,
+                    description:  document.getElementById(`description-${id}`)?.value?.trim() || ''
+                });
+            });
+            if (items.length === 0) {
+                M.toast({ html: 'Please add at least one item', classes: 'red rounded' });
+                return;
+            }
+            document.getElementById('itemsJSON').value = JSON.stringify(items);
+            this.submit();
+        });
+    </script>
+</body>
+</html>

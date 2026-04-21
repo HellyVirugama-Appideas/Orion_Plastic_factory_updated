@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+  <%- include('_layouts/head') %>
+  <title>Orders Management | <%= title %></title>
+  <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/extensions/responsive/css/responsive.dataTables.min.css">
+  <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/select.dataTables.min.css">
+  <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
+  <style>
+    table tr td, th { text-align:center; vertical-align:middle !important; padding:10px 8px !important; }
+
+    .status-badge {
+      padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+      display: inline-block; text-transform: capitalize; color: #fff;
+    }
+    .status-pending          { background: #f59e0b; }
+    .status-confirmed        { background: #16a34a; }
+    .status-assigned         { background: #0d9488; }
+    .status-processing       { background: #2563eb; }
+    .status-ready_for_pickup { background: #7c3aed; }
+    .status-delivered        { background: #15803d; }
+    .status-cancelled        { background: #ef4444; color: #fff !important; }
+    .status-completed        { background: #166534; }
+
+    .priority-urgent { color:#d32f2f !important; font-weight:700; }
+    .priority-high   { color:#f57c00 !important; font-weight:700; }
+    .priority-medium { color:#ffa000 !important; }
+    .priority-low    { color:#757575 !important; }
+
+    tr.order-row { cursor: pointer; }
+    tr.order-row:hover { background: #f5f5f5; }
+    td.actions-column, td.status-column { cursor: default; }
+    td.priority-column { cursor: default; }
+
+    .action-buttons { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; align-items:center; }
+
+    /* Tabs */
+    .tab-bar { display:flex; gap:0; border-bottom:2px solid #e0e0e0; margin-bottom:16px; flex-wrap:wrap; }
+    .tab-btn {
+      padding:10px 18px; font-size:13px; font-weight:600; cursor:pointer;
+      background:none; border:none; outline:none; color:#757575;
+      border-bottom:3px solid transparent; margin-bottom:-2px; transition:all .2s;
+    }
+    .tab-btn:hover { color:#1565c0; }
+    .tab-btn.active { color:#1565c0; border-bottom:3px solid #1565c0; }
+    .tab-btn .badge-num {
+      display:inline-block; background:#e0e0e0; color:#555;
+      border-radius:10px; padding:1px 7px; font-size:11px; margin-left:5px;
+    }
+    .tab-btn.active .badge-num { background:#1565c0; color:#fff; }
+
+    /* Disabled priority select */
+    select.priority-select:disabled {
+      background: #f5f5f5 !important;
+      color: #bbb !important;
+      border-color: #e0e0e0 !important;
+      cursor: not-allowed !important;
+      opacity: 0.6;
+    }
+  </style>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+  <%- include('_layouts/sidenavbar') %>
+
+  <div id="main">
+    <div class="row">
+      <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+        <div class="container">
+          <div class="row">
+            <%- include('messages', { messages: messages }) %>
+            <div class="col s12 m6 l6">
+              <h6 class="breadcrumbs-title">Manage Orders</h6>
+            </div>
+            <div class="col s12 m6 l6 right-align-md" style="margin-top:-10px;">
+              <ol class="breadcrumbs mb-0">
+                <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                <li class="breadcrumb-item active">Orders</li>
+              </ol>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;padding:6px 0;">
+            <a class="btn btn-add btn-breadcrumbs white-text" href="/admin/orders/create">+ Create Order</a>
+          </div>
+
+          <div class="col s12">
+            <div class="container">
+              <div class="section section-data-tables">
+                <div class="row">
+                  <div class="col s12">
+                    <div class="card">
+                      <div class="card-content">
+
+                        <!-- ── TABS ── -->
+                        <div class="tab-bar">
+                          <button class="tab-btn active" data-tab="all">
+                            All <span class="badge-num" id="ord-cnt-all">0</span>
+                          </button>
+                          <button class="tab-btn" data-tab="pending">
+                            Pending <span class="badge-num" id="ord-cnt-pending">0</span>
+                          </button>
+                          <button class="tab-btn" data-tab="confirmed">
+                            Confirmed <span class="badge-num" id="ord-cnt-confirmed">0</span>
+                          </button>
+                          <button class="tab-btn" data-tab="approved">
+                            Approved <span class="badge-num" id="ord-cnt-approved">0</span>
+                          </button>
+                          <button class="tab-btn" data-tab="cancelled">
+                            Cancelled <span class="badge-num" id="ord-cnt-cancelled">0</span>
+                          </button>
+                        </div>
+
+                        <div class="row">
+                          <div class="col s12 overflow">
+                            <table id="page-length-option" class="display">
+                              <thead>
+                                <tr>
+                                  <th>Sr</th>
+                                  <th>Order #</th>
+                                  <th>Customer</th>
+                                  <th>Items</th>
+                                  <th>Status</th>
+                                  <th>Priority</th>
+                                  <th>Created</th>
+                                  <th>Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody id="orders-tbody">
+                                <% if (orders && orders.length > 0) { %>
+                                  <% orders.forEach((order, index) => { %>
+                                    <%
+                                      const st = (order.status || 'pending').toLowerCase();
+                                      const priority = order.priority || 'medium';
+
+                                      // Tab classification
+                                      let tabClass = 'tab-all ';
+                                      if (st === 'pending')   tabClass += 'tab-pending';
+                                      else if (st === 'confirmed') tabClass += 'tab-confirmed';
+                                      else if (st === 'cancelled') tabClass += 'tab-cancelled';
+                                      else tabClass += 'tab-approved';
+
+                                      // Disable priority for terminal statuses
+                                      const priorityDisabled = ['cancelled','completed','delivered'].includes(st);
+                                    %>
+                                    <tr class="order-row <%= tabClass %>"
+                                        data-href="/admin/orders/view/<%= order._id %>"
+                                        data-status="<%= st %>">
+                                      <td><%= index + 1 %></td>
+                                      <td><strong><%= order.orderNumber %></strong></td>
+                                      <td>
+                                        <% if (order.customerId) { %>
+                                          <%= order.customerId.companyName || order.customerId.name || 'N/A' %>
+                                          <% if (order.customerId.customerId) { %>
+                                            <br><small class="grey-text">ID: <%= order.customerId.customerId %></small>
+                                          <% } %>
+                                        <% } else { %>
+                                          <span class="grey-text">N/A</span>
+                                        <% } %>
+                                      </td>
+                                      <td><%= order.items?.length || 0 %> item(s)</td>
+                                      <td class="status-column">
+                                        <span class="badge status-<%= st %>">
+                                          <%= st.replace(/_/g,' ').toUpperCase() %>
+                                        </span>
+                                      </td>
+                                      <td class="priority-column">
+                                        <select
+                                          class="priority-select"
+                                          data-id="<%= order._id %>"
+                                          <%= priorityDisabled ? 'disabled' : '' %>
+                                          style="border:1px solid #ddd;border-radius:4px;padding:3px 6px;font-size:12px;background:#fff;<%= priorityDisabled ? 'opacity:0.5;cursor:not-allowed;' : 'cursor:pointer;' %>">
+                                          <option value="low"    <%= priority==='low'    ?'selected':'' %>>LOW</option>
+                                          <option value="medium" <%= priority==='medium' ?'selected':'' %>>MEDIUM</option>
+                                          <option value="high"   <%= priority==='high'   ?'selected':'' %>>HIGH</option>
+                                          <option value="urgent" <%= priority==='urgent' ?'selected':'' %>>URGENT</option>
+                                        </select>
+                                      </td>
+                                      <td>
+                                        <%
+                                          let fd = '-';
+                                          if (order.createdAt) {
+                                            const d = new Date(order.createdAt);
+                                            fd = String(d.getUTCDate()).padStart(2,'0')+'-'
+                                               + String(d.getUTCMonth()+1).padStart(2,'0')+'-'
+                                               + d.getUTCFullYear()+' '
+                                               + String(d.getUTCHours()).padStart(2,'0')+':'
+                                               + String(d.getUTCMinutes()).padStart(2,'0');
+                                          }
+                                        %>
+                                        <%= fd %>
+                                      </td>
+                                      <td class="actions-column">
+                                        <div class="action-buttons">
+                                          <a href="/admin/orders/view/<%= order._id %>"
+                                             class="btn-floating waves-effect waves-light accent-2 btn-edit"
+                                             title="View"><i class="material-icons">visibility</i></a>
+                                          <a href="/admin/orders/edit/<%= order._id %>"
+                                             class="btn-floating waves-effect waves-light accent-2 btn-edit"
+                                             title="Edit"><i class="material-icons">edit</i></a>
+                                          <a href="#"
+                                             class="btn-floating waves-effect waves-light accent-2 btn-delete"
+                                             onclick="confirmDelete('<%= order._id %>','<%= order.orderNumber %>')"
+                                             title="Delete"><i class="material-icons">delete</i></a>
+                                          <% if (!order.deliveryId && ['confirmed','processing','ready_for_pickup'].includes(st)) { %>
+                                            <a href="/admin/deliveries/create-from-order/<%= order._id %>"
+                                               class="btn-floating waves-effect waves-light green btn-create-delivery"
+                                               title="Create Delivery"><i class="material-icons">local_shipping</i></a>
+                                          <% } %>
+                                          <% if (st === 'pending') { %>
+                                            <a href="#" onclick="confirmOrder('<%= order._id %>')"
+                                               class="btn-floating waves-effect waves-light orange"
+                                               title="Approve"><i class="material-icons">check</i></a>
+                                          <% } %>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  <% }) %>
+                                <% } else { %>
+                                  <tr><td colspan="8" class="center-align grey-text">No orders found</td></tr>
+                                <% } %>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%- include('_layouts/commonJs') %>
+  <script src="/app-assets/vendors/data-tables/js/jquery.dataTables.min.js"></script>
+  <script src="/app-assets/js/scripts/data-tables.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Init Materialize selects (only non-disabled ones)
+    M.FormSelect.init(document.querySelectorAll('select:not([disabled])'));
+
+    // ── Count tabs ──
+    const rows = document.querySelectorAll('tr.order-row');
+    let cAll=0, cPend=0, cConf=0, cAppr=0, cCanc=0;
+    rows.forEach(r => {
+      cAll++;
+      if (r.classList.contains('tab-pending'))   cPend++;
+      if (r.classList.contains('tab-confirmed')) cConf++;
+      if (r.classList.contains('tab-approved'))  cAppr++;
+      if (r.classList.contains('tab-cancelled')) cCanc++;
+    });
+    document.getElementById('ord-cnt-all').textContent       = cAll;
+    document.getElementById('ord-cnt-pending').textContent   = cPend;
+    document.getElementById('ord-cnt-confirmed').textContent = cConf;
+    document.getElementById('ord-cnt-approved').textContent  = cAppr;
+    document.getElementById('ord-cnt-cancelled').textContent = cCanc;
+
+    // ── Tab switching ──
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const tab = this.dataset.tab;
+        rows.forEach(r => {
+          r.style.display = (tab==='all' || r.classList.contains('tab-'+tab)) ? '' : 'none';
+        });
+      });
+    });
+
+    // ── Priority select — block row click propagation ──
+    document.querySelectorAll('.priority-select').forEach(sel => {
+      sel.addEventListener('mousedown', e => e.stopPropagation());
+      sel.addEventListener('focus',     e => e.stopPropagation());
+      sel.addEventListener('click',     e => e.stopPropagation());
+
+      sel.addEventListener('change', function(e) {
+        e.stopPropagation();
+        if (this.disabled) return;
+
+        const id       = this.dataset.id;
+        const priority = this.value;
+
+        fetch(`/admin/orders/${id}/priority`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ priority })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            M.toast({
+              html: `✅ Priority → <strong>${priority.toUpperCase()}</strong>${data.driverNotified ? ' — Driver notified' : ''}`,
+              classes: 'green rounded',
+              displayLength: 3000
+            });
+          } else {
+            M.toast({ html: data.message || 'Failed to update priority', classes: 'red rounded' });
+          }
+        })
+        .catch(() => M.toast({ html: 'Network error', classes: 'red rounded' }));
+      });
+    });
+
+    // ── Row click — block on priority col + actions col ──
+    rows.forEach(row => {
+      row.addEventListener('click', function(e) {
+        if (
+          e.target.tagName === 'SELECT'  ||
+          e.target.tagName === 'OPTION'  ||
+          e.target.tagName === 'A'       ||
+          e.target.tagName === 'BUTTON'  ||
+          e.target.tagName === 'I'       ||
+          e.target.closest('.actions-column')   ||
+          e.target.closest('.priority-column')  ||
+          e.target.closest('.priority-select')  ||
+          e.target.closest('.btn-floating')
+        ) return;
+
+        const href = this.getAttribute('data-href');
+        if (href) window.location.href = href;
+      });
+    });
+  });
+
+  function confirmOrder(orderId) {
+    if (!confirm('Approve this order?')) return;
+    fetch(`/admin/orders/${orderId}/confirm`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ remarks: 'Approved by admin' })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        M.toast({ html: 'Order approved!', classes: 'green rounded' });
+        setTimeout(() => location.reload(), 1200);
+      } else {
+        M.toast({ html: data.message || 'Failed', classes: 'red rounded' });
+      }
+    });
+  }
+
+  function confirmDelete(orderId, orderNumber) {
+    if (!confirm(`Delete order "${orderNumber}"? This cannot be undone.`)) return;
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/orders/delete/${orderId}`;
+    document.body.appendChild(form);
+    form.submit();
+  }
+  </script>
+</body>
+</html>

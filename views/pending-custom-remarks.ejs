@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('_layouts/head') %>
+  <title>Pending Custom Remarks | <%= title %></title>
+</head>
+<body>
+  <%- include('_layouts/sidenavbar') %>
+
+  <div id="main">
+    <div class="container">
+      <h5>Pending Custom Remarks</h5>
+
+      <%- include('messages', { messages: messages }) %>
+
+      <table class="striped">
+        <thead>
+          <tr>
+            <th>Text</th>
+            <th>Created By</th>
+            <th>Category</th>
+            <th>Severity</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% remarks.forEach(remark => { %>
+            <tr>
+              <td><%= remark.remarkText %></td>
+              <td><%= remark.createdBy?.name || 'Unknown' %></td>
+              <td><%= remark.category %></td>
+              <td><%= remark.severity %></td>
+              <td>
+                <form action="/admin/remarks/custom/<%= remark._id %>/approve" method="POST" style="display: inline;">
+                  <button type="submit" class="btn-small green">Approve</button>
+                </form>
+                <form action="/admin/remarks/custom/<%= remark._id %>/reject" method="POST" style="display: inline;">
+                  <input type="text" name="reason" placeholder="Reason" required style="width: 100px;">
+                  <button type="submit" class="btn-small red">Reject</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <%- include('_layouts/commonJs') %>
+</body>
+</html>

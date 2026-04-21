@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+    <title>Create Delivery - <%= order.orderNumber %> | Admin</title>
+    
+    <style>
+        .form-section { background:#fff; padding:20px; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+        .section-title { font-size:1.2rem; font-weight:600; margin-bottom:15px; color:#333; border-bottom:2px solid #2196F3; padding-bottom:10px; }
+        #map { height:450px; width:100%; border-radius:8px; margin-top:15px; }
+        .route-summary { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:white; padding:20px; border-radius:12px; margin-top:15px; }
+        .route-summary-item { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.2); }
+        .warning-box { background:#ffebee; color:#c62828; padding:15px; border-radius:8px; margin:15px 0; border-left:5px solid #f44336; }
+        .driver-card { border:2px solid #e0e0e0; padding:15px; border-radius:8px; cursor:pointer; transition:all .3s; margin-bottom:10px; }
+        .driver-card:hover { border-color:#667eea; background:#f5f5f5; }
+        .driver-card.selected { border-color:#4CAF50; background:#e8f5e9; }
+    </style>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="row">
+            <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+                <div class="container">
+                    <div class="row">
+                        <%- include('messages', { messages: messages }) %>
+                        <div class="col s12 m6 l6">
+                            <h6 class="breadcrumbs-title">
+                                <a href="/admin/orders">Orders</a> / 
+                                <a href="/admin/orders/view/<%= order._id %>"><%= order.orderNumber %></a> /
+                                Create Delivery
+                            </h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col s12">
+            <div class="container">
+                <form id="createDeliveryForm" method="POST" action="/admin/deliveries/create-from-order/<%= order._id %>">
+                    
+                    <!-- Order Information -->
+                    <div class="form-section card">
+                        <h5 class="section-title">
+                            <i class="material-icons left">shopping_cart</i>
+                            Order Information
+                        </h5>
+                        <div class="row">
+                            <div class="col s12 m6">
+                                <p><strong>Order Number:</strong> <%= order.orderNumber %></p>
+                                <p><strong>Customer:</strong> <%= order.customerId?.companyName || order.customerId?.name || 'N/A' %></p>
+                                <p><strong>Phone:</strong> <%= order.customerId?.phone || 'N/A' %></p>
+                            </div>
+                            <div class="col s12 m6">
+                                <p><strong>Items:</strong> <%= order.items?.length %> item(s)</p>
+                                <p><strong>Priority:</strong> <span class="priority-<%= order.priority %>"><%= order.priority?.toUpperCase() || 'MEDIUM' %></span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pickup & Delivery Locations with Map -->
+                    <div class="form-section card">
+                        <h5 class="section-title">
+                            <i class="material-icons left">map</i>
+                            Delivery Route & Locations
+                        </h5>
+                        
+                        <div class="row">
+                            <div class="col s12 m6">
+                                <h6 style="color: #4CAF50; font-weight: 600;">
+                                    <i class="material-icons tiny">location_on</i> Start Location (Pickup)
+                                </h6>
+                                <p><strong><%= order.pickupLocation?.address || 'N/A' %></strong></p>
+                                <p class="grey-text">Contact: <%= order.pickupLocation?.contactPerson || 'N/A' %> (<%= order.pickupLocation?.contactPhone || 'N/A' %>)</p>
+                            </div>
+                            <div class="col s12 m6">
+                                <h6 style="color: #f44336; font-weight: 600;">
+                                    <i class="material-icons tiny">flag</i> Destination (Delivery)
+                                </h6>
+                                <p><strong><%= order.deliveryLocation?.address || 'N/A' %></strong></p>
+                                <p class="grey-text"><%= order.deliveryLocation?.city %>, <%= order.deliveryLocation?.state %> <%= order.deliveryLocation?.pincode %></p>
+                                <p class="grey-text">Contact: <%= order.deliveryLocation?.contactPerson %> (<%= order.deliveryLocation?.contactPhone %>)</p>
+                            </div>
+                        </div>
+
+                        <!-- Google Maps Route Display -->
+                        <div id="map"></div>
+                        
+                        <!-- Route Summary -->
+                        <div class="route-summary">
+                            <h6><i class="material-icons left">timeline</i> Route Summary</h6>
+                            <div class="route-summary-item">
+                                <span class="label">Total Distance:</span>
+                                <span class="value" id="routeDistance">Calculating...</span>
+                            </div>
+                            <div class="route-summary-item">
+                                <span class="label">Estimated Duration:</span>
+                                <span class="value" id="routeDuration">Calculating...</span>
+                            </div>
+                            <div class="route-summary-item">
+                                <span class="label">Route Type:</span>
+                                <span class="value">Optimized Driving Route</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Driver Selection -->
+                    <div class="form-section card">
+                        <h5 class="section-title">
+                            <i class="material-icons left">person</i>
+                            Select Driver
+                        </h5>
+                        
+                        <div class="row">
+                            <% if (drivers && drivers.length > 0) { %>
+                                <% drivers.forEach(driver => { %>
+                                    <div class="col s12 m6 l4">
+                                        <div class="driver-card" onclick="selectDriver('<%= driver._id %>')">
+                                            <div class="driver-info">
+                                                <img src="<%= driver.profileImage || '/img/avatar.png' %>" 
+                                                     alt="<%= driver.name %>" 
+                                                     class="driver-avatar">
+                                                <div>
+                                                    <h6 class="mb-0"><%= driver.name %></h6>
+                                                    <p class="grey-text mb-0" style="font-size: 0.9rem;">
+                                                        <i class="material-icons tiny">phone</i> <%= driver.phone %>
+                                                    </p>
+                                                    <p class="grey-text mb-0" style="font-size: 0.9rem;">
+                                                        <i class="material-icons tiny">directions_car</i> <%= driver.vehicleNumber || 'No Vehicle' %>
+                                                    </p>
+                                                    <span class="driver-status <%= driver.isAvailable ? 'available' : 'busy' %>">
+                                                        <%= driver.isAvailable ? '✓ Available' : '✗ Busy' %>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <% }) %>
+                            <% } else { %>
+                                <div class="col s12">
+                                    <p class="grey-text center-align">
+                                        <i class="material-icons large">person_off</i><br>
+                                        No available drivers found
+                                    </p>
+                                </div>
+                            <% } %>
+                        </div>
+
+                        <input type="hidden" name="driverId" id="selectedDriverId" required>
+                    </div>
+
+                    <!-- Schedule -->
+                    <div class="form-section card">
+                        <h5 class="section-title">
+                            <i class="material-icons left">schedule</i>
+                            Delivery Schedule
+                        </h5>
+                        <div class="row">
+                            <div class="col s12 m6">
+                                <label for="scheduledPickupTime">
+                                    <i class="material-icons tiny">event</i> Scheduled Pickup Time
+                                </label>
+                                <input type="datetime-local" name="scheduledPickupTime" id="scheduledPickupTime" 
+                                       value="<%= order.scheduledPickupDate ? new Date(order.scheduledPickupDate).toISOString().slice(0, 16) : '' %>">
+                            </div>
+                            <div class="col s12 m6">
+                                <label for="scheduledDeliveryTime">
+                                    <i class="material-icons tiny">event_available</i> Scheduled Delivery Time
+                                </label>
+                                <input type="datetime-local" name="scheduledDeliveryTime" id="scheduledDeliveryTime" 
+                                       value="<%= order.scheduledDeliveryDate ? new Date(order.scheduledDeliveryDate).toISOString().slice(0, 16) : '' %>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Instructions -->
+                    <div class="form-section card">
+                        <h5 class="section-title">
+                            <i class="material-icons left">description</i>
+                            Delivery Instructions
+                        </h5>
+                        <div class="row">
+                            <div class="col s12">
+                                <label for="instructions">
+                                    <i class="material-icons tiny">note</i> Special Instructions for Driver
+                                </label>
+                                <textarea name="instructions" id="instructions" class="materialize-textarea" rows="4" 
+                                          placeholder="Enter any special instructions for the driver..."><%= order.specialInstructions || '' %></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden Fields -->
+                    <input type="hidden" name="orderId" value="<%= order._id %>">
+                    <input type="hidden" name="customerId" value="<%= order.customerId._id %>">
+                    <input type="hidden" name="routeDistance" id="routeDistanceInput">
+                    <input type="hidden" name="routeDuration" id="routeDurationInput">
+
+                    <!-- Submit Buttons -->
+                    <div class="row">
+                        <div class="col s12 center-align">
+                            <button type="submit" class="btn-large green waves-effect waves-light" style="min-width: 200px;">
+                                <i class="material-icons left">local_shipping</i>Create Delivery
+                            </button>
+                            <a href="/admin/orders/view/<%= order._id %>" class="btn-large btn-flat waves-effect" style="min-width: 150px;">
+                                <i class="material-icons left">cancel</i>Cancel
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+
+    <!-- Google Maps API -->
+    <script>
+        const GOOGLE_MAPS_API_KEY = '<%= process.env.GOOGLE_MAPS_API_KEY || "YOUR_GOOGLE_MAPS_API_KEY" %>';
+        
+        (function() {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        })();
+    </script>
+
+    <script>
+        let map;
+        let pickupMarker, deliveryMarker;
+        let directionsService, directionsRenderer;
+
+        // Addresses from order
+        const pickupAddress = '<%= order.pickupLocation?.address || "" %>';
+        const deliveryAddress = '<%= order.deliveryLocation?.address || "" %>';
+
+        // Initialize Google Map
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 23.0225, lng: 72.5714 }, // Default Ahmedabad center
+                zoom: 11,
+                mapTypeControl: true,
+                streetViewControl: false,
+                fullscreenControl: true
+            });
+
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({
+                map: map,
+                suppressMarkers: true,
+                polylineOptions: {
+                    strokeColor: '#2196F3',
+                    strokeOpacity: 0.8,
+                    strokeWeight: 6
+                }
+            });
+
+            // Calculate route using addresses
+            calculateRoute();
+        }
+
+        // Calculate route using addresses
+        function calculateRoute() {
+            const request = {
+                origin: pickupAddress,
+                destination: deliveryAddress,
+                travelMode: google.maps.TravelMode.DRIVING,
+                optimizeWaypoints: true
+            };
+
+            directionsService.route(request, (result, status) => {
+                if (status === 'OK') {
+                    directionsRenderer.setDirections(result);
+                    
+                    // Extract route information
+                    const route = result.routes[0].legs[0];
+                    const distance = route.distance.text;
+                    const duration = route.duration.text;
+
+                    // Update UI
+                    document.getElementById('routeDistance').textContent = distance;
+                    document.getElementById('routeDuration').textContent = duration;
+                    
+                    // Store values in hidden inputs (convert to km and minutes)
+                    document.getElementById('routeDistanceInput').value = (route.distance.value / 1000).toFixed(2);
+                    document.getElementById('routeDurationInput').value = Math.round(route.duration.value / 60);
+
+                    console.log('Route calculated:', distance, duration);
+                } else {
+                    console.error('Directions request failed:', status);
+                    M.toast({html: 'Failed to calculate route. Check addresses.', classes: 'orange'});
+                    
+                    // Fallback: Straight line if addresses can't be geocoded
+                    const geocoder = new google.maps.Geocoder();
+                    geocoder.geocode({ address: pickupAddress }, (results, status) => {
+                        if (status === 'OK') {
+                            const pickupCoords = results[0].geometry.location;
+                            geocoder.geocode({ address: deliveryAddress }, (results2, status2) => {
+                                if (status2 === 'OK') {
+                                    const deliveryCoords = results2[0].geometry.location;
+                                    new google.maps.Polyline({
+                                        path: [pickupCoords, deliveryCoords],
+                                        geodesic: true,
+                                        strokeColor: '#667eea',
+                                        strokeOpacity: 0,
+                                        icons: [{
+                                            icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.8, scale: 3 },
+                                            offset: '0',
+                                            repeat: '18px'
+                                        }]
+                                    }).setMap(map);
+
+                                    // Fallback distance calculation
+                                    const R = 6371;
+                                    const dLat = (deliveryCoords.lat() - pickupCoords.lat()) * Math.PI / 180;
+                                    const dLon = (deliveryCoords.lng() - pickupCoords.lng()) * Math.PI / 180;
+                                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                                              Math.cos(pickupCoords.lat() * Math.PI / 180) * Math.cos(deliveryCoords.lat() * Math.PI / 180) *
+                                              Math.sin(dLon/2) * Math.sin(dLon/2);
+                                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                                    const distance = R * c;
+                                    const duration = (distance / 40) * 60;
+
+                                    document.getElementById('routeDistance').textContent = distance.toFixed(2) + ' km';
+                                    document.getElementById('routeDuration').textContent = Math.round(duration) + ' minutes';
+                                    document.getElementById('routeDistanceInput').value = distance.toFixed(2);
+                                    document.getElementById('routeDurationInput').value = Math.round(duration);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // Select Driver
+        function selectDriver(driverId) {
+            // Remove previous selection
+            document.querySelectorAll('.driver-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Add selection to clicked card
+            event.currentTarget.classList.add('selected');
+
+            // Set hidden input
+            document.getElementById('selectedDriverId').value = driverId;
+        }
+
+        // Form submission
+        document.getElementById('createDeliveryForm').addEventListener('submit', function(e) {
+            // Validate driver selection
+            if (!document.getElementById('selectedDriverId').value) {
+                e.preventDefault();
+                M.toast({html: 'Please select a driver!', classes: 'red'});
+                return false;
+            }
+
+            // Show loading
+            M.toast({html: 'Creating delivery...', classes: 'blue'});
+        });
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Create Delivery Page Loaded');
+            M.updateTextFields();
+            M.textareaAutoResize(document.getElementById('instructions'));
+        });
+    </script>
+</body>
+</html>

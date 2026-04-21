@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+  <%- include('_layouts/head') %>
+    <title>Add New Region | <%= title %>
+    </title>
+
+    <style>
+      .form-section {
+        background: #fff;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #333;
+        border-bottom: 2px solid #2196F3;
+        padding-bottom: 10px;
+      }
+
+      .zipcode-item {
+        background: #f5f5f5;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        border-left: 4px solid #2196F3;
+        position: relative;
+      }
+
+      .zipcode-item .remove-zipcode {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+      }
+
+      .zipcode-summary {
+        background: #e3f2fd;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+      }
+    </style>
+</head>
+
+<body
+  class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+  data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+  <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+      <div class="row">
+        <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+          <div class="container">
+          
+
+            <div class="row">
+              <div class="col s12 m6 l6">
+                <h5 class="breadcrumbs-title"><span>Create New Region</span></h5>
+              </div>
+              <div class="col s12 m6 l6 right-align-md">
+                <a href="/admin/regions" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">
+                  Back to Region
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col s12">
+          <div class="container">
+            <form id="createRegionForm" method="POST" action="/admin/regions">
+
+              <!-- Basic Region Information -->
+              <div class="form-section card">
+                <h5 class="section-title">Region Information</h5>
+                <div class="row">
+                  <div class="input-field col s12 m6">
+                    <input id="regionCode" name="regionCode" type="text" required>
+                    <label for="regionCode">Region Code *</label>
+                  </div>
+                  <div class="input-field col s12 m6">
+                    <input id="regionName" name="regionName" type="text" required>
+                    <label for="regionName">Region Name *</label>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="input-field col s12 m6">
+                    <input id="state" name="state" type="text" required>
+                    <label for="state">State *</label>
+                  </div>
+                  <div class="input-field col s12 m6">
+                    <input id="description" name="description" type="text">
+                    <label for="description">Description (Optional)</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Zipcodes Management -->
+              <div class="form-section card">
+                <h5 class="section-title">Zipcodes</h5>
+                <p class="grey-text">Add zipcodes covered by this region</p>
+
+                <div id="zipcodesContainer">
+                  <!-- Zipcodes will be added here dynamically -->
+                </div>
+
+                <button type="button" onclick="addZipcode()" class="btn blue">
+                  <i class="material-icons left">add_location</i>Add Zipcode
+                </button>
+
+                <!-- Summary -->
+                <div class="zipcode-summary" id="zipcodeSummary">
+                  <h6><strong>Zipcode Summary</strong></h6>
+                  <div class="zipcode-summary-item">
+                    <span>Total Zipcodes:</span>
+                    <span id="totalZipcodes">0</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submit Buttons -->
+              <div class="row">
+                <div class="col s12">
+                  <button type="submit" class="btn green waves-effect waves-light">
+                    <i class="material-icons left">save</i>Create Region
+                  </button>
+                  <a href="/admin/regions" class="btn-flat waves-effect">Cancel</a>
+                </div>
+              </div>
+
+              <!-- Hidden field for dynamic zipcodes JSON -->
+              <input type="hidden" name="zipcodesJson" id="zipcodesJson">
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+
+      <script>
+        let zipcodeCount = 0;
+
+        // Add Zipcode
+        function addZipcode() {
+          zipcodeCount++;
+          const zipcodeHtml = `
+        <div class="zipcode-item" id="zipcode-${zipcodeCount}">
+          <button type="button" class="btn-small red remove-zipcode" onclick="removeZipcode(${zipcodeCount})">
+            <i class="material-icons">close</i>
+          </button>
+          <div class="row">
+            <div class="col s12 m4">
+              <div class="input-field">
+                <input type="text" name="zipcode_${zipcodeCount}" placeholder="Zipcode" required pattern="\\d{6}">
+                <label>Zipcode</label>
+              </div>
+            </div>
+            <div class="col s12 m4">
+              <div class="input-field">
+                <input type="text" name="area_${zipcodeCount}" placeholder="Area">
+                <label>Area</label>
+              </div>
+            </div>
+            <div class="col s12 m4">
+              <div class="input-field">
+                <input type="text" name="city_${zipcodeCount}" placeholder="City">
+                <label>City</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+          document.getElementById('zipcodesContainer').insertAdjacentHTML('beforeend', zipcodeHtml);
+          M.updateTextFields();
+          updateZipcodeCount();
+        }
+
+        // Remove Zipcode
+        function removeZipcode(id) {
+          document.getElementById(`zipcode-${id}`).remove();
+          updateZipcodeCount();
+        }
+
+        // Update total count
+        function updateZipcodeCount() {
+          const count = document.querySelectorAll('.zipcode-item').length;
+          document.getElementById('totalZipcodes').textContent = count;
+        }
+
+        // Form submission - collect zipcodes as JSON
+        document.getElementById('createRegionForm').addEventListener('submit', function (e) {
+          const zipcodes = [];
+          document.querySelectorAll('.zipcode-item').forEach((item, index) => {
+            const zipcode = item.querySelector(`input[name="zipcode_${index + 1}"]`)?.value?.trim();
+            const area = item.querySelector(`input[name="area_${index + 1}"]`)?.value?.trim();
+            const city = item.querySelector(`input[name="city_${index + 1}"]`)?.value?.trim();
+
+            if (zipcode) {
+              zipcodes.push({ zipcode, area: area || '', city: city || '' });
+            }
+          });
+
+          document.getElementById('zipcodesJson').value = JSON.stringify(zipcodes);
+        });
+
+        // Initialize Materialize
+        document.addEventListener('DOMContentLoaded', function () {
+          M.updateTextFields();
+        });
+      </script>
+</body>
+
+</html>

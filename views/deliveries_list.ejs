@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+    <title>Deliveries Management | <%= title %></title>
+
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/extensions/responsive/css/responsive.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/select.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
+
+    <style>
+        table tr td, th { text-align: center; }
+
+        [type='checkbox']+span:not(.lever):before { border-color: black; }
+        [type='checkbox']:checked+span:not(.lever):before { border-right-color: black; border-bottom-color: black; }
+
+        .status-badge {
+            padding: 6px 14px; border-radius: 4px; font-size: 0.85rem;
+            font-weight: 500; display: inline-block; text-transform: capitalize;
+        }
+        .status-pending            { background-color: #fff3cd; color: #856404; }
+        .status-pending_acceptance { background-color: #fff0d4; color: #e65100; }
+        .status-assigned           { background-color: #e2e3ff; color: #3f51b5; }
+        .status-picked_up          { background-color: #d4edda; color: #155724; }
+        .status-in_transit         { background-color: #b3e5fc; color: #01579b; }
+        .status-out_for_delivery   { background-color: #cce5ff; color: #004085; }
+        .status-delivered          { background-color: #c8e6c9; color: #1b5e20; }
+        .status-cancelled,
+        .status-failed             { background-color: #ffcdd2; color: #b71c1c; }
+
+        .priority-urgent { color: #d32f2f; font-weight: 700; }
+        .priority-high   { color: #f57c00; font-weight: 700; }
+        .priority-medium { color: #ffa000; }
+        .priority-low    { color: #757575; }
+
+        tr.delivery-row { cursor: pointer; }
+        tr.delivery-row:hover { background-color: #f5f5f5; }
+        td.checkbox-column, td.actions-column { cursor: default; }
+        td.priority-column { cursor: default; }
+
+        /* Tabs */
+        .tab-bar {
+            display: flex; gap: 0; border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
+            background: none; border: none; outline: none; color: #757575;
+            border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .2s;
+        }
+        .tab-btn:hover  { color: #1565c0; }
+        .tab-btn.active { color: #1565c0; border-bottom: 3px solid #1565c0; }
+        .tab-btn .badge-num {
+            display: inline-block; background: #e0e0e0; color: #555;
+            border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 5px;
+        }
+        .tab-btn.active .badge-num { background: #1565c0; color: #fff; }
+    </style>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="row">
+            <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+                <div class="container">
+                    <div class="row">
+                        <%- include('messages', { messages: messages }) %>
+                        <div class="col s12 m6 l6">
+                            <h6 class="breadcrumbs-title"><span>Manage Deliveries</span></h6>
+                        </div>
+                        <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                            <ol class="breadcrumbs mb-0">
+                                <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                                <li class="breadcrumb-item active">Delivery</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col s12">
+            <div class="container">
+                <div class="section section-data-tables">
+                    <div class="row">
+                        <div class="col s12">
+                            <div class="card">
+                                <div class="card-content">
+
+                                    <!-- TABS -->
+                                    <div class="tab-bar">
+                                        <button class="tab-btn active" data-tab="all">
+                                            All <span class="badge-num" id="cnt-all">0</span>
+                                        </button>
+                                        <button class="tab-btn" data-tab="pending">
+                                            Pending <span class="badge-num" id="cnt-pending">0</span>
+                                        </button>
+                                        <button class="tab-btn" data-tab="in_transit">
+                                            In Transit <span class="badge-num" id="cnt-in_transit">0</span>
+                                        </button>
+                                        <button class="tab-btn" data-tab="completed">
+                                            Completed <span class="badge-num" id="cnt-completed">0</span>
+                                        </button>
+                                        <button class="tab-btn" data-tab="cancelled">
+                                            Cancelled <span class="badge-num" id="cnt-cancelled">0</span>
+                                        </button>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col s12 overflow">
+                                            <table id="page-length-option" class="display">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Sr</th>
+                                                        <th>Tracking Number</th>
+                                                        <th>Customer</th>
+                                                        <th>Driver</th>
+                                                        <th>Pickup Location</th>
+                                                        <th>Delivery Location</th>
+                                                        <th>Status</th>
+                                                        <th>Priority</th>
+                                                        <th>Created Date</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (deliveries && deliveries.length > 0) { %>
+                                                        <% deliveries.forEach((delivery, index) => { %>
+                                                            <%
+                                                                const st = (delivery.status || '').toLowerCase();
+                                                                const dp = delivery.priority || 'medium';
+
+                                                                let tabClass = 'tab-all ';
+                                                                if (['pending','pending_acceptance'].includes(st))
+                                                                    tabClass += 'tab-pending';
+                                                                else if (['in_transit','picked_up','assigned','out_for_delivery'].includes(st))
+                                                                    tabClass += 'tab-in_transit';
+                                                                else if (['delivered','completed'].includes(st))
+                                                                    tabClass += 'tab-completed';
+                                                                else if (['cancelled','failed'].includes(st))
+                                                                    tabClass += 'tab-cancelled';
+                                                                else
+                                                                    tabClass += 'tab-pending';
+
+                                                                const priorityDisabled = ['delivered','completed','cancelled','failed'].includes(st);
+                                                            %>
+                                                            <tr class="delivery-row <%= tabClass %>"
+                                                                data-href="/admin/deliveries/<%= delivery._id %>">
+                                                                <td><%= index + 1 %></td>
+
+                                                                <td><strong><%= delivery.trackingNumber %></strong></td>
+
+                                                                <td>
+                                                                    <% if (delivery.customerId) { %>
+                                                                        <%= delivery.customerId.companyName || delivery.customerId.name || 'N/A' %><br>
+                                                                    <% } else { %>
+                                                                        <span class="grey-text">N/A</span>
+                                                                    <% } %>
+                                                                </td>
+
+                                                                <td>
+                                                                    <% if (delivery.driverId) { %>
+                                                                        <%= delivery.driverId.name %><br>
+                                                                    <% } else { %>
+                                                                        <span class="grey-text">Not Assigned</span>
+                                                                    <% } %>
+                                                                </td>
+
+                                                                <td><%= delivery.pickupLocation?.address?.substring(0, 30) || 'N/A' %>...</td>
+                                                                <td><%= delivery.deliveryLocation?.address?.substring(0, 30) || 'N/A' %>...</td>
+
+                                                                <td>
+                                                                    <span class="status-badge status-<%= delivery.status %>">
+                                                                        <%= delivery.status?.replace(/_/g, ' ').toUpperCase() || 'UNKNOWN' %>
+                                                                    </span>
+                                                                </td>
+
+                                                                <td class="priority-column">
+                                                                    <% if (priorityDisabled) { %>
+                                                                        <span class="priority-<%= dp %>">
+                                                                            <%= dp.toUpperCase() %>
+                                                                        </span>
+                                                                    <% } else { %>
+                                                                        <select class="priority-select browser-default"
+                                                                                data-id="<%= delivery._id %>"
+                                                                                style="border:1px solid #ddd;border-radius:4px;padding:3px 6px;font-size:12px;background:#fff;cursor:pointer;min-width:90px;">
+                                                                            <option value="low"    <%= dp==='low'    ?'selected':'' %>>LOW</option>
+                                                                            <option value="medium" <%= dp==='medium' ?'selected':'' %>>MEDIUM</option>
+                                                                            <option value="high"   <%= dp==='high'   ?'selected':'' %>>HIGH</option>
+                                                                            <option value="urgent" <%= dp==='urgent' ?'selected':'' %>>URGENT</option>
+                                                                        </select>
+                                                                    <% } %>
+                                                                </td>
+
+                                                                <td>
+                                                                    <%
+                                                                        let formattedDate = '-';
+                                                                        if (delivery.createdAt) {
+                                                                            const createdAt = new Date(delivery.createdAt);
+                                                                            const day     = String(createdAt.getUTCDate()).padStart(2, '0');
+                                                                            const month   = String(createdAt.getUTCMonth() + 1).padStart(2, '0');
+                                                                            const year    = createdAt.getUTCFullYear();
+                                                                            const hours   = String(createdAt.getUTCHours()).padStart(2, '0');
+                                                                            const minutes = String(createdAt.getUTCMinutes()).padStart(2, '0');
+                                                                            formattedDate = `${day}-${month}-${year} ${hours}:${minutes}`;
+                                                                        }
+                                                                    %>
+                                                                    <%= formattedDate %>
+                                                                </td>
+
+                                                                <td class="actions-column">
+                                                                    <a href="/admin/deliveries/<%= delivery._id %>"
+                                                                       class="waves-effect waves-light accent-2 btn-edit">
+                                                                        <i class="material-icons">visibility</i>
+                                                                    </a>
+                                                                </td>
+                                                            </tr>
+                                                        <% }) %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="10" class="center-align grey-text">No deliveries found</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <% if (pagination && pagination.pages > 1) { %>
+                        <div class="right-align mt-2">
+                            Page <%= pagination.page %> of <%= pagination.pages %>
+                            <% if (pagination.page > 1) { %>
+                                <a href="?page=<%= pagination.page - 1 %>&<%= new URLSearchParams(Object.assign({}, filters, {page: pagination.page - 1})).toString() %>" class="btn-flat">Prev</a>
+                            <% } %>
+                            <% if (pagination.page < pagination.pages) { %>
+                                <a href="?page=<%= pagination.page + 1 %>&<%= new URLSearchParams(Object.assign({}, filters, {page: pagination.page + 1})).toString() %>" class="btn-flat">Next</a>
+                            <% } %>
+                        </div>
+                    <% } %>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+    <script src="/app-assets/vendors/data-tables/js/jquery.dataTables.min.js"></script>
+    <script src="/app-assets/js/scripts/data-tables.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        M.FormSelect.init(document.querySelectorAll('select'));
+
+        // Tab counts
+        const rows = document.querySelectorAll('tr.delivery-row');
+        const counts = { all:0, pending:0, in_transit:0, completed:0, cancelled:0 };
+        rows.forEach(r => {
+            counts.all++;
+            if (r.classList.contains('tab-pending'))    counts.pending++;
+            if (r.classList.contains('tab-in_transit')) counts.in_transit++;
+            if (r.classList.contains('tab-completed'))  counts.completed++;
+            if (r.classList.contains('tab-cancelled'))  counts.cancelled++;
+        });
+        Object.keys(counts).forEach(k => {
+            const el = document.getElementById('cnt-' + k);
+            if (el) el.textContent = counts[k];
+        });
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const tab = this.dataset.tab;
+                rows.forEach(r => {
+                    r.style.display = (tab === 'all' || r.classList.contains('tab-' + tab)) ? '' : 'none';
+                });
+            });
+        });
+
+        // Priority select — block row click
+        document.querySelectorAll('.priority-select').forEach(sel => {
+            sel.addEventListener('mousedown', e => e.stopPropagation());
+            sel.addEventListener('focus',     e => e.stopPropagation());
+            sel.addEventListener('click',     e => e.stopPropagation());
+
+            sel.addEventListener('change', function (e) {
+                e.stopPropagation();
+                const id = this.dataset.id;
+                const priority = this.value;
+
+                fetch(`/admin/deliveries/${id}/priority`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ priority })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        M.toast({ html: `Priority set to <strong>${priority.toUpperCase()}</strong> — driver notified`, classes: 'green rounded', displayLength: 2500 });
+                    } else {
+                        M.toast({ html: data.message || 'Failed to update priority', classes: 'red rounded' });
+                    }
+                })
+                .catch(() => M.toast({ html: 'Network error', classes: 'red rounded' }));
+            });
+        });
+
+        // Row click — original logic + priority column block
+        document.querySelectorAll('tr.delivery-row').forEach(row => {
+            row.addEventListener('click', function (e) {
+                if (
+                    e.target.closest('.checkbox-column') ||
+                    e.target.closest('.actions-column')  ||
+                    e.target.closest('.priority-column') ||
+                    e.target.closest('.priority-select') ||
+                    e.target.tagName === 'INPUT'  ||
+                    e.target.tagName === 'LABEL'  ||
+                    e.target.tagName === 'SELECT' ||
+                    e.target.tagName === 'OPTION' ||
+                    e.target.tagName === 'A'      ||
+                    e.target.closest('.btn-edit')
+                ) return;
+
+                const href = this.getAttribute('data-href');
+                if (href) window.location.href = href;
+            });
+        });
+    });
+    </script>
+</body>
+</html>

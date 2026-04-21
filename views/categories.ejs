@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+        <title>Manage Categories | <%= title %>
+        </title>
+
+        <!-- DataTables CSS (optional - if you want sorting/pagination later) -->
+        <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
+        <link rel="stylesheet" type="text/css"
+            href="/app-assets/vendors/data-tables/extensions/responsive/css/responsive.dataTables.min.css">
+
+        <style>
+            /* Consistent with your expense page */
+            table tr td,
+            th {
+                text-align: center;
+                vertical-align: middle;
+            }
+
+            .status-badge {
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-size: 0.85rem;
+                display: inline-block;
+            }
+
+            .active {
+                /* background: #d4edda; */
+                color: #155724;
+            }
+
+            .inactive {
+                /*background: #f8d7da; */
+                color: #721c24;
+            }
+
+            tr.category-row:hover {
+                background-color: #f5f5f5;
+                cursor: pointer;
+            }
+
+            .modal .modal-content {
+                padding: 24px;
+            }
+
+            .modal .modal-footer {
+                padding: 10px 24px;
+            }
+
+            .btn-small {
+                margin: 0 5px;
+            }
+        </style>
+</head>
+
+<body
+    class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+    data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+        <div id="main">
+            <div class="row">
+                <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+                    <div class="container">
+                        <div class="row">
+                            <%- include('messages', { messages: messages }) %>
+                                <div class="col s12 m6 l6">
+                                    <h6 class="breadcrumbs-title">
+                                        <span>Manage Categories</span>
+                                    </h6>
+                                </div>
+                                <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                                    <ol class="breadcrumbs mb-0">
+                                        <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                                        <li class="breadcrumb-item active">Categories</li>
+                                    </ol>
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col s12">
+                <div class="container">
+                    <div class="section section-data-tables">
+                        <!-- Add New Category Card -->
+                        <div class="card">
+                            <div class="card-content">
+                                <span class="card-title">Add New Category</span>
+                                <form action="/admin/categories/create" method="POST">
+                                    <div class="row">
+                                        <div class="input-field col s12 m6">
+                                            <input id="name" name="name" type="text" required>
+                                            <label for="name">Category Name *</label>
+                                        </div>
+
+                                    </div>
+                                    <div class="row">
+                                        <div class="input-field col s12">
+                                            <textarea id="description" name="description"
+                                                class="materialize-textarea"></textarea>
+                                            <label for="description">Description (optional)</label>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn green waves-effect waves-light">
+                                        <i class="material-icons left">add</i> Add Category
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Categories Table -->
+                        <div class="card">
+                            <div class="card-content">
+                                <span class="card-title">Existing Categories</span>
+
+                                <div class="row">
+                                    <div class="col s12 overflow">
+                                        <table id="categories-table" class="display highlight responsive-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Sr.</th>
+                                                    <th>Name</th>
+                                                    <th>Description</th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <% if (categories && categories.length> 0) { %>
+                                                    <% categories.forEach((cat, index)=> { %>
+                                                        <tr class="category-row">
+                                                            <td>
+                                                                <%= index + 1 %>
+                                                            </td>
+                                                            <td>
+                                                                <%= cat.name %>
+                                                            </td>
+                                                            <td>
+                                                                <%= cat.description || '-' %>
+                                                            </td>
+
+                                                            <td>
+                                                                <span
+                                                                    class="status-badge <%= cat.isActive ? 'active' : 'inactive' %>">
+                                                                    <%= cat.isActive ? 'Active' : 'Inactive' %>
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <!-- Edit Button (opens modal) -->
+                                                                <a href="#edit-<%= cat._id %>"
+                                                                    class="modal-trigger btn-small blue waves-effect">
+                                                                    <i class="material-icons">edit</i>
+                                                                </a>
+
+                                                                <!-- Delete Button -->
+                                                                <form action="/admin/categories/<%= cat._id %>/delete"
+                                                                    method="POST" style="display:inline;">
+                                                                    <button type="submit"
+                                                                        class="btn-small red waves-effect"
+                                                                        onclick="return confirm('Are you sure you want to delete <%= cat.name %>? This cannot be undone.')">
+                                                                        <i class="material-icons">delete</i>
+                                                                    </button>
+                                                                </form>
+                                                            </td>
+                                                        </tr>
+
+                                                        <!-- Edit Modal -->
+                                                        <div id="edit-<%= cat._id %>" class="modal">
+                                                            <div class="modal-content">
+                                                                <h4>Edit Category: <%= cat.name %>
+                                                                </h4>
+                                                                <form action="/admin/categories/<%= cat._id %>/update"
+                                                                    method="POST">
+                                                                    <div class="row">
+                                                                        <div class="input-field col s12">
+                                                                            <input id="edit-name-<%= cat._id %>"
+                                                                                name="name" type="text"
+                                                                                value="<%= cat.name %>" required>
+                                                                            <label
+                                                                                for="edit-name-<%= cat._id %>">Category
+                                                                                Name *</label>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="row">
+                                                                        <div class="input-field col s12">
+                                                                            <textarea id="edit-desc-<%= cat._id %>"
+                                                                                name="description"
+                                                                                class="materialize-textarea"><%= cat.description || '' %></textarea>
+                                                                            <label
+                                                                                for="edit-desc-<%= cat._id %>">Description</label>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <button type="submit"
+                                                                        class="btn green waves-effect">
+                                                                        Update Category
+                                                                    </button>
+                                                                </form>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <a href="#!"
+                                                                    class="modal-close waves-effect waves-green btn-flat">Close</a>
+                                                            </div>
+                                                        </div>
+                                                        <% }) %>
+                                                            <% } else { %>
+                                                                <tr>
+                                                                    <td colspan="6" class="center-align grey-text">
+                                                                        No categories found. Add one above.
+                                                                    </td>
+                                                                </tr>
+                                                                <% } %>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <%- include('_layouts/commonJs') %>
+
+                <!-- DataTables JS (optional - if you want sorting/search later) -->
+                <script src="/app-assets/vendors/data-tables/js/jquery.dataTables.min.js"></script>
+                <script src="/app-assets/js/scripts/data-tables.js"></script>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        M.AutoInit(); // Initialize Materialize components (modals, selects, etc.)
+
+                        // Optional: Initialize DataTable for better UX (sorting, search)
+                        $('#categories-table').DataTable({
+                            "paging": true,
+                            "searching": true,
+                            "ordering": true,
+                            "info": true,
+                            "pageLength": 10,
+                            "language": {
+                                "emptyTable": "No categories found"
+                            }
+                        });
+                    });
+                </script>
+</body>
+
+</html>

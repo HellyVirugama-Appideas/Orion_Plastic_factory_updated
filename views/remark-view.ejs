@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+        <title>Remark Details | <%= title %>
+        </title>
+
+        <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/page-users.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
+        <link rel="stylesheet" type="text/css"
+            href="/app-assets/vendors/data-tables/extensions/responsive/css/responsive.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/select.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+        <style>
+            table tr td,
+            th {
+                text-align: left;
+                padding: 12px !important;
+                vertical-align: top;
+            }
+
+            .badge {
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-size: 0.85rem;
+                display: inline-block;
+            }
+
+            .status-badge {
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-size: 0.85rem;
+            }
+
+            .blue {
+                background: #e3f2fd;
+                color: #1565c0;
+            }
+
+            .purple {
+                background: #f3e5f5;
+                color: #7b1fa2;
+            }
+
+            .green {
+                background: #e8f5e9;
+                color: #2e7d32;
+            }
+
+            .orange {
+                background: #fff3e0;
+                color: #ef6c00;
+            }
+
+            .red {
+                background: #ffebee;
+                color: #c62828;
+            }
+
+            .action-section {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 15px;
+                flex-wrap: wrap;
+            }
+
+            .collection-item strong {
+                color: #1565c0;
+            }
+
+            @media (max-width: 768px) {
+                .action-section {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 10px;
+                }
+            }
+        </style>
+</head>
+
+<body
+    class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+    data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+        <div id="main">
+            <div class="row">
+                <!-- Breadcrumbs -->
+                <div id="breadcrumbs-wrapper" style="background-color: white;">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col s12 m6 l6">
+                                <h5 class="breadcrumbs-title"><span>Remark Details</span></h5>
+                            </div>
+                            <div class="col s12 m6 l6 right-align-md">
+                                <ol class="breadcrumbs mb-0">
+                                    <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                                    <li class="breadcrumb-item"><a href="/admin/remarks">Remark</a></li>
+                                    <li class="breadcrumb-item active">View</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <%- include('messages', { messages: messages }) %>
+
+                    <div class="col s12">
+                        <div class="container">
+                            <div class="section users-view">
+
+                                <!-- HEADER CARD -->
+                                <div class="card-panel">
+                                    <div class="row">
+                                        <div class="col s12 m8">
+                                            <div class="display-flex media">
+                                                <div class="media-body" style="margin-left: 10px;">
+                                                    <h5>
+                                                        <%= remark.remarkText.substring(0, 70) %>
+                                                            <%= remark.remarkText.length> 70 ? '...' : '' %>
+                                                    </h5>
+                                                    <span>Type:</span>
+                                                    <span class="users-view-id">
+                                                        <span
+                                                            class="badge <%= remark.isPredefined ? 'blue' : 'purple' %>">
+                                                            <%= remark.isPredefined ? 'Predefined' : 'Custom' %>
+                                                        </span>
+                                                    </span><br>
+                                                    <span>Category:</span>
+                                                    <span class="users-view-id">
+                                                        <%= remark.category %>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- RIGHT SIDE: STATUS + ACTIONS -->
+                                        <div class="col s12 m4" style="text-align: right;">
+                                            <div class="action-section">
+                                                <!-- Current Status Badge -->
+                                                <span
+                                                    class="status-badge <%= remark.approvalStatus === 'approved' ? 'green' : 
+                                                                     remark.approvalStatus === 'pending' ? 'orange' : 'red' %>">
+                                                    <%= remark.approvalStatus.toUpperCase() %>
+                                                </span>
+
+                                                <!-- Action Buttons -->
+                                                <div
+                                                    style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+                                                    <% if (remark.approvalStatus==='pending' ) { %>
+                                                        <!-- Approve Button -->
+                                                        <form action="/admin/remarks/custom/<%= remark._id %>/approve"
+                                                            method="POST" style="display: inline;">
+                                                            <button type="submit"
+                                                                class="btn-small green waves-effect waves-light">
+                                                                <i class="material-icons left">check</i> Approve
+                                                            </button>
+                                                        </form>
+
+                                                        <!-- Reject Button with Modal -->
+                                                        <a href="#rejectModal"
+                                                            class="btn-small red modal-trigger waves-effect waves-light">
+                                                            <i class="material-icons left">close</i> Reject
+                                                        </a>
+                                                        <% } %>
+
+                                                            <% if (remark.isPredefined) { %>
+                                                                <a href="/admin/remarks/<%= remark._id %>/edit"
+                                                                    class="btn-small blue waves-effect waves-light">
+                                                                    <i class="material-icons left">edit</i> Edit
+                                                                </a>
+                                                                <% } %>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Remark Information -->
+                                <div class="card">
+                                    <div class="card-content">
+                                        <h5>Remark Information</h5>
+                                        <div class="row">
+                                            <div class="col s12 m6">
+                                                <table class="striped">
+                                                    <tbody>
+                                                        <tr>
+                                                            <th style="width: 200px;">Remark Text</th>
+                                                            <td>
+                                                                <%= remark.remarkText %>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>Type</th>
+                                                            <td>
+                                                                <span
+                                                                    class="badge <%= remark.isPredefined ? 'blue' : 'purple' %>">
+                                                                    <%= remark.isPredefined ? 'Predefined' : 'Custom' %>
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>Category</th>
+                                                            <td>
+                                                                <%= remark.category %>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>Severity</th>
+                                                            <td>
+                                                                <span
+                                                                    class="badge <%= remark.severity === 'critical' ? 'red' : 
+                                                                             remark.severity === 'high' ? 'orange' : 'green' %>">
+                                                                    <%= remark.severity.toUpperCase() %>
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>Status</th>
+                                                            <td>
+                                                                <span class="badge <%= remark.approvalStatus === 'approved' ? 'green' : 
+                                                                             remark.approvalStatus === 'pending' ? 'orange' : 'red' %>" style="color: white !important ;">
+                                                                    <%= remark.approvalStatus.toUpperCase() %>
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>Is Active</th>
+                                                            <td>
+                                                                <%= remark.isActive ? 'Yes' : 'No' %>
+                                                            </td>
+                                                        </tr>
+                                                        <% if (remark.displayOrder !==undefined) { %>
+                                                            <tr>
+                                                                <th>Display Order</th>
+                                                                <td>
+                                                                    <%= remark.displayOrder %>
+                                                                </td>
+                                                            </tr>
+                                                            <% } %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <div class="col s12 m6">
+                                                <table class="striped">
+                                                    <tbody>
+                                                        <tr>
+                                                            <th style="width: 200px;">Created By</th>
+                                                            <td>
+                                                                <strong>
+                                                                    <%= remark.createdBy?.name || 'Unknown User' %>
+                                                                </strong>
+                                                                <br>
+                                                                <small>
+                                                                    Role: <%= remark.createdBy?.role || 'N/A' %>
+                                                                            <br>
+                                                                            Phone: <%= remark.createdBy?.phone || 'N/A'
+                                                                                %>
+                                                                </small>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>Created At</th>
+                                                            <td>
+                                                                <%= new Date(remark.createdAt).toLocaleString('en-IN', {
+                                                                    dateStyle: 'medium' , timeStyle: 'short' }) %>
+                                                            </td>
+                                                        </tr>
+                                                        <% if (remark.approvedBy) { %>
+                                                            <tr>
+                                                                <th>Approved By</th>
+                                                                <td>
+                                                                    <%= remark.approvedBy.name || 'N/A' %>
+                                                                        <br><small>
+                                                                            <%= remark.approvedAt ? new
+                                                                                Date(remark.approvedAt).toLocaleString('en-IN')
+                                                                                : 'N/A' %>
+                                                                        </small>
+                                                                </td>
+                                                            </tr>
+                                                            <% } %>
+                                                                <% if (remark.description) { %>
+                                                                    <tr>
+                                                                        <th>Description / Reason</th>
+                                                                        <td>
+                                                                            <%= remark.description %>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <% } %>
+                                                    </tbody>
+                                                </table>
+
+                                                <!-- Visuals -->
+                                                <!-- <% if (remark.icon || remark.color) { %>
+                                            <h6 class="mt-4">Visuals</h6>
+                                            <p>
+                                                Icon: <i class="material-icons"><%= remark.icon || 'not_interested' %></i><br>
+                                                Color: 
+                                                <span style="background-color: <%= remark.color || '#666666' %>; 
+                                                             width: 24px; height: 24px; 
+                                                             display: inline-block; 
+                                                             border-radius: 50%; 
+                                                             vertical-align: middle;"></span>
+                                                <%= remark.color || '#666666' %>
+                                            </p>
+                                        <% } %> -->
+
+                                                <!-- Associated Deliveries - NEW SECTION -->
+                                                <div class="mt-4">
+                                                    <h6>Used in Deliveries</h6>
+                                                    <% if (remark.associatedDeliveries &&
+                                                        remark.associatedDeliveries.length> 0) { %>
+                                                        <ul class="collection">
+                                                            <% remark.associatedDeliveries.forEach(delivery=> { %>
+                                                                <li class="collection-item">
+                                                                    <strong>Delivery ID:</strong>
+                                                                    <%= delivery._id %><br>
+                                                                        <% if (delivery.orderId) { %>
+                                                                            <strong>Order ID:</strong>
+                                                                            <%= delivery.orderId %><br>
+                                                                                <% } %>
+                                                                                    <strong>Status:</strong>
+                                                                                    <span
+                                                                                        class="badge <%= delivery.status === 'delivered' ? 'green' : 'orange' %>">
+                                                                                        <%= delivery.status || 'N/A' %>
+                                                                                    </span>
+                                                                </li>
+                                                                <% }) %>
+                                                        </ul>
+                                                        <% } else { %>
+                                                            <p class="grey-text">This remark has not been used in any
+                                                                deliveries yet.</p>
+                                                            <% } %>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="card-action right-align">
+                                        <a href="/admin/remarks" class="btn-flat waves-effect">Back to List</a>
+                                        <% if (remark.isPredefined) { %>
+                                            <a href="/admin/remarks/<%= remark._id %>/edit"
+                                                class="btn orange waves-effect waves-light">
+                                                Edit Remark
+                                            </a>
+                                            <% } %>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+            </div>
+        </div>
+
+        <!-- Reject Reason Modal (only if pending) -->
+        <% if (remark.approvalStatus==='pending' ) { %>
+            <div id="rejectModal" class="modal">
+                <div class="modal-content">
+                    <h4>Reject Remark</h4>
+                    <p>Please provide reason for rejection:</p>
+                    <form action="/admin/remarks/custom/<%= remark._id %>/reject" method="POST">
+                        <div class="input-field">
+                            <textarea id="reason" name="reason" class="materialize-textarea" required></textarea>
+                            <label for="reason">Rejection Reason <span class="red-text">*</span></label>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn red waves-effect waves-light">Reject</button>
+                            <a href="#!" class="modal-close waves-effect waves-green btn-flat">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <% } %>
+
+                <%- include('_layouts/commonJs') %>
+
+                    <script>
+                        $(document).ready(function () {
+                            $('.modal').modal();
+                        });
+                    </script>
+</body>
+
+</html>

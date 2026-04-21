@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+        <title>Terms & Conditions | <%= title %>
+        </title>
+        <link rel="stylesheet" type="text/css"
+            href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css">
+</head>
+
+<body
+    class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+    data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+        <div id="main">
+            <div class="row">
+                <div id="breadcrumbs-wrapper">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col s12 m6 l6">
+                                <h5 class="breadcrumbs-title"><span>Terms & Conditions</span></h5>
+                            </div>
+                            <div class="col s12 m6 l6 right-align-md">
+                                <ol class="breadcrumbs mb-0">
+                                    <li class="breadcrumb-item"><a href="/admin">Dashboard</a></li>
+                                    <li class="breadcrumb-item active">Terms & Conditions</li>
+                                </ol>
+                            </div>  
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col s12">
+                    <div class="container">
+                        <div class="section section-data-tables">
+                            <div class="row">
+                                <div class="col s12">
+                                    <div class="card">
+                                        <div class="card-content">
+                                            <div class="row">
+                                                <div class="col s12">
+                                                    <%- include('messages', { messages: messages }) %>
+
+                                                        <form method="POST" id="form" action="/admin/cms/term">
+
+                                                            <h4 class="card-title">Terms & Conditions Content</h4>
+
+                                                            <div class="input-field">
+                                                                <input placeholder="Title" id="title" name="title"
+                                                                    type="text" value="<%= page.title || '' %>">
+                                                                <label for="title">Title</label>
+                                                                <small>
+                                                                    <div id="titleErr" class="error"></div>
+                                                                </small>
+                                                            </div>
+
+                                                            <div class="form-group mt-3">
+                                                                <label>Content</label>
+                                                                <textarea name="content" class="form-control ta"
+                                                                    id="contentEditor"
+                                                                    rows="15"><%= page.content || '' %></textarea>
+                                                            </div>
+
+                                                            <div class="mt-4">
+                                                                <button type="submit" id="submitBtn"
+                                                                    class="btn purple">Submit</button>
+                                                                <a onclick="history.back()"
+                                                                    class="btn grey ml-1">Cancel</a>
+                                                            </div>
+                                                        </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <%- include('_layouts/commonJs') %>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
+            <script src="/app-assets/js/scripts/form-file-uploads.min.js"></script>
+
+            <script src="//cdn.ckeditor.com/4.7.1/standard/ckeditor.js"></script>
+            <script>
+                $(function () {
+                    CKEDITOR.replace('contentEditor', {
+                        filebrowserUploadUrl: '/upload',
+                        format_tags: 'p;h1;h2;h3;h4;h5;h6',
+                        versionCheck: false,
+                        height: 400
+                    });
+                });
+
+                // Basic validation
+                document.getElementById('form').addEventListener('submit', (e) => {
+                    const title = document.getElementById('title').value.trim();
+                    if (!title) {
+                        e.preventDefault();
+                        document.getElementById('titleErr').innerText = 'Please enter title';
+                        return;
+                    }
+                    document.getElementById('titleErr').innerText = '';
+                });
+            </script>
+</body>
+
+</html>

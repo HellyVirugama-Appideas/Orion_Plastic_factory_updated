@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+  <%- include('_layouts/head') %>
+    <title>Edit Region | <%= title %>
+    </title>
+
+    <style>
+      .form-section {
+        background: #fff;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #333;
+        border-bottom: 2px solid #2196F3;
+        padding-bottom: 10px;
+      }
+
+      .zipcode-item {
+        background: #f5f5f5;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        border-left: 4px solid #2196F3;
+        position: relative;
+      }
+
+      .zipcode-item .remove-zipcode {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+      }
+
+      .error-message {
+        color: #f44336;
+        font-size: 0.9rem;
+        margin-top: 5px;
+      }
+    </style>
+</head>
+
+<body
+  class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+  data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+  <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+      <div class="row">
+        <div id="breadcrumbs-wrapper" style="background-color: white;">
+          <div class="container">
+            <div class="row">
+              <%- include('messages', { messages: messages }) %>
+
+                <div class="col s12 m6 l6">
+                  <h5 class="breadcrumbs-title">
+                    Edit <%= region.regionName %> (<%= region.regionCode %>)
+                  </h5>
+                </div>
+
+                <div class="col s12 m6 l6 right-align-md">
+                  <a href="/admin/regions" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">
+                    Back to Regions
+                  </a>
+                </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col s12">
+          <div class="container">
+            <form method="POST" action="/admin/regions/edit/<%= region._id %>" id="regionEditForm">
+
+              <!-- Basic Region Information -->
+              <div class="form-section card">
+                <h5 class="section-title">Region Information</h5>
+                <div class="row">
+                  <div class="input-field col s12 m6">
+                    <input id="regionCode" name="regionCode" type="text" value="<%= region.regionCode %>" disabled>
+                    <label for="regionCode" class="active">Region Code (Cannot change)</label>
+                  </div>
+                  <div class="input-field col s12 m6">
+                    <input id="regionName" name="regionName" type="text" value="<%= region.regionName %>" required>
+                    <label for="regionName" class="active">Region Name *</label>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="input-field col s12 m6">
+                    <input id="state" name="state" type="text" value="<%= region.state %>" required>
+                    <label for="state" class="active">State *</label>
+                  </div>
+                  <div class="input-field col s12 m6">
+                    <input id="description" name="description" type="text" value="<%= region.description || '' %>">
+                    <label for="description">Description (Optional)</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Zipcodes Management -->
+              <div class="form-section card">
+                <h5 class="section-title">Zipcodes</h5>
+                <p class="grey-text">Add or remove zipcodes for this region</p>
+
+                <ul class="collection" id="zipcodesList">
+                  <% region.zipcodes.forEach(zip=> { %>
+                    <li class="collection-item zipcode-item">
+                      <strong>
+                        <%= zip.zipcode %>
+                      </strong> - <%= zip.area || 'N/A' %> (<%= zip.city || 'N/A' %>)
+                          <form action="/admin/regions/<%= region._id %>/zipcode/<%= zip.zipcode %>/remove"
+                            method="POST" style="display:inline;">
+                            <button type="submit" class="secondary-content red-text remove-zipcode"
+                              onclick="return confirm('Remove this zipcode?')">
+                              Remove
+                            </button>
+                          </form>
+                    </li>
+                    <% }) %>
+                </ul>
+
+                <!-- Add New Zipcode -->
+                <div class="card-panel" style="margin-top: 20px;">
+                  <h6>Add New Zipcode</h6>
+                  <form action="/admin/regions/<%= region._id %>/zipcode" method="POST">
+                    <div class="row">
+                      <div class="input-field col s12 m4">
+                        <input id="newZipcode" name="zipcode" type="text" required pattern="\d{6}">
+                        <label for="newZipcode">Zipcode *</label>
+                      </div>
+                      <div class="input-field col s12 m4">
+                        <input id="newArea" name="area" type="text">
+                        <label for="newArea">Area (Optional)</label>
+                      </div>
+                      <div class="input-field col s12 m4">
+                        <input id="newCity" name="city" type="text">
+                        <label for="newCity">City (Optional)</label>
+                      </div>
+                    </div>
+                    <button type="submit" class="btn green">Add Zipcode</button>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Submit Buttons -->
+              <div class="row" style="margin-top: 40px;">
+                <div class="col s12 display-flex justify-content-end">
+                  <button id="updateRegionBtn" class="btn green waves-effect waves-light" type="submit"
+                    form="regionEditForm">
+                    <i class="material-icons left">save</i> Update Region
+                  </button>
+                  &nbsp;&nbsp;&nbsp;
+                  <a href="/admin/regions" class="btn-flat">Cancel</a>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+
+      <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          M.updateTextFields();
+
+          const form = document.getElementById('regionEditForm');
+          if (form) {
+            console.log('Form found – ready for submit');
+
+            form.addEventListener('submit', function (e) {
+              console.log('=== FORM IS SUBMITTING ===');
+              console.log('Target URL:', this.action);
+              console.log('Method:', this.method);
+              console.log('Form Data:', Object.fromEntries(new FormData(this)));
+
+              // Do NOT use e.preventDefault() here – it blocks submit!
+            });
+          } else {
+            console.error('Form not found – check id="regionEditForm"');
+          }
+
+          const btn = document.getElementById('updateRegionBtn');
+          if (btn) {
+            btn.addEventListener('click', function (e) {
+              console.log('=== UPDATE BUTTON CLICKED ===');
+              // No e.preventDefault() – let native submit happen
+            });
+          }
+        });
+      </script>
+</body>
+
+</html>

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+    <title>Driver Details | <%= title %></title>
+    <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/page-users.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/extensions/responsive/css/responsive.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/select.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <style>
+        table tr td, th { text-align: center; }
+        [type='checkbox'] + span:not(.lever):before { border-color: black; }
+        [type='checkbox']:checked + span:not(.lever):before { border-right-color: black; border-bottom-color: black; }
+        .badge { padding: 5px 10px; border-radius: 12px; font-size: 12px; }
+        .switch label input[type=checkbox]:not(:checked) + .lever { background-color: #f3374a; }
+        .switch label input[type=checkbox]:not(:checked) + .lever::before { background-color: #ffaba5; }
+        .switch label input[type=checkbox]:checked + .lever { background-color: #31db37; }
+        .switch label input[type=checkbox]:checked + .lever::before { background-color: #4CAF50; }
+
+        .driver-img { 
+            width: 100%; 
+            max-height: 220px; 
+            object-fit: cover; 
+            border-radius: 8px; 
+            background: #f8f9fa; 
+            border: 1px solid #e0e0e0; 
+        }
+        .no-image {
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+            border-radius: 8px;
+            color: #777;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .commission-section { flex-direction: column !important; align-items: flex-end !important; gap: 15px !important; }
+            .driver-img { max-height: 160px; }
+        }
+    </style>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="row">
+            <!-- Breadcrumbs -->
+            <div id="breadcrumbs-wrapper" style="background-color: white;">
+                <div class="container">
+                    <div class="row">
+                        <div class="col s12 m6 l6">
+                            <h5 class="breadcrumbs-title"><span>Driver Details</span></h5>
+                        </div>
+                        <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                            <ol class="breadcrumbs mb-0">
+                                <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                                <li class="breadcrumb-item active"><a href="/admin/drivers">Drivers</a></li>
+                                <li class="breadcrumb-item active">View</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <%- include('messages', { messages: messages }) %>
+
+            <div class="col s12">
+                <div class="container">
+                    <div class="section users-view">
+
+                        <!-- HEADER CARD -->
+                        <div class="card-panel">
+                            <div class="row">
+                                <div class="col s12 m7">
+                                    <div class="display-flex media">
+                                        <img 
+                                            src="<%= driver.profileImage?.startsWith('http') ? driver.profileImage : (driver.profileImage?.startsWith('//') ? 'https:' + driver.profileImage : '/img/avatar.png') %>" 
+                                            alt="Profile" 
+                                            height="64" width="64" 
+                                            style="border-radius: 50%; object-fit: cover;"
+                                            onerror="this.src='/img/avatar.png'"
+                                        >
+                                        <div class="media-body" style="margin-left: 10px;">
+                                            <h5><%= driver.name || 'Driver' %></h5>
+                                            <span>Phone:</span>
+                                            <span class="users-view-id">
+                                                <a href="tel:<%= driver.phone %>"><%= driver.phone || 'N/A' %></a>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- RIGHT SIDE: STATUS + ACTIONS -->
+                                <div class="col s12 m5" style="text-align: right;">
+                                    <div class="commission-section" style="display: flex; align-items: center; justify-content: flex-end; gap: 20px; flex-wrap: wrap;">
+                                        <div class="switch">
+                                            <label>
+                                                <span style="color: #f44336; font-weight: bold;">Rejected</span>
+                                                <input type="checkbox" <%= driver.profileStatus === 'approved' ? 'checked' : '' %>
+                                                       onchange="toggleProfileStatus('<%= driver._id %>', this.checked)">
+                                                <span class="lever"></span>
+                                                <span style="color: #4CAF50; font-weight: bold;">Approved</span>
+                                            </label>
+                                        </div>
+
+                                        <div class="switch">
+                                            <label>
+                                                <span style="color: #f44336; font-weight: bold;">Unblocked</span>
+                                                <input type="checkbox" <%= driver.blockStatus?.isBlocked ? 'checked' : '' %>
+                                                       onchange="toggleBlockStatus('<%= driver._id %>', this.checked)">
+                                                <span class="lever" style="background-color: #f44336;"></span>
+                                                <span style="color: #f44336; font-weight: bold;">Blocked</span>
+                                            </label>
+                                        </div>
+
+                                        <span class="badge <%= driver.profileStatus === 'approved' ? 'green white-text' : driver.profileStatus === 'rejected' ? 'red white-text' : 'orange white-text' %>">
+                                            <%= driver.profileStatus.toUpperCase() %>
+                                        </span>
+
+                                        <span class="badge <%= driver.blockStatus?.isBlocked ? 'red white-text' : 'green white-text' %>">
+                                            <%= driver.blockStatus?.isBlocked ? 'BLOCKED' : 'UNBLOCKED' %>
+                                        </span>
+                                    </div>
+
+                                    <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+                                        <a href="/admin/drivers/logs/<%= driver._id %>" class="btn-small indigo waves-effect waves-light">Driver Activity</a>
+                                        <a href="/admin/drivers/edit/<%= driver._id %>" class="btn-small blue waves-effect waves-light">Edit</a>
+                                        <a href="#" class="btn-small red waves-effect waves-light" onclick="confirmDelete('<%= driver._id %>', '<%= driver.name %>')">Delete</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Driver Basic Information -->
+                        <div class="card">
+                            <div class="card-content">
+                                <h5>Driver Basic Information</h5>
+                                <div class="row">
+                                    <div class="col s12 m6">
+                                        <table class="striped">
+                                            <tbody>
+                                                <tr><th style="width: 200px;">Name</th><td><%= driver.name || '-' %></td></tr>
+                                                <tr><th>Phone</th><td><%= driver.phone || '-' %></td></tr>
+                                                <tr><th>Vehicle Number</th><td><%= driver.vehicleNumber || 'Not Assigned' %></td></tr>
+                                                <tr><th>Joined Date</th><td><%= driver.createdAt ? new Date(driver.createdAt).toLocaleDateString('en-IN') : '-' %></td></tr>
+                                                <tr><th>Status</th><td><span class="badge <%= driver.isActive ? 'green white-text' : 'red white-text' %>"><%= driver.isActive ? 'Active' : 'Inactive' %></span></td></tr>
+                                                <tr><th>Profile Approval</th><td><span class="badge <%= driver.profileStatus === 'approved' ? 'green white-text' : driver.profileStatus === 'rejected' ? 'red white-text' : 'orange white-text' %>"><%= driver.profileStatus.toUpperCase() %></span></td></tr>
+                                                <tr><th>Block Status</th><td><span class="badge <%= driver.blockStatus?.isBlocked ? 'red white-text' : 'green white-text' %>"><%= driver.blockStatus?.isBlocked ? 'BLOCKED' : 'UNBLOCKED' %></span></td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="col s12 m6">
+                                        <div class="row">
+                                            <!-- Profile Image -->
+                                            <div class="col s6">
+                                                <h6>Profile Image</h6>
+                                                <img 
+                                                    class="driver-img"
+                                                    src="<%= driver.profileImage?.startsWith('http') ? driver.profileImage : (driver.profileImage?.startsWith('//') ? 'https:' + driver.profileImage : '/img/avatar.png') %>" 
+                                                    alt="Profile Image"
+                                                    onerror="this.src='/img/avatar.png'"
+                                                >
+                                            </div>
+
+                                            <!-- License Front -->
+                                            <div class="col s6">
+                                                <h6>License Front</h6>
+                                                <% 
+                                                    const licenseFrontDoc = driver.documents?.find(doc => doc.documentType === 'license_front');
+                                                    const licenseFrontUrl = licenseFrontDoc?.fileUrl;
+                                                %>
+                                                <% if (licenseFrontUrl) { %>
+                                                    <img 
+                                                        class="driver-img"
+                                                        src="<%= licenseFrontUrl.startsWith('http') ? licenseFrontUrl : (licenseFrontUrl.startsWith('//') ? 'https:' + licenseFrontUrl : licenseFrontUrl) %>" 
+                                                        alt="License Front"
+                                                        onerror="this.src='/img/placeholder-doc.png'"
+                                                    >
+                                                <% } else { %>
+                                                    <div class="no-image">License front not uploaded</div>
+                                                <% } %>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Documents Section -->
+                        <div class="card">
+                            <div class="card-content">
+                                <h5>Documents</h5>
+                                <p>All documents (License Front/Back, RC Front/Back, etc.) with verification status</p>
+                                <a href="/admin/drivers/documents/<%= driver._id %>" class="btn blue waves-effect waves-light">
+                                    <i class="material-icons left">description</i> View All Documents & Status
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Recent Deliveries -->
+                        <div class="row">
+                            <div class="col s12">
+                                <h5>Recent Deliveries (Last 10)</h5>
+                            </div>
+                            <div class="col s12" style="padding: 0;">
+                                <div class="section section-data-tables">
+                                    <div class="card">
+                                        <div class="card-content">
+                                            <div class="row">
+                                                <div class="col s12 overflow-x-auto">
+                                                    <table id="deliveries-table" class="display">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Sr</th>
+                                                                <th>Status</th>
+                                                                <th>Date</th>
+                                                                <th>Distance</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <% if (recentDeliveries?.length > 0) { %>
+                                                                <% recentDeliveries.forEach((delivery, index) => { %>
+                                                                    <tr>
+                                                                        <td><%= index + 1 %></td>
+                                                                        <td><span class="badge <%= delivery.status === 'delivered' ? 'green' : 'orange' %>"><%= delivery.status %></span></td>
+                                                                        <td><%= new Date(delivery.createdAt).toLocaleDateString('en-IN') %></td>
+                                                                        <td><%= delivery.distance || 'N/A' %> km</td>
+                                                                    </tr>
+                                                                <% }) %>
+                                                            <% } else { %>
+                                                                <tr><td colspan="4" class="center-align">No recent deliveries</td></tr>
+                                                            <% } %>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bank & Performance -->
+                        <div class="row">
+                            <div class="col s12">
+                                <h5>Bank Details & Performance Stats</h5>
+                            </div>
+                            <div class="col s12" style="padding: 0;">
+                                <div class="card">
+                                    <div class="card-content">
+                                        <div class="row">
+                                            <div class="col s12 overflow-x-auto">
+                                                <table class="striped">
+                                                    <tbody>
+                                                        <tr><th>Total Rides / Deliveries</th><td><%= stats.totalDeliveries || 0 %></td></tr>
+                                                        <tr><th>Completed Deliveries</th><td><%= stats.completed || 0 %></td></tr>
+                                                        <tr><th>Active / In-Progress</th><td><%= stats.active || 0 %></td></tr>
+                                                        <tr><th>Average Rating / Reviews</th><td>N/A (Coming Soon)</td></tr>
+                                                        <tr><th>Bank Holder Name</th><td><%= driver.bankDetails?.accountHolderName || '-' %></td></tr>
+                                                        <tr><th>Account Number</th><td><%= driver.bankDetails?.accountNumber || '-' %></td></tr>
+                                                        <tr><th>IFSC Code</th><td><%= driver.bankDetails?.ifscCode || '-' %></td></tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <%- include('_layouts/commonJs') %>
+        <script src="/app-assets/vendors/data-tables/js/jquery.dataTables.min.js"></script>
+        <script src="/app-assets/js/scripts/data-tables.js"></script>
+
+        <script>
+            $(document).ready(function () {
+                $('.modal').modal();
+                $('#deliveries-table').DataTable({ responsive: true });
+            });
+
+            function toggleProfileStatus(driverId, isApproved) {
+                if (!isApproved) {
+                    const reason = prompt("Enter rejection reason (optional):") || "";
+                    window.location.href = `/admin/drivers/profile-status/${driverId}/0?reason=${encodeURIComponent(reason)}`;
+                } else {
+                    window.location.href = `/admin/drivers/profile-status/${driverId}/1`;
+                }
+            }
+
+            function toggleBlockStatus(driverId, shouldBlock) {
+                const action = shouldBlock ? 'block' : 'unblock';
+                const message = shouldBlock 
+                    ? "Are you sure you want to BLOCK this driver?" 
+                    : "Are you sure you want to UNBLOCK this driver?";
+
+                if (confirm(message)) {
+                    let reason = shouldBlock ? "Blocked by admin" : "Unblocked by admin";
+                    let body = {};
+
+                    if (shouldBlock) {
+                        const userReason = prompt("Enter block reason (optional):");
+                        if (userReason?.trim()) reason = userReason.trim();
+                        body = { reason, blockType: "temporary" };
+                    } else {
+                        const notes = prompt("Enter unblock notes (optional):");
+                        if (notes?.trim()) body.notes = notes.trim();
+                    }
+
+                    const btn = event.target;
+                    btn.disabled = true;
+
+                    fetch(`/admin/drivers/${driverId}/${action}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify(body)
+                    })
+                    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+                    .then(({ ok, data }) => {
+                        if (ok || data.success) {
+                            alert(`Driver ${shouldBlock ? 'blocked' : 'unblocked'} successfully!`);
+                        } else {
+                            alert(data.message || 'Operation failed');
+                        }
+                        location.reload();
+                    })
+                    .catch(err => {
+                        alert('Request failed: ' + err.message);
+                        location.reload();
+                    });
+                } else {
+                    location.reload();
+                }
+            }
+
+            function confirmDelete(driverId, driverName) {
+                if (confirm(`Delete driver "${driverName}"? This cannot be undone.`)) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/admin/drivers/delete/${driverId}`;
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            }
+        </script>
+</body>
+</html>

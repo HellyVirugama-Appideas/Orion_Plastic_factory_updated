@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+<!-- BEGIN: Head-->
+
+<head>
+    <%- include('_layouts/head') %>
+        <title>Sub Admin List | <%= title %>
+        </title>
+        <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
+        <link rel="stylesheet" type="text/css"
+            href="/app-assets/vendors/data-tables/extensions/responsive/css/responsive.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/select.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
+</head>
+<!-- END: Head-->
+
+<body
+    class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+    data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+        <!-- BEGIN: Page Main-->
+        <div id="main">
+            <div class="row">
+                <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col s12 m6 l6">
+                                <h6 class="breadcrumbs-title"><span>Manage Sub Admin</span></h6>
+                            </div>
+                            <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                                <ol class="breadcrumbs mb-0">
+                                    <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                                    <li class="breadcrumb-item active">Sub Admin List</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="breadcrumbs-wrapper" style="background-color: white;">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col s12 right-align-md">
+                                <a class="btn pull-right btn-add btn-breadcrumbs white-text"
+                                    href="/admin/sub-admin/add">Add Sub Admin</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col s12">
+                    <div class="container">
+                        <div class="section section-data-tables">
+                            <div class="row">
+                                <div class="col s12">
+                                    <div class="card">
+                                        <div class="card-content">
+                                            <div class="row">
+                                                <div class="col s12 overflow">
+                                                    <table id="page-length-option" class="display">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Sr</th>
+                                                                <th>Name</th>
+                                                                <th>Email Address</th>
+                                                                <th>Phone</th>
+                                                                <th>Department</th>
+                                                                <th>Employee ID</th>
+                                                                <th>Created Date</th>
+                                                                <th data-orderable="false">Status</th>
+                                                                <th data-orderable="false">Action</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <% if (subadmins && subadmins.length> 0) { %>
+                                                                <% for(let i=0; i < subadmins.length; i++) { %>
+                                                                    <tr>
+                                                                        <td>
+                                                                            <%= i + 1 %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= subadmins[i].name %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= subadmins[i].email %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= subadmins[i].phone || 'N/A' %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= subadmins[i].department || 'N/A' %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= subadmins[i].employeeId || 'N/A' %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= subadmins[i].createdAt.toISOString().split('T')[0]
+                                                                                %>
+                                                                                <%= subadmins[i].createdAt.toLocaleString('en-US',
+                                                                                    { timeZone: 'UTC' , hour: '2-digit'
+                                                                                    , minute: '2-digit' , hour12: true
+                                                                                    }).replace(',', '' ); %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <% if (subadmins[i].isActive) { %>
+                                                                                <a href="/admin/sub-admin/status/<%= subadmins[i]._id %>/false"
+                                                                                    class="waves-effect border-round waves-light btn green mr-1 mb-2"
+                                                                                    onclick="return confirm('Are you sure you want to deactivate this sub admin?');">
+                                                                                    Active
+                                                                                </a>
+                                                                                <% } else { %>
+                                                                                    <a href="/admin/sub-admin/status/<%= subadmins[i]._id %>/true"
+                                                                                        class="waves-effect border-round waves-light btn red mr-1 mb-2"
+                                                                                        style="padding: 0px 16px 0px 16px;"
+                                                                                        onclick="return confirm('Are you sure you want to activate this sub admin?');">
+                                                                                        De-Active
+                                                                                    </a>
+                                                                                    <% } %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <a href="/admin/sub-admin/edit/<%= subadmins[i]._id %>"
+                                                                                class="btn-floating waves-effect waves-light accent-2 btn-edit"
+                                                                                title="Edit">
+                                                                                <i class="material-icons">edit</i>
+                                                                            </a>
+                                                                            &nbsp;&nbsp;
+                                                                            <!-- Replace the <a> delete link with this -->
+                                                                            <form
+                                                                                action="/admin/sub-admin/delete/<%= subadmins[i]._id %>"
+                                                                                method="POST" style="display:inline;">
+                                                                                <button type="submit"
+                                                                                    class="btn-floating waves-effect waves-light accent-2 btn-delete"
+                                                                                    onclick="return confirm('Are you sure you want to delete this sub admin?');"
+                                                                                    title="Delete">
+                                                                                    <i class="material-icons">delete</i>
+                                                                                </button>
+                                                                            </form>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <% } %>
+                                                                        <% } else { %>
+                                                                            <tr>
+                                                                                <td colspan="9" class="center-align">No
+                                                                                    Sub Admin found</td>
+                                                                            </tr>
+                                                                            <% } %>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="content-overlay"></div>
+                </div>
+            </div>
+        </div>
+        <!-- END: Page Main-->
+
+        <%- include('_layouts/commonJs') %>
+            <script src="/app-assets/vendors/data-tables/js/jquery.dataTables.min.js"></script>
+            <script src="/app-assets/js/scripts/data-tables.js"></script>
+
+</body>
+
+</html>

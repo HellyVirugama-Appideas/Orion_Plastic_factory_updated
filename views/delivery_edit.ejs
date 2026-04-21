@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+    <title>Edit Delivery - <%= delivery.trackingNumber %> | <%= title %></title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        /* Reuse same styles as create page */
+        .form-section { background: #fff; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .section-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 15px; color: #333; border-bottom: 2px solid #2196F3; padding-bottom: 10px; }
+        #map { height: 400px; width: 100%; border-radius: 8px; margin-top: 15px; }
+        .waypoint-item { background: #f5f5f5; padding: 15px; margin-bottom: 10px; border-radius: 4px; border-left: 4px solid #2196F3; position: relative; }
+        .waypoint-item .remove-waypoint { position: absolute; top: 10px; right: 10px; }
+        .route-summary { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 15px; }
+        .driver-card { border: 2px solid #e0e0e0; padding: 15px; border-radius: 8px; cursor: pointer; transition: all 0.3s; margin-bottom: 10px; }
+        .driver-card:hover { border-color: #2196F3; background: #f5f5f5; }
+        .driver-card.selected { border-color: #4CAF50; background: #e8f5e9; }
+        .driver-status.available { background: #c8e6c9; color: #1b5e20; }
+        .driver-status.busy { background: #ffcdd2; color: #b71c1c; }
+    </style>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="row">
+            <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+                <div class="container">
+                    <div class="row">
+                        <%- include('messages', { messages: messages }) %>
+                        <div class="col s12 m6 l6">
+                            <h6 class="breadcrumbs-title">
+                                <a href="/admin/deliveries">Deliveries</a> / 
+                                <a href="/admin/deliveries/<%= delivery._id %>"><%= delivery.trackingNumber %></a> /
+                                <span>Edit Delivery</span>
+                            </h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col s12">
+            <div class="container">
+                <form id="editDeliveryForm" method="POST" action="/admin/deliveries/<%= delivery._id %>/update">
+                    
+                    <!-- Delivery Basic Info -->
+                    <div class="form-section card">
+                        <h5 class="section-title">Delivery Information</h5>
+                        <div class="row">
+                            <div class="col s12 m6">
+                                <p><strong>Tracking Number:</strong> <%= delivery.trackingNumber %></p>
+                                <p><strong>Order Number:</strong> <%= delivery.orderId?.orderNumber || 'N/A' %></p>
+                                <p><strong>Current Status:</strong> <span class="badge <%= delivery.status === 'assigned' ? 'blue' : 'orange' %>"><%= delivery.status.toUpperCase() %></span></p>
+                            </div>
+                            <div class="col s12 m6">
+                                <p><strong>Current Driver:</strong> <%= delivery.driverId?.name || 'Not assigned' %> 
+                                    (<%= delivery.vehicleNumber || 'N/A' %>)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pickup & Delivery Locations -->
+                    <div class="form-section card">
+                        <h5 class="section-title">Pickup & Delivery Locations</h5>
+                        <div class="row">
+                            <div class="col s12 m6">
+                                <h6><i class="material-icons tiny">location_on</i> Pickup</h6>
+                                <p><%= delivery.pickupLocation?.address || 'N/A' %></p>
+                            </div>
+                            <div class="col s12 m6">
+                                <h6><i class="material-icons tiny">flag</i> Delivery</h6>
+                                <p><%= delivery.deliveryLocation?.address || 'N/A' %></p>
+                            </div>
+                        </div>
+
+                        <div id="map"></div>
+
+                        <div class="route-summary">
+                            <h6><strong>Current Route Summary</strong></h6>
+                            <div class="route-summary-item">
+                                <span>Distance:</span>
+                                <span id="routeDistance"><%= delivery.distance %> km</span>
+                            </div>
+                            <div class="route-summary-item">
+                                <span>Estimated Duration:</span>
+                                <span id="routeDuration"><%= delivery.estimatedDuration %> minutes</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Waypoints -->
+                    <div class="form-section card">
+                        <h5 class="section-title">Waypoints / Stops</h5>
+                        <div id="waypointsContainer">
+                            <% delivery.waypoints?.forEach((wp, index) => { %>
+                                <div class="waypoint-item" id="waypoint-<%= index %>">
+                                    <button type="button" class="btn-small red remove-waypoint" onclick="removeWaypoint(<%= index %>)">
+                                        <i class="material-icons">close</i>
+                                    </button>
+                                    <div class="row">
+                                        <div class="col s12 m8">
+                                            <input type="text" name="waypoint_address_<%= index %>" value="<%= wp.address %>" placeholder="Waypoint Address">
+                                        </div>
+                                        <div class="col s12 m4">
+                                            <select name="waypoint_type_<%= index %>">
+                                                <option value="stop" <%= wp.type === 'stop' ? 'selected' : '' %>>Stop</option>
+                                                <option value="break" <%= wp.type === 'break' ? 'selected' : '' %>>Break Point</option>
+                                                <option value="fuel" <%= wp.type === 'fuel' ? 'selected' : '' %>>Fuel Stop</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+
+                        <button type="button" onclick="addWaypoint()" class="btn blue">
+                            <i class="material-icons left">add_location</i>Add New Waypoint
+                        </button>
+                    </div>
+
+                    <!-- Driver Selection – FIXED -->
+                    <div class="form-section card">
+                        <h5 class="section-title">Assign / Change Driver</h5>
+                        
+                        <div class="row" id="driversList">
+                            <% drivers.forEach(driver => { %>
+                                <div class="col s12 m6 l4">
+                                    <div class="driver-card <%= driver._id.toString() === (delivery.driverId ? delivery.driverId.toString() : '') ? 'selected' : '' %>" 
+                                         onclick="selectDriver('<%= driver._id.toString() %>', '<%= driver.name %>')">
+                                        <div class="driver-info">
+                                            <img src="<%= driver.profileImage || '/img/avatar.png' %>" 
+                                                 alt="<%= driver.name %>" class="driver-avatar">
+                                            <div>
+                                                <h6 class="mb-0"><%= driver.name %></h6>
+                                                <p class="grey-text mb-0"><%= driver.phone %></p>
+                                                <p class="grey-text mb-0"><%= driver.vehicleNumber || 'No Vehicle' %></p>
+                                                <span class="driver-status <%= driver.isAvailable ? 'available' : 'busy' %>">
+                                                    <%= driver.isAvailable ? 'Available' : 'Busy' %>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+
+                        <!-- Hidden field – ALWAYS string -->
+                        <input type="hidden" name="driverId" id="selectedDriverId" 
+                               value="<%= delivery.driverId ? delivery.driverId.toString() : '' %>" required>
+
+                        <!-- Display selected driver name -->
+                        <p class="mt-2">
+                            Selected Driver: 
+                            <strong id="selectedDriverName">
+                                <%= delivery.driverId ? delivery.driverId.name : 'None selected' %>
+                            </strong>
+                        </p>
+                    </div>
+
+                    <!-- Schedule -->
+                    <div class="form-section card">
+                        <h5 class="section-title">Schedule</h5>
+                        <div class="row">
+                            <div class="col s12 m6">
+                                <label for="scheduledPickupTime">Scheduled Pickup Time</label>
+                                <input type="datetime-local" name="scheduledPickupTime" id="scheduledPickupTime"
+                                       value="<%= delivery.scheduledPickupTime ? new Date(delivery.scheduledPickupTime).toISOString().slice(0,16) : '' %>">
+                            </div>
+                            <div class="col s12 m6">
+                                <label for="scheduledDeliveryTime">Scheduled Delivery Time</label>
+                                <input type="datetime-local" name="scheduledDeliveryTime" id="scheduledDeliveryTime"
+                                       value="<%= delivery.scheduledDeliveryTime ? new Date(delivery.scheduledDeliveryTime).toISOString().slice(0,16) : '' %>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Instructions -->
+                    <div class="form-section card">
+                        <h5 class="section-title">Delivery Instructions</h5>
+                        <div class="row">
+                            <div class="col s12">
+                                <label for="instructions">Special Instructions</label>
+                                <textarea name="instructions" id="instructions" class="materialize-textarea" rows="4"><%= delivery.instructions || '' %></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden Fields -->
+                    <input type="hidden" name="waypoints" id="waypointsJSON">
+                    <input type="hidden" name="routeDistance" id="routeDistanceInput" value="<%= delivery.distance %>">
+                    <input type="hidden" name="routeDuration" id="routeDurationInput" value="<%= delivery.estimatedDuration %>">
+
+                    <!-- Buttons -->
+                    <div class="row">
+                        <div class="col s12">
+                            <button type="submit" class="btn green waves-effect waves-light">
+                                <i class="material-icons left">save</i>Save Changes
+                            </button>
+                            <a href="/admin/deliveries/<%= delivery._id %>" class="btn-flat waves-effect">Cancel</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        let map, pickupMarker, deliveryMarker, routeLine;
+        let waypointCount = <%= delivery.waypoints?.length || 0 %>;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const pickupCoords = [
+                <%= delivery.pickupLocation?.coordinates?.latitude || 23.0225 %>, 
+                <%= delivery.pickupLocation?.coordinates?.longitude || 72.5714 %>
+            ];
+            const deliveryCoords = [
+                <%= delivery.deliveryLocation?.coordinates?.latitude || 23.0225 %>, 
+                <%= delivery.deliveryLocation?.coordinates?.longitude || 72.5714 %>
+            ];
+
+            map = L.map('map').setView(pickupCoords, 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            pickupMarker = L.marker(pickupCoords, { icon: L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png', iconSize: [25, 41], iconAnchor: [12, 41] }) }).addTo(map).bindPopup('Pickup');
+            deliveryMarker = L.marker(deliveryCoords, { icon: L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', iconSize: [25, 41], iconAnchor: [12, 41] }) }).addTo(map).bindPopup('Delivery');
+
+            routeLine = L.polyline([pickupCoords, deliveryCoords], { color: '#2196F3', weight: 4 }).addTo(map);
+            map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+
+            M.updateTextFields();
+            M.FormSelect.init(document.querySelectorAll('select'));
+        });
+
+        function addWaypoint() {
+            waypointCount++;
+            const html = `
+                <div class="waypoint-item" id="waypoint-${waypointCount}">
+                    <button type="button" class="btn-small red remove-waypoint" onclick="removeWaypoint(${waypointCount})">
+                        <i class="material-icons">close</i>
+                    </button>
+                    <div class="row">
+                        <div class="col s12 m8">
+                            <input type="text" name="waypoint_address_${waypointCount}" placeholder="Waypoint Address">
+                        </div>
+                        <div class="col s12 m4">
+                            <select name="waypoint_type_${waypointCount}">
+                                <option value="stop">Stop</option>
+                                <option value="break">Break Point</option>
+                                <option value="fuel">Fuel Stop</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>`;
+            document.getElementById('waypointsContainer').insertAdjacentHTML('beforeend', html);
+            M.FormSelect.init(document.querySelectorAll('select'));
+        }
+
+        function removeWaypoint(id) {
+            document.getElementById(`waypoint-${id}`).remove();
+        }
+
+        // FIXED: Always ensure string + update display name
+        function selectDriver(driverId, driverName) {
+            const driverIdStr = driverId.toString(); // force string
+
+            document.querySelectorAll('.driver-card').forEach(card => card.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+
+            document.getElementById('selectedDriverId').value = driverIdStr;
+            document.getElementById('selectedDriverName').textContent = driverName;
+
+            console.log("Driver selected:", { id: driverIdStr, name: driverName }); // browser console debug
+        }
+
+        // Prepare waypoints JSON + validate driverId before submit
+        document.getElementById('editDeliveryForm').addEventListener('submit', function(e) {
+            const driverIdValue = document.getElementById('selectedDriverId').value.trim();
+
+            console.log("Form submitting with driverId:", driverIdValue);
+
+            if (!driverIdValue || driverIdValue === '[object Object]' || driverIdValue.length !== 24) {
+                e.preventDefault();
+                M.toast({html: 'Please select a valid driver before saving', classes: 'red'});
+                return false;
+            }
+
+            // Waypoints JSON
+            const waypoints = [];
+            document.querySelectorAll('.waypoint-item').forEach((item, index) => {
+                const addressInput = item.querySelector('input[type="text"]');
+                const typeSelect = item.querySelector('select');
+                if (addressInput?.value.trim()) {
+                    waypoints.push({
+                        address: addressInput.value.trim(),
+                        type: typeSelect.value,
+                        order: index + 1
+                    });
+                }
+            });
+            document.getElementById('waypointsJSON').value = JSON.stringify(waypoints);
+        });
+
+        // Leaflet icons
+        const greenIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41]
+        });
+        const redIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41]
+        });
+    </script>
+</body>
+</html>

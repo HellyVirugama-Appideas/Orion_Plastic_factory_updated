@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+        <title>Admin Chat Dashboard | <%= title %>
+        </title>
+
+        <style>
+            .chat-item {
+                transition: all 0.2s ease;
+            }
+
+            .chat-item:hover {
+                background-color: #f5f5f5;
+            }
+
+            .chat-item.unread {
+                background-color: #e3f2fd;
+                font-weight: 500;
+            }
+
+            .avatar img {
+                object-fit: cover;
+            }
+
+            .truncate {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* Minimal addition for row click (only cursor) */
+            .chat-row {
+                cursor: pointer;
+            }
+
+            /* Prevent cursor change on arrow icon */
+            .secondary-content {
+                cursor: default;
+            }
+        </style>
+</head>
+
+<body
+    class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+    data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+        <div id="main">
+            <div class="row">
+                <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+                    <div class="container">
+                        <div class="row">
+                            <%- include('messages', { messages: messages }) %>
+                                <div class="col s12 m6 l6">
+                                    <h6 class="breadcrumbs-title">
+                                        <i class="material-icons left">chat</i> Admin Chat Dashboard
+                                    </h6>
+                                </div>
+                                <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                                    <ol class="breadcrumbs mb-0">
+                                        <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                                        <li class="breadcrumb-item active">Chat</li>
+                                    </ol>
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col s12">
+                <div class="container">
+                    <div class="section section-data-tables">
+                        <div class="card">
+                            <div class="card-content">
+                                <% if (conversations && conversations.length> 0) { %>
+                                    <ul class="collection">
+                                        <% conversations.forEach((conv, index)=> { %>
+                                            <!-- Added class & data-href for row click -->
+                                            <li class="collection-item avatar chat-item chat-row <%= conv.unreadCount > 0 ? 'unread' : '' %>"
+                                                data-href="/admin/chat/<%= conv._id %>">
+
+                                                <!-- Arrow icon - protected from row click -->
+                                                <a href="/admin/chat/<%= conv._id %>" class="secondary-content">
+                                                    <i class="material-icons">chevron_right</i>
+                                                </a>
+
+                                                <img src="<%= conv.participant?.profileImage || '/img/default-driver.jpg' %>"
+                                                    alt="Driver" class="circle">
+
+                                                <div class="chat-info">
+                                                    <span class="title">
+                                                        <%= conv.participant?.name || 'Unknown Driver' %>
+                                                            <% if (conv.unreadCount> 0) { %>
+                                                                <span class="new badge blue">
+                                                                    <%= conv.unreadCount %>
+                                                                </span>
+                                                                <% } %>
+                                                    </span>
+
+                                                    <p class="grey-text text-darken-2 truncate">
+                                                        <%= conv.lastMessage?.content?.substring(0, 80)
+                                                            || 'Media / Location message' %>...
+                                                    </p>
+
+                                                    <p class="grey-text">
+                                                        <small>
+                                                            <%= new
+                                                                Date(conv.lastMessage?.createdAt).toLocaleString('en-IN',
+                                                                { dateStyle: 'medium' , timeStyle: 'short' }) %>
+                                                        </small>
+                                                        <% if (conv.participant?.vehicleNumber) { %>
+                                                            <span class="right grey-text">
+                                                                Vehicle: <%= conv.participant.vehicleNumber %>
+                                                            </span>
+                                                            <% } %>
+                                                    </p>
+                                                </div>
+                                            </li>
+                                            <% }) %>
+                                    </ul>
+                                    <% } else { %>
+                                        <div class="center-align grey-text" style="padding: 60px 20px;">
+                                            <i class="material-icons large grey-text">chat_bubble_outline</i>
+                                            <h5>No conversations yet</h5>
+                                            <p>Messages from drivers will appear here automatically</p>
+                                        </div>
+                                        <% } %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <%- include('_layouts/commonJs') %>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    // Make entire chat item clickable (except arrow icon)
+                    document.querySelectorAll('.chat-row').forEach(item => {
+                        item.addEventListener('click', function (e) {
+                            // Prevent navigation if clicked on the arrow icon
+                            if (e.target.closest('.secondary-content') ||
+                                e.target.tagName === 'I' && e.target.closest('.secondary-content')) {
+                                return;
+                            }
+
+                            const href = this.getAttribute('data-href');
+                            if (href) {
+                                window.location.href = href;
+                            }
+                        });
+                    });
+                });
+
+                // Optional auto-refresh (every 30 seconds)
+                setInterval(() => {
+                    location.reload();
+                }, 30000);
+            </script>
+</body>
+
+</html>

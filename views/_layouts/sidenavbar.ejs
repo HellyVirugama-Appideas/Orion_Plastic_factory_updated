@@ -1,0 +1,400 @@
+<!-- BEGIN: Header-->
+<style>
+  .notification-badge {
+    position: absolute;
+    top: 5px;
+    right: 46px;
+    background-color: red;
+    border-radius: 50%;
+    width: 15px;
+    height: 15px;
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+
+    0%,
+    100% {
+      transform: scale(1);
+    }
+
+    50% {
+      transform: scale(1.3);
+    }
+  }
+
+  /* Custom breakpoint: Show fullscreen icon only when width > 1008px */
+  @media (max-width: 1008px) {
+    .show-fullscreen-above-1008 {
+      display: none !important;
+    }
+  }
+</style>
+
+<header class="page-topbar" id="header">
+  <div class="navbar navbar-fixed" style="margin-bottom: 10px;display: flex; flex-wrap: nowrap;">
+    <nav class="navbar-main navbar-color nav-collapsible sideNav-lock"
+      style="height: 75px;background-color: #FFFFFF;box-shadow: 0 2px 3px -1px rgba(0, 0, 0, 0.1);">
+      <div class="nav-wrapper" style="margin-right: -20px;">
+        <ul class="center">
+          <li>
+            <h1 class="logo-wrapper">
+              <a class="brand-logo" href="/admin">
+                <img src="/img/Orion_Logo.png" alt="Laani Saudi logo">
+              </a>
+            </h1>
+          </li>
+        </ul>
+
+        <ul>
+          <!-- BEGIN: Horizontal nav start - DESKTOP ONLY -->
+          <nav class="hide-on-med-and-down" id="horizontal-nav"
+            style="height: 75px;margin-top: 0px !important;width:79%;box-shadow: none;margin-left: 10%;background-color: #FFFFFF;">
+            <div class="nav-wrapper">
+              <ul id="ul-horizontal-nav" data-menu="menu-navigation">
+
+                <li class="bold <%= url == '/admin' ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin">
+                    <i class="material-icons <%= url == '/admin' ? 'theme-text' : 'black-text' %>">dashboard</i>
+                    <span class="menu-title <%= url == '/admin' ? 'theme-text' : 'black-text' %>">Dashboard</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/sub-admin') ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin/sub-admin/list">
+                    <i
+                      class="material-icons <%= url == '/admin/sub-admin' ? 'theme-text' : 'black-text' %>">supervisor_account</i>
+                    <span
+                      class="menu-title <%= url == '/admin/sub-admin' ? 'theme-text' : 'black-text' %>">Subadmin</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/customers') ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin/customers">
+                    <i
+                      class="material-icons <%= url.startsWith('/admin/customers') ? 'theme-text' : 'black-text' %>">people</i>
+                    <span
+                      class="menu-title <%= url.startsWith('/admin/customers') ? 'theme-text' : 'black-text' %>">Customers</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/drivers') ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin/drivers">
+                    <i
+                      class="material-icons <%= url.startsWith('/admin/drivers') ? 'theme-text' : 'black-text' %>">local_shipping</i>
+                    <span
+                      class="menu-title <%= url.startsWith('/admin/drivers') ? 'theme-text' : 'black-text' %>">Drivers</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/categories') ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin/categories">
+                    <i
+                      class="material-icons <%= url.startsWith('/admin/categories') ? 'theme-text' : 'black-text' %>">apps</i>
+                    <span
+                      class="menu-title <%= url.startsWith('/admin/categories') ? 'theme-text' : 'black-text' %>">Categories</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/orders') ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin/orders">
+                    <i
+                      class="material-icons <%= url.startsWith('/admin/orders') ? 'theme-text' : 'black-text' %>">shopping_cart</i>
+                    <span
+                      class="menu-title <%= url.startsWith('/admin/orders') ? 'theme-text' : 'black-text' %>">Orders</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/deliveries') ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin/deliveries">
+                    <i
+                      class="material-icons <%= url.startsWith('/admin/delivery') ? 'theme-text' : 'black-text' %>">local_shipping</i>
+                    <span
+                      class="menu-title <%= url.startsWith('/admin/deliveries') ? 'theme-text' : 'black-text' %>">Delivery</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/tracking') ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin/tracking/live">
+                    <i class="material-icons <%= url.startsWith('/admin/tracking') ? 'theme-text' : 'black-text' %>">my_location</i>
+                    <span class="menu-title <%= url.startsWith('/admin/tracking') ? 'theme-text' : 'black-text' %>">Live Tracking</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/vehicles') ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin/vehicles">
+                    <i
+                      class="material-icons <%= url.startsWith('/admin/vehicles') ? 'theme-text' : 'black-text' %>">directions_car</i>
+                    <span
+                      class="menu-title <%= url.startsWith('/admin/vehicles') ? 'theme-text' : 'black-text' %>">Vehicles</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/chat') ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin/chat">
+                    <i
+                      class="material-icons <%= url.startsWith('/admin/chat') ? 'theme-text' : 'black-text' %>">chat</i>
+                    <span
+                      class="menu-title <%= url.startsWith('/admin/chat') ? 'theme-text' : 'black-text' %>">Chat</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/regions') ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin/regions">
+                    <i class="material-icons <%= url.startsWith('/regions') ? 'theme-text' : 'black-text' %>">public</i>
+                    <span
+                      class="menu-title <%= url.startsWith('/regions') ? 'theme-text' : 'black-text' %>">Regions</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/expenses') ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin/expenses">
+                    <i
+                      class="material-icons <%= url.startsWith('/expenses') ? 'theme-text' : 'black-text' %>">receipt</i>
+                    <span
+                      class="menu-title <%= url.startsWith('/expenses') ? 'theme-text' : 'black-text' %>">Expenses</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/remarks') ? 'active' : '' %>">
+                  <a class="waves-effect waves-cyan" href="/admin/remarks">
+                    <i
+                      class="material-icons <%= url.startsWith('/remarks') ? 'theme-text' : 'black-text' %>">comment</i>
+                    <span
+                      class="menu-title <%= url.startsWith('/remarks') ? 'theme-text' : 'black-text' %>">Remarks</span>
+                  </a>
+                </li>
+
+                <li class="bold <%= url.startsWith('/admin/cms') ? 'active' : '' %>">
+                  <a class="dropdown-menu waves-effect waves-cyan" data-target="cmsDropdown">
+                    <i
+                      class="material-icons <%= url.startsWith('/admin/cms') ? 'theme-text' : 'black-text' %>">content_paste</i>
+                    <span>
+                      <span class="dropdown-title <%= url.startsWith('/admin/cms') ? 'theme-text' : 'black-text' %>">CMS
+                        Pages</span>
+                      <i class="material-icons right <%= url.startsWith('/admin/cms') ? 'theme-text' : 'black-text' %>"
+                        style="font-size:18px !important">keyboard_arrow_down</i>
+                    </span>
+                  </a>
+                  <ul class="dropdown-content dropdown-horizontal-list" id="cmsDropdown">
+                    <li>
+                      <a href="/admin/cms/contact" class="<%= url.startsWith('/admin/cms/contact') ? 'active' : '' %>">
+                        <span>Contact Us</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="/admin/onboarding" class="<%= url.startsWith('/admin/splash-screen') ? 'active' : '' %>">
+                        <span>Splash Screen</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="/admin/cms/faq" class="<%= url.startsWith('/admin/cms/faq') ? 'active' : '' %>">
+                        <span>FAQ's</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="/admin/cms/privacy" class="<%= url.startsWith('/admin/cms/privacy') ? 'active' : '' %>">
+                        <span>Privacy Policy</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="/admin/cms/term" class="<%= url.startsWith('/admin/cms/term') ? 'active' : '' %>">
+                        <span>Terms and Conditions</span>
+                      </a>
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </ul>
+
+        <ul class="navbar-list right">
+          <!-- Fullscreen Toggle - show on desktop/tablet (> ~992px) -->
+          <li class="hide-on-med-and-down">
+            <a id="fullscreen-toggle" class="waves-effect waves-block waves-light toggle-fullscreen black-text"
+              href="javascript:void(0);" title="Toggle Fullscreen">
+              <i id="fullscreen-icon" class="material-icons black-text">fullscreen</i>
+            </a>
+          </li>
+
+          <!-- Profile Icon -->
+          <li>
+            <a class="waves-effect waves-block waves-light profile-button" href="javascript:void(0);"
+              data-target="profile-dropdown" style="height: 75px;">
+              <span class="avatar-status avatar-online">
+                <img src="/img/avatar.png" alt="avatar">
+                <i></i>
+              </span>
+            </a>
+          </li>
+
+          <!-- Profile Dropdown -->
+          <ul class="dropdown-content dropdown-horizontal-list" id="profile-dropdown"
+            style="width: 188px !important; left: 1140px !important;">
+            <li>
+              <a href="/admin/changepass">
+                <i class="material-icons">lock_outline</i><span style="margin-left: -5px;">Change Password</span>
+              </a>
+            </li>
+            <li>
+              <a href="/admin/logout">
+                <i class="material-icons">power_settings_new</i><span style="margin-left: -5px;">Logout</span>
+              </a>
+            </li>
+          </ul>
+        </ul>
+      </div>
+    </nav>
+  </div>
+</header>
+<!-- END: Header-->
+
+<!-- BEGIN: SideNav - MOBILE ONLY -->
+<aside class="sidenav-main nav-expanded nav-lock nav-collapsible sidenav-fixed hide-on-large-only"
+  style="background-color: #3D3D3D;">
+  <div class="brand-sidebar sidenav-light"></div>
+
+  <ul class="sidenav sidenav-collapsible leftside-navigation collapsible sidenav-fixed hide-on-large-only menu-shadow"
+    id="slide-out" data-menu="menu-navigation" data-collapsible="menu-accordion" style="background-color: #3D3D3D;">
+    <br />
+
+    <li class="bold <%= url == '/admin' ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin">
+        <i class="material-icons white-text">dashboard</i>
+        <span class="menu-title white-text">Dashboard</span>
+      </a>
+    </li>
+
+    <li class="bold <%= url.startsWith('/admin/sub-admin') ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin/sub-admin/list">
+        <i class="material-icons white-text">supervisor_account</i>
+        <span class="menu-title white-text">Subadmin</span>
+      </a>
+    </li>
+
+    <li class="bold <%= url.startsWith('/admin/customers') ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin/customers">
+        <i class="material-icons white-text">people</i>
+        <span class="menu-title white-text">Customers</span>
+      </a>
+    </li>
+
+    <li class="bold <%= url.startsWith('/admin/drivers') ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin/drivers">
+        <i class="material-icons white-text">local_shipping</i>
+        <span class="menu-title white-text">Drivers</span>
+      </a>
+    </li>
+
+    <!-- category -->
+    <li class="bold <%= url.startsWith('/admin/categories') ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin/categories">
+        <i class="material-icons white-text">shopping_cart</i>
+        <span class="menu-title white-text">Categories</span>
+      </a>
+    </li>
+
+    <li class="bold <%= url.startsWith('/admin/orders') ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin/orders">
+        <i class="material-icons white-text">shopping_cart</i>
+        <span class="menu-title white-text">Orders</span>
+      </a>
+    </li>
+
+    <li class="bold <%= url.startsWith('/admin/deliveries') ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin/deliveries">
+        <i class="material-icons white-text">local_shipping</i>
+        <span class="menu-title white-text">Delivery</span>
+      </a>
+    </li>
+
+    <li class="bold <%= url.startsWith('/admin/tracking') ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin/tracking/live">
+        <i class="material-icons white-text">my_location</i>
+        <span class="menu-title white-text">Live Tracking</span>
+      </a>
+    </li>
+
+    <li class="bold <%= url.startsWith('/admin/vehicles') ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin/vehicles">
+        <i class="material-icons white-text">directions_car</i>
+        <span class="menu-title white-text">Vehicles</span>
+      </a>
+    </li>
+
+    <li class="bold <%= url.startsWith('/admin/chat') ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin/chat">
+        <i class="material-icons white-text">chat</i>
+        <span class="menu-title white-text">Chat</span>
+      </a>
+    </li>
+
+    <li class="bold <%= url.startsWith('/admin/regions') ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin/regions">
+        <i class="material-icons white-text">public</i>
+        <span class="menu-title white-text">Regions</span>
+      </a>
+    </li>
+
+    <li class="bold <%= url.startsWith('/admin/expenses') ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin/expenses">
+        <i class="material-icons white-text">receipt</i>
+        <span class="menu-title white-text">Expenses</span>
+      </a>
+    </li>
+
+    <li class="bold <%= url.startsWith('/admin/remarks') ? 'active' : '' %>">
+      <a class="waves-effect waves-cyan" href="/admin/remarks">
+        <i class="material-icons white-text">comment</i>
+        <span class="menu-title white-text">Remarks</span>
+      </a>
+    </li>
+
+    <li class="bold <%= url.startsWith('/admin/cms') ? 'active' : '' %>">
+      <a class="dropdown-menu waves-effect waves-cyan" data-target="cmsDropdownMobile">
+        <i class="material-icons white-text">content_paste</i>
+        <span>
+          <span class="dropdown-title white-text">CMS Pages</span>
+          <i class="material-icons right white-text" style="font-size:18px !important">keyboard_arrow_down</i>
+        </span>
+      </a>
+      <ul class="dropdown-content dropdown-horizontal-list" id="cmsDropdownMobile">
+        <li>
+          <a href="/admin/cms/contact" class="<%= url.startsWith('/admin/cms/contact') ? 'active' : '' %>">
+            <span>Contact Us</span>
+          </a>
+        </li>
+        <li>
+          <a href="/admin/onboarding" class="<%= url.startsWith('/admin/splash-screen') ? 'active' : '' %>">
+            <span>Splash Screen</span>
+          </a>
+        </li>
+        <li>
+          <a href="/admin/cms/faq" class="<%= url.startsWith('/admin/cms/faq') ? 'active' : '' %>">
+            <span>FAQ's</span>
+          </a>
+        </li>
+        <li>
+          <a href="/admin/cms/privacy" class="<%= url.startsWith('/admin/cms/privacy') ? 'active' : '' %>">
+            <span>Privacy Policy</span>
+          </a>
+        </li>
+        <li>
+          <a href="/admin/cms/term" class="<%= url.startsWith('/admin/cms/term') ? 'active' : '' %>">
+            <span>Terms and Conditions</span>
+          </a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+
+  <div class="navigation-background"></div>
+
+  <!-- Mobile Menu Toggle Button -->
+  <a class="sidenav-trigger btn-floating btn-medium hide-on-large-only" href="#" data-target="slide-out"
+    style="margin-top: 16px;background-color: #3D3D3D;">
+    <i class="material-icons white-text">menu</i>
+  </a>
+</aside>
+<!-- END: SideNav-->

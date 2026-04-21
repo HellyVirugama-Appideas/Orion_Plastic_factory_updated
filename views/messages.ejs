@@ -1,0 +1,44 @@
+<% Object.keys(messages).forEach(function (type) { %>
+<div class="card-alert card <%= type %> alert-auto-close">
+    <div class="card-content black-text">
+        <% messages[type].forEach(function (message) { %>
+        <%= message %>
+        <% }) %> 
+    </div>
+    <button type="button" class="close black-text" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">×</span>
+    </button>
+</div>
+<% }) %>
+
+<!-- 
+  <% Object.keys(messages).forEach(function (type) { %>
+    <div class="card-alert card alert-auto-close" 
+         style="margin: 15px 0; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative;">
+
+      <div class="card-content" style="
+        <%= type === 'success' ? 'background-color: #e8f5e9; color: #1b5e20;' : '' %>
+        <%= type === 'error'   ? 'background-color: #ffebee; color: #b71c1c;' : '' %>
+        <%= type === 'info'    ? 'background-color: #e3f2fd; color: #0d47a1;' : '' %>
+        <%= type === 'warning' ? 'background-color: #fff3e0; color: #e65100;' : '' %>
+        padding: 16px 20px;
+      ">
+        <strong style="font-weight: 600; text-transform: uppercase;">
+          <%= type %>:
+        </strong>
+        <% messages[type].forEach(function (message) { %>
+          <span style="margin-left: 8px;"><%= message %></span><br>
+        <% }) %>
+      </div>
+
+      
+      <button type="button" class="close" 
+              style="position: absolute; top: 10px; right: 15px; color: inherit; font-size: 1.5rem; opacity: 0.7;"
+              data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">×</span>
+      </button>
+    </div>
+  <% }) %>
+
+
+ -->

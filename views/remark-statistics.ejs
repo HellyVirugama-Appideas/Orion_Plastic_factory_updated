@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('../_layouts/head') %>
+  <title>Remark Statistics | <%= title %></title>
+</head>
+<body>
+  <%- include('../_layouts/sidenavbar') %>
+
+  <div id="main">
+    <div class="container">
+      <h5>Remark Statistics</h5>
+
+      <%- include('../messages', { messages: messages }) %>
+
+      <div class="card">
+        <div class="card-content">
+          <h6>Summary</h6>
+          <p>Total: <%= summary.total %></p>
+          <p>Predefined: <%= summary.predefined %></p>
+          <p>Custom: <%= summary.custom %></p>
+          <p>Pending Approval: <%= summary.pendingApproval %></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-content">
+          <h6>Category Stats</h6>
+          <table>
+            <thead>
+              <tr><th>Category</th><th>Count</th><th>Usage</th></tr>
+            </thead>
+            <tbody>
+              <% categoryStats.forEach(stat => { %>
+                <tr>
+                  <td><%= stat._id %></td>
+                  <td><%= stat.count %></td>
+                  <td><%= stat.usage %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-content">
+          <h6>Recently Used</h6>
+          <ul>
+            <% recentlyUsed.forEach(remark => { %>
+              <li><%= remark.remarkText %> (<%= remark.category %>) - Used: <%= remark.usageCount %></li>
+            <% }) %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%- include('../_layouts/commonJs') %>
+</body>
+</html>

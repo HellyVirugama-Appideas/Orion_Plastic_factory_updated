@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('_layouts/head') %>
+    <title>Add Vehicle | <%= title %>
+    </title>
+</head>
+
+<body>
+  <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+      <div class="row">
+        <div id="breadcrumbs-wrapper">
+          <div class="container">
+            <div class="row">
+              <%- include('messages', { messages: messages }) %>
+                <div class="col s12 m6 l6">
+                  <h6 class="breadcrumbs-title">Add Vehicle</h6>
+                </div>
+
+                <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                  <ol class="breadcrumbs mb-0">
+                    <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="/admin/vehicles">Vehicles</a></li>
+                    <li class="breadcrumb-item active">Create Vehicles</li>
+                  </ol>
+                </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="container">
+          <div class="card">
+            <div class="card-content">
+              <form method="POST" action="/admin/vehicles">
+                <div class="row">
+                  <div class="input-field col s12 m6">
+                    <input id="vehicleNumber" name="vehicleNumber" type="text" required>
+                    <label for="vehicleNumber">Vehicle Number *</label>
+                  </div>
+                 
+                </div>
+
+                <div class="row">
+                  <div class="input-field col s12 m6">
+                    <select name="vehicleType" required>
+                      <option value="" disabled selected>Choose vehicle type</option>
+                      <option value="car">Car</option>
+                      <option value="bike">Bike</option>
+                      <option value="auto">Auto</option>
+                      <option value="truck">Truck</option>
+                      <option value="van">Van</option>
+                      <option value="tempo">Tempo</option>
+                    </select>
+                    <label>Vehicle Type *</label>
+                  </div>
+                  <div class="input-field col s12 m6">
+                    <input id="manufacturer" name="manufacturer" type="text" required>
+                    <label for="manufacturer">Manufacturer *</label>
+                  </div>
+                </div>
+
+                <!-- Add more required fields as per your schema -->
+                <div class="row">
+                  <div class="input-field col s12 m6">
+                    <input id="model" name="model" type="text" required>
+                    <label for="model">Model *</label>
+                  </div>
+                  <div class="input-field col s12 m6">
+                    <input id="year" name="year" type="number" required>
+                    <label for="year">Year *</label>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="input-field col s12 m6">
+                    <input id="color" name="color" type="text" required>
+                    <label for="color">Color *</label>
+                  </div>
+                  <div class="input-field col s12 m6">
+                    <select name="fuelType" required>
+                      <option value="" disabled selected>Fuel Type</option>
+                      <option value="petrol">Petrol</option>
+                      <option value="diesel">Diesel</option>
+                      <option value="cng">CNG</option>
+                      <option value="electric">Electric</option>
+                    </select>
+                    <label>Fuel Type *</label>
+                  </div>
+                </div>
+
+                <!-- Required Insurance & Registration -->
+                <div class="row">
+                  <div class="input-field col s12 m6">
+                    <input id="registrationDate" name="registrationDate" type="date" required>
+                    <label for="registrationDate" class="active">Registration Date *</label>
+                  </div>
+                  <div class="input-field col s12 m6">
+                    <input id="registrationExpiryDate" name="registrationExpiryDate" type="date" required>
+                    <label for="registrationExpiryDate" class="active">Registration Expiry Date *</label>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="input-field col s12 m6">
+                    <input id="insuranceProvider" name="insuranceProvider" type="text" required>
+                    <label for="insuranceProvider">Insurance Provider *</label>
+                  </div>
+                  <div class="input-field col s12 m6">
+                    <input id="insurancePolicyNumber" name="insurancePolicyNumber" type="text" required>
+                    <label for="insurancePolicyNumber">Insurance Policy Number *</label>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="input-field col s12 m6">
+                    <input id="insuranceExpiryDate" name="insuranceExpiryDate" type="date" required>
+                    <label for="insuranceExpiryDate" class="active">Insurance Expiry Date *</label>
+                  </div>
+                  <div class="input-field col s12 m6">
+                    <input id="insuranceAmount" name="insuranceAmount" type="number" min="0" step="0.01" required>
+                    <label for="insuranceAmount">Insurance Amount *</label>
+                  </div>
+                </div>
+
+                <!-- Optional -->
+                <div class="row">
+                  <div class="input-field col s12 m6">
+                    <input id="currentMeterReading" name="currentMeterReading" type="number" min="0">
+                    <label for="currentMeterReading">Current Meter Reading</label>
+                  </div>
+                  <div class="input-field col s12 m6">
+                    <select name="assignedTo">
+                      <option value="">Unassigned</option>
+                      <% drivers.forEach(driver=> { %>
+                        <option value="<%= driver._id %>">
+                          <%= driver.name %> (<%= driver.phone %>)
+                        </option>
+                        <% }) %>
+                    </select>
+                    <label>Assign to Driver</label>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col s12">
+                    <button class="btn green" type="submit">Create Vehicle</button>
+                    <a href="/admin/vehicles" class="btn-flat">Cancel</a>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+</body>
+
+</html>

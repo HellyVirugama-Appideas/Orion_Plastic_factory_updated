@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+<head>
+    <%- include('_layouts/head') %>
+    <title> FAQ's | <%= title %></title>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns" 
+      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="row">
+            <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+                <div class="container">
+                    <div class="row">
+                        <div class="col s12 m6 l6">
+                            <h6 class="breadcrumbs-title"><span>Manage FAQ's</span></h6>
+                        </div>
+                        <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                            <ol class="breadcrumbs mb-0">
+                                <li class="breadcrumb-item"><a href="/admin">Dashboard</a></li>
+                                <li class="breadcrumb-item active">FAQ's</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="container mt-2">
+                <%- include('messages', { messages: messages }) %>
+                <div class="row">
+                    <div class="col s12 right-align-md" style="text-align: right;">
+                        <a href="/admin/cms/faq/add" class="btn pull-right btn-add btn-breadcrumbs white-text">Add FAQ</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col s12 row mt-2">
+                <div class="col s12">
+                    <ul class="collapsible collapsible-accordion">
+                        <% if(faqs && faqs.length > 0){ %>
+                            <% faqs.forEach(faq => { %>
+                                <li>
+                                    <div class="collapsible-header" tabindex="0">
+                                        Que: <b><%= faq.question %></b>
+                                    </div>
+                                    <div class="collapsible-body row pl-1 pr-1">
+                                        <div class="col s10 m11 xl11">
+                                            <%= faq.answer %>
+                                        </div>
+                                        <div class="col s2 m1 xl1">
+                                            <a href="/admin/cms/faq/edit/<%= faq._id %>" class="btn-floating theme-bg-warn">
+                                                <i class="material-icons">edit</i>
+                                            </a>
+                                            <br/>
+                                            <a href="/admin/cms/faq/delete/<%= faq._id %>" 
+                                               class="btn-floating btn-delete" 
+                                               style="margin-top: 10px;"
+                                               onclick="return confirm('Are you sure want to delete this FAQ?');">
+                                                <i class="material-icons">delete</i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </li>
+                            <% }) %>
+                        <% } else { %>
+                            <h5 style="padding: 10px 10px 20px 10px;">No Data Found!</h5>
+                        <% } %>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
+    <script src="/app-assets/js/scripts/form-file-uploads.min.js"></script>
+
+    <script>
+        $(document).ready(function(){
+            $('.collapsible').collapsible();
+        });
+    </script>
+</body>
+</html>

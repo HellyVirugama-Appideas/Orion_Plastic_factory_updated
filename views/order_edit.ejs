@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+    <title>Edit Order - <%= order.orderNumber %> | <%= title %></title>
+
+    <style>
+        .form-section {
+            background: white;
+            padding: 28px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .section-title {
+            margin: 0 0 20px 0;
+            color: #424242;
+            font-weight: 500;
+        }
+
+        .item-card {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .remove-item-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+        }
+
+        .required::after {
+            content: " *";
+            color: #d32f2f;
+        }
+
+        .btn-gradient {
+            background: linear-gradient(45deg, #667eea, #764ba2) !important;
+        }
+    </style>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="row">
+            <!-- Breadcrumbs -->
+            <div id="breadcrumbs-wrapper" style="background-color: white;">
+                <div class="container">
+                    <div class="row valign-wrapper">
+                        <div class="col s12 m6 l6">
+                            <h5 class="breadcrumbs-title mb-0"><span>Edit Order - <%= order.orderNumber %></span></h5>
+                        </div>
+                        <div class="col s12 m6 l6 right-align-md">
+                            <a href="/admin/orders" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">
+                                Back to Orders
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <%- include('messages', { messages: messages }) %>
+
+            <div class="col s12">
+                <div class="container">
+                    <div class="card-panel" style="padding: 0; border-radius: 8px; overflow: hidden;">
+                        <div class="card-content" style="padding: 30px;">
+                            <form id="editOrderForm" method="POST" action="/admin/orders/edit/<%= order._id %>?_method=PUT">
+                                <div class="row">
+
+                                    <!-- Customer Selection -->
+                                    <div class="col s12">
+                                        <h5 class="section-title">Customer Information</h5>
+                                    </div>
+
+                                    <div class="input-field col s12 m8 l6">
+                                        <select name="customerId" id="customerId" required>
+                                            <option value="" disabled>Select Customer</option>
+                                            <% customers.forEach(customer => { %>
+                                                <option value="<%= customer._id %>" 
+                                                        <%= order.customerId && order.customerId._id && order.customerId._id.toString() === customer._id.toString() ? 'selected' : '' %>>
+                                                    <%= customer.companyName || customer.name %> - <%= customer.phone %>
+                                                </option>
+                                            <% }) %>
+                                        </select>
+                                        <label>Customer *</label>
+                                    </div>
+
+                                    <!-- Order Items -->
+                                    <div class="col s12">
+                                        <h5 class="section-title mt-4">Order Items</h5>
+                                    </div>
+
+                                    <div class="col s12">
+                                        <div id="itemsContainer"></div>
+
+                                        <button type="button" id="addItemBtn" 
+                                                class="btn btn-gradient waves-effect waves-light mt-2">
+                                            <i class="material-icons left">add_circle_outline</i>
+                                            Add New Item
+                                        </button>
+                                    </div>
+
+                                    <!-- Delivery Information -->
+                                    <div class="col s12">
+                                        <h5 class="section-title mt-5">Delivery Information</h5>
+                                    </div>
+
+                                    <div class="input-field col s12 m6">
+                                        <input name="deliveryLocation[contactPerson]" type="text" required 
+                                               value="<%= order.deliveryLocation?.contactPerson || '' %>">
+                                        <label>Contact Person *</label>
+                                    </div>
+
+                                    <div class="input-field col s12 m6">
+                                        <input name="deliveryLocation[contactPhone]" type="tel" required 
+                                               value="<%= order.deliveryLocation?.contactPhone || '' %>">
+                                        <label>Contact Phone *</label>
+                                    </div>
+
+                                    <div class="input-field col s12">
+                                        <textarea name="deliveryLocation[address]" class="materialize-textarea" required>
+<%= order.deliveryLocation?.address || '' %></textarea>
+                                        <label>Full Delivery Address *</label>
+                                    </div>
+
+                                    <div class="input-field col s12 m4">
+                                        <input name="deliveryLocation[city]" type="text" required 
+                                               value="<%= order.deliveryLocation?.city || '' %>">
+                                        <label>City *</label>
+                                    </div>
+
+                                    <div class="input-field col s12 m4">
+                                        <input name="deliveryLocation[state]" type="text" required 
+                                               value="<%= order.deliveryLocation?.state || '' %>">
+                                        <label>State *</label>
+                                    </div>
+
+                                    <div class="input-field col s12 m4">
+                                        <input name="deliveryLocation[pincode]" type="text" maxlength="6" required 
+                                               value="<%= order.deliveryLocation?.pincode || '' %>">
+                                        <label>Pincode *</label>
+                                    </div>
+
+                                    <div class="input-field col s12">
+                                        <input name="deliveryLocation[landmark]" type="text" 
+                                               value="<%= order.deliveryLocation?.landmark || '' %>">
+                                        <label>Landmark (Optional)</label>
+                                    </div>
+
+                                    <!-- Order Details -->
+                                    <div class="col s12">
+                                        <h5 class="section-title mt-5">Order Details</h5>
+                                    </div>
+
+                                    <div class="input-field col s12 m6">
+                                        <select name="orderType">
+                                            <option value="retail" <%= order.orderType === 'retail' ? 'selected' : '' %>>Retail</option>
+                                            <option value="wholesale" <%= order.orderType === 'wholesale' ? 'selected' : '' %>>Wholesale</option>
+                                            <option value="bulk" <%= order.orderType === 'bulk' ? 'selected' : '' %>>Bulk</option>
+                                            <option value="custom" <%= order.orderType === 'custom' ? 'selected' : '' %>>Custom</option>
+                                        </select>
+                                        <label>Order Type</label>
+                                    </div>
+
+                                    <div class="input-field col s12 m6">
+                                        <select name="priority">
+                                            <option value="low" <%= order.priority === 'low' ? 'selected' : '' %>>Low</option>
+                                            <option value="medium" <%= order.priority === 'medium' ? 'selected' : '' %>>Medium</option>
+                                            <option value="high" <%= order.priority === 'high' ? 'selected' : '' %>>High</option>
+                                            <option value="urgent" <%= order.priority === 'urgent' ? 'selected' : '' %>>Urgent</option>
+                                        </select>
+                                        <label>Priority</label>
+                                    </div>
+
+                                    <div class="input-field col s12 m6">
+                                        <input type="datetime-local" name="scheduledPickupDate"
+                                               value="<%= order.scheduledPickupDate ? new Date(order.scheduledPickupDate).toISOString().slice(0,16) : '' %>">
+                                        <label>Scheduled Pickup (Optional)</label>
+                                    </div>
+
+                                    <div class="input-field col s12 m6">
+                                        <input type="datetime-local" name="scheduledDeliveryDate"
+                                               value="<%= order.scheduledDeliveryDate ? new Date(order.scheduledDeliveryDate).toISOString().slice(0,16) : '' %>">
+                                        <label>Scheduled Delivery (Optional)</label>
+                                    </div>
+
+                                    <!-- Special Instructions -->
+                                    <div class="col s12">
+                                        <h5 class="section-title mt-5">Special Instructions</h5>
+                                    </div>
+
+                                    <div class="input-field col s12">
+                                        <textarea name="specialInstructions" class="materialize-textarea">
+<%= order.specialInstructions || '' %></textarea>
+                                        <label>Special Instructions (Optional)</label>
+                                    </div>
+
+                                    <div class="input-field col s12">
+                                        <textarea name="packagingInstructions" class="materialize-textarea">
+<%= order.packagingInstructions || '' %></textarea>
+                                        <label>Packaging Instructions (Optional)</label>
+                                    </div>
+
+                                    <!-- Hidden Items JSON -->
+                                    <input type="hidden" name="items" id="itemsJSON">
+
+                                    <!-- Submit Buttons -->
+                                    <div class="col s12 right-align mt-5">
+                                        <button type="submit" class="btn btn-gradient waves-effect waves-light">
+                                            <i class="material-icons left">save</i> Update Order
+                                        </button>
+                                        <a href="/admin/orders" class="btn grey waves-effect waves-light ml-2">
+                                            Cancel
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <%- include('_layouts/commonJs') %>
+
+    <script>
+        let itemCounter = 0;
+
+        // Add new item
+        document.getElementById('addItemBtn').addEventListener('click', function() {
+            itemCounter++;
+            const itemId = `item-${itemCounter}`;
+
+            const itemHTML = `
+                <div class="item-card" id="${itemId}">
+                    <button type="button" class="btn-small red remove-item-btn waves-effect" 
+                            onclick="this.closest('.item-card').remove()">
+                        <i class="material-icons">close</i>
+                    </button>
+
+                    <div class="row">
+                        <div class="input-field col s12 m6">
+                            <input id="productName-${itemCounter}" type="text" required>
+                            <label for="productName-${itemCounter}">Product Name *</label>
+                        </div>
+                        <div class="input-field col s12 m6">
+                            <input id="productCode-${itemCounter}" type="text">
+                            <label for="productCode-${itemCounter}">Product Code (Optional)</label>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="input-field col s12 m4">
+                            <select id="category-${itemCounter}">
+                                <option value="containers">Containers</option>
+                                <option value="bottles">Bottles</option>
+                                <option value="bags">Bags</option>
+                                <option value="sheets">Sheets</option>
+                                <option value="custom">Custom</option>
+                                <option value="other" selected>Other</option>
+                            </select>
+                            <label>Category</label>
+                        </div>
+
+                        <div class="input-field col s12 m4">
+                            <input id="quantity-${itemCounter}" type="number" min="1" value="1" required>
+                            <label for="quantity-${itemCounter}">Quantity *</label>
+                        </div>
+
+                        <div class="input-field col s12 m4">
+                            <input id="description-${itemCounter}" type="text">
+                            <label for="description-${itemCounter}">Description (Optional)</label>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('itemsContainer').insertAdjacentHTML('beforeend', itemHTML);
+            M.updateTextFields();
+            M.FormSelect.init(document.querySelectorAll(`#${itemId} select`));
+        });
+
+        // Load existing items safely
+        function loadExistingItems() {
+            const existingItems = <%- JSON.stringify(order.items || []) %>;
+
+            if (existingItems.length === 0) {
+                // Add one empty item if none exist
+                document.getElementById('addItemBtn').click();
+                return;
+            }
+
+            existingItems.forEach((item, index) => {
+                itemCounter++;
+                const itemId = `item-${itemCounter}`;
+
+                const itemHTML = `
+                    <div class="item-card" id="${itemId}">
+                        <button type="button" class="btn-small red remove-item-btn waves-effect" 
+                                onclick="this.closest('.item-card').remove()">
+                            <i class="material-icons">close</i>
+                        </button>
+
+                        <div class="row">
+                            <div class="input-field col s12 m6">
+                                <input id="productName-${itemCounter}" type="text" value="${item.productName || ''}" required>
+                                <label for="productName-${itemCounter}" class="active">Product Name *</label>
+                            </div>
+                            <div class="input-field col s12 m6">
+                                <input id="productCode-${itemCounter}" type="text" value="${item.productCode || ''}">
+                                <label for="productCode-${itemCounter}" class="active">Product Code (Optional)</label>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="input-field col s12 m4">
+                                <select id="category-${itemCounter}">
+                                    <option value="containers" ${item.category === 'containers' ? 'selected' : ''}>Containers</option>
+                                    <option value="bottles" ${item.category === 'bottles' ? 'selected' : ''}>Bottles</option>
+                                    <option value="bags" ${item.category === 'bags' ? 'selected' : ''}>Bags</option>
+                                    <option value="sheets" ${item.category === 'sheets' ? 'selected' : ''}>Sheets</option>
+                                    <option value="custom" ${item.category === 'custom' ? 'selected' : ''}>Custom</option>
+                                    <option value="other" ${!item.category || item.category === 'other' ? 'selected' : ''}>Other</option>
+                                </select>
+                                <label>Category</label>
+                            </div>
+
+                            <div class="input-field col s12 m4">
+                                <input id="quantity-${itemCounter}" type="number" min="1" value="${item.quantity || 1}" required>
+                                <label for="quantity-${itemCounter}" class="active">Quantity *</label>
+                            </div>
+
+                            <div class="input-field col s12 m4">
+                                <input id="description-${itemCounter}" type="text" value="${item.description || ''}">
+                                <label for="description-${itemCounter}" class="active">Description (Optional)</label>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('itemsContainer').insertAdjacentHTML('beforeend', itemHTML);
+                M.FormSelect.init(document.querySelectorAll(`#${itemId} select`));
+            });
+
+            M.updateTextFields();
+        }
+
+        // Safe form submission
+        document.getElementById('editOrderForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const items = [];
+            document.querySelectorAll('.item-card').forEach(card => {
+                const productName = card.querySelector('input[id^="productName-"]');
+                const productCode = card.querySelector('input[id^="productCode-"]');
+                const category = card.querySelector('select[id^="category-"]');
+                const quantity = card.querySelector('input[id^="quantity-"]');
+                const description = card.querySelector('input[id^="description-"]');
+
+                if (!productName || !quantity || !category) return;
+
+                if (productName.value.trim() === '') return;
+
+                items.push({
+                    productName: productName.value.trim(),
+                    productCode: productCode ? productCode.value.trim() : '',
+                    category: category.value,
+                    quantity: parseInt(quantity.value) || 1,
+                    description: description ? description.value.trim() : ''
+                });
+            });
+
+            if (items.length === 0) {
+                M.toast({html: 'Please add at least one item', classes: 'red rounded'});
+                return;
+            }
+
+            document.getElementById('itemsJSON').value = JSON.stringify(items);
+            this.submit();
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            M.FormSelect.init(document.querySelectorAll('select'));
+            M.updateTextFields();
+            loadExistingItems();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+    <title>Review Driver Documents</title>
+
+    <!-- Same styles & links as your driver details page -->
+    <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/page-users.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/extensions/responsive/css/responsive.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/select.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <style>
+        table tr td, th {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .document-card {
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .card-title {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 500;
+        }
+
+        .action-btn {
+            margin: 0 6px;
+            padding: 0 12px;
+            height: 32px;
+            line-height: 32px;
+            font-size: 0.85rem;
+        }
+
+        .reason-input {
+            width: 220px;
+            height: 32px;
+            font-size: 0.85rem;
+            margin-right: 8px;
+        }
+
+        .preview-img {
+            max-height: 90px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 768px) {
+            .reason-input {
+                width: 160px;
+                margin-bottom: 8px;
+            }
+            .action-btn {
+                margin: 6px 0;
+                display: block;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="row">
+            <!-- Breadcrumbs -->
+            <div id="breadcrumbs-wrapper" style="background-color: white;">
+                <div class="container">
+                    <div class="row">
+                        <div class="col s12 m6 l6">
+                            <h5 class="breadcrumbs-title"><span>Driver Documents Review</span></h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <%- include('messages', { messages: messages }) %>
+
+            <div class="col s12">
+                <div class="container">
+                    <div class="section">
+
+                        <% if (drivers.length === 0) { %>
+                            <div class="card-panel grey lighten-4 center-align" style="padding: 3rem 1rem; border-radius: 8px;">
+                                <h5 class="grey-text text-darken-1">No drivers with documents found</h5>
+                                <p class="grey-text">Check back later or verify if any drivers have uploaded documents.</p>
+                            </div>
+                        <% } else { %>
+
+                            <% drivers.forEach(driver => { %>
+                                <div class="card document-card">
+                                    <div class="card-content">
+                                        <div class="row valign-wrapper">
+                                            <div class="col s12 m8">
+                                                <h5 class="card-title">
+                                                    <%= driver.name %>
+                                                    <small class="grey-text text-lighten-1"> (<%= driver.phone %>)</small>
+                                                </h5>
+                                            </div>
+                                            <div class="col s12 m4 right-align">
+                                                <span class="badge <%= driver.profileStatus === 'approved' ? 'green white-text' : 
+                                                                      driver.profileStatus === 'rejected' ? 'red white-text' : 
+                                                                      'orange white-text' %>">
+                                                    <%= driver.profileStatus.toUpperCase() %>
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="table-responsive">
+                                            <table class="striped highlight">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Document Type</th>
+                                                        <th>Status</th>
+                                                        <th>Preview</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% driver.documents.forEach(doc => { %>
+                                                        <tr>
+                                                            <td style="font-weight: 500;">
+                                                                <%= doc.documentType.replace(/_/g, ' ').toUpperCase() %>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge <%= doc.status === 'verified' ? 'green white-text' : 
+                                                                                      doc.status === 'rejected' ? 'red white-text' : 
+                                                                                      'orange white-text' %>">
+                                                                    <%= doc.status.toUpperCase() %>
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <% if (doc.fileUrl) { %>
+                                                                    <a href="<%= doc.fileUrl %>" target="_blank">
+                                                                        <img src="<%= doc.fileUrl %>" alt="<%= doc.documentType %>"
+                                                                             class="preview-img responsive-img">
+                                                                    </a>
+                                                                <% } else { %>
+                                                                    <span class="grey-text">No file</span>
+                                                                <% } %>
+                                                            </td>
+                                                            <td>
+                                                                <% if (doc.status === 'pending') { %>
+                                                                    <a href="/admin/drivers/document/<%= driver._id %>/<%= doc._id %>/verify"
+                                                                       class="btn-small green waves-effect action-btn">
+                                                                        Verify
+                                                                    </a>
+
+                                                                    <form action="/admin/drivers/document/<%= driver._id %>/<%= doc._id %>/reject"
+                                                                          method="POST" style="display:inline-block; vertical-align: middle;">
+                                                                        <input type="text" name="rejectionReason" placeholder="Reason..."
+                                                                               required class="browser-default reason-input" />
+                                                                        <button type="submit" class="btn-small red waves-effect action-btn">
+                                                                            Reject
+                                                                        </button>
+                                                                    </form>
+                                                                <% } else if (doc.status === 'rejected' && doc.rejectionReason) { %>
+                                                                    <small class="red-text text-darken-2">
+                                                                        Reason: <%= doc.rejectionReason %>
+                                                                    </small>
+                                                                <% } else { %>
+                                                                    <span class="grey-text">No action needed</span>
+                                                                <% } %>
+                                                            </td>
+                                                        </tr>
+                                                    <% }) %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }) %>
+
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+</body>
+
+</html> 

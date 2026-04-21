@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('_layouts/head') %>
+    <title>Vehicle Management | <%= title %></title>
+
+    <style>
+      /* Table alignment */
+      table.highlight thead th,
+      table.highlight tbody td {
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      /* Assign inline layout */
+      .assign-inline {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      /* Small dropdown */
+      .assign-inline select {
+        height: 28px;
+        width: 140px;
+        padding: 2px 6px;
+        font-size: 12px;
+        margin: 0;
+      }
+
+      /* Small assign button */
+      .assign-btn {
+        height: 28px;
+        line-height: 28px;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+
+.assigned-user {
+  display: inline-flex;        /* IMPORTANT (flex nahi, inline-flex) */
+  align-items: center;
+  gap: 8px;
+  justify-content: center;     /* center me rakhega */
+  width: 100%;                 /* pura td leke center kare */
+}
+
+/* Text truncate */
+.assigned-user span {
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-busy {
+  background-color: #ff9800;
+}
+
+/* Unassign button like assign */
+.unassign-btn {
+  height: 28px;
+  line-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+/* Status same size */
+.status-fixed {
+  display: inline-block;
+  min-width: 110px;
+  text-align: center;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #fff;
+  text-transform: capitalize;
+}
+
+/* All known statuses */
+.status-available {
+  background-color: #4caf50;
+}
+
+.status-assigned {
+  background-color: #ff9800;
+}
+
+.status-busy {
+  background-color: #ff9800;
+}
+
+.status-retired {
+  background-color: #616161; /* grey */
+}
+
+.status-inactive {
+  background-color: #9e9e9e;
+}
+
+/* 🔥 DEFAULT fallback (VERY IMPORTANT) */
+[class*="status-"]:not(.status-fixed) {
+  background-color: #607d8b; /* fallback color */
+}
+    </style>
+</head>
+
+<body>
+  <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+      <div class="row">
+        <div id="breadcrumbs-wrapper">
+          <div class="container">
+            <div class="row">
+              <%- include('messages', { messages: messages }) %>
+
+                <div class="col s12 m6 l6">
+                  <h6 class="breadcrumbs-title">Vehicle Management</h6>
+                </div>
+
+                <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                  <ol class="breadcrumbs mb-0">
+                    <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Vehicles</li>
+                  </ol>
+                </div>
+            </div>
+
+            <div id="breadcrumbs-wrapper" style="background-color: white;">
+              <div class="container">
+                <div class="row">
+                  <div class="col s12 right-align-md">
+                    <a href="/admin/vehicles/create" class="btn right">Add Vehicle</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="container">
+          <div class="card">
+            <div class="card-content">
+
+              <table class="highlight">
+                <thead>
+                  <tr>
+                    <th>Vehicle No</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Assigned Driver</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <% vehicles.forEach(vehicle=> { %>
+                    <tr>
+
+                      <td><%= vehicle.vehicleNumber %></td>
+
+                      <td><%= vehicle.vehicleType %></td>
+
+                      <td>
+  <span class="status-fixed status-<%= vehicle.status %>">
+    <%= vehicle.status %>
+  </span>
+</td>
+
+                      <!-- Assigned Driver -->
+                      <td>
+                        <% if (vehicle.assignedTo) { %>
+
+                          <div class="assigned-user">
+                            <span>
+                              <%= vehicle.assignedTo.name %> (<%= vehicle.assignedTo.phone %>)
+                            </span>
+
+                          <form action="/admin/vehicles/<%= vehicle._id %>/unassign" method="POST"
+  style="display:inline;">
+  <button type="submit" class="btn-small red unassign-btn"
+    onclick="return confirm('Unassign vehicle?')">
+    Unassign
+  </button>
+</form>
+                          </div>
+
+                        <% } else { %>
+
+                          <form action="/admin/vehicles/<%= vehicle._id %>/assign" method="POST"
+                            class="assign-inline">
+
+                            <select name="driverId" required>
+                              <option value="">Driver</option>
+                              <% drivers.forEach(driver=> { %>
+                                <option value="<%= driver._id %>">
+                                  <%= driver.name %>
+                                </option>
+                              <% }) %>
+                            </select>
+
+                            <button type="submit" class="btn-small green assign-btn">
+                              Assign
+                            </button>
+
+                          </form>
+
+                        <% } %>
+                      </td>
+
+                      <!-- Actions -->
+                      <td>
+                        <a href="/admin/vehicles/edit/<%= vehicle._id %>" class="btn-floating green">
+                          <i class="material-icons">edit</i>
+                        </a>
+
+                        <form action="/admin/vehicles/delete/<%= vehicle._id %>" method="POST"
+                          style="display:inline;">
+                          <button type="submit" class="btn-floating red"
+                            onclick="return confirm('Delete vehicle?')">
+                            <i class="material-icons">delete</i>
+                          </button>
+                        </form>
+                      </td>
+
+                    </tr>
+                  <% }) %>
+                </tbody>
+
+              </table>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+</body>
+
+</html>

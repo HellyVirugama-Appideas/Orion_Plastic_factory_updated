@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+        <title>Order Details | <%= title %>
+        </title>
+
+        <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/page-users.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
+        <link rel="stylesheet" type="text/css"
+            href="/app-assets/vendors/data-tables/extensions/responsive/css/responsive.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+        <style>
+            .badge {
+                padding: 6px 14px;
+                border-radius: 12px;
+                font-size: 0.85rem;
+                font-weight: 600;
+                text-transform: capitalize;
+            }
+
+            .status-pending {
+                background: #fff3cd;
+                color: #856404;
+            }
+
+            .status-confirmed {
+                background: #d4edda;
+                color: #155724;
+            }
+
+            .status-processing {
+                background: #cce5ff;
+                color: #004085;
+            }
+
+            .status-ready_for_pickup {
+                background: #e2e3ff;
+                color: #3f51b5;
+            }
+
+            .status-assigned {
+                background: #fff0d4;
+                color: #e65100;
+            }
+
+            .status-in_transit {
+                background: #b3e5fc;
+                color: #01579b;
+            }
+
+            .status-delivered {
+                background: #c8e6c9;
+                color: #1b5e20;
+            }
+
+            .status-cancelled,
+            .status-rejected {
+                background: #ffcdd2;
+                color: #b71c1c;
+            }
+
+            .status-on_hold {
+                background: #f5f5f5;
+                color: #424242;
+            }
+
+            .priority-urgent {
+                color: #d32f2f;
+                font-weight: 700;
+            }
+
+            .priority-high {
+                color: #f57c00;
+                font-weight: 700;
+            }
+
+            .priority-medium {
+                color: #ffa000;
+            }
+
+            .priority-low {
+                color: #757575;
+            }
+
+            .items-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            .items-table th,
+            .items-table td {
+                padding: 12px;
+                text-align: left;
+                border-bottom: 1px solid #e0e0e0;
+            }
+
+            .items-table th {
+                background: #f8f9fa;
+                font-weight: 600;
+            }
+
+            .timeline-item {
+                position: relative;
+                padding: 15px 0 15px 30px;
+                border-left: 2px solid #e0e0e0;
+            }
+
+            .timeline-item::before {
+                content: '';
+                position: absolute;
+                left: -6px;
+                top: 20px;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background: #2196F3;
+                border: 2px solid #fff;
+            }
+
+            .timeline-item.active::before {
+                background: #4CAF50;
+            }
+
+            .quick-actions {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                margin-top: 20px;
+            }
+
+            /* Status-specific styles */
+            .status-pending {
+                background: #fff3cd;
+                color: #856404 !important;
+                border: 1px solid #ffeeba;
+            }
+
+            .status-confirmed {
+                background: #d4edda;
+                color: #155724 !important;
+                border: 1px solid #c3e6cb;
+            }
+
+            .status-processing {
+                background: #cce5ff;
+                color: #004085 !important;
+                border: 1px solid #b8daff;
+            }
+
+            .status-ready_for_pickup {
+                background: #e2e3ff;
+                color: #3f51b5 !important;
+                border: 1px solid #d1d4ff;
+            }
+
+            .status-assigned {
+                background: #fff0d4;
+                color: #e65100 !important;
+                border: 1px solid #ffe0b2;
+            }
+
+            .status-in_transit {
+                background: #b3e5fc;
+                color: #01579b !important;
+                border: 1px solid #81d4fa;
+            }
+
+            .status-delivered {
+                background: #c8e6c9;
+                color: #1b5e20 !important;
+                border: 1px solid #a5d6a7;
+            }
+
+            .status-cancelled,
+            .status-rejected {
+                background: #ffcdd2;
+                color: #b71c1c !important;
+                border: 1px solid #ef9a9a;
+            }
+
+            .status-on_hold {
+                background: #f5f5f5;
+                color: #424242;
+                border: 1px solid #e0e0e0;
+            }
+
+            /* Priority Colors (same as before) */
+            .priority-urgent {
+                color: #d32f2f;
+                font-weight: 700;
+            }
+
+            .priority-high {
+                color: #f57c00;
+                font-weight: 700;
+            }
+
+            .priority-medium {
+                color: #ffa000;
+            }
+
+            .priority-low {
+                color: #757575;
+            }
+
+            /* Table & Other Styles (unchanged but kept for completeness) */
+            table tr td,
+            th {
+                text-align: center;
+                vertical-align: middle !important;
+                padding: 12px 8px !important;
+            }
+
+            .action-buttons {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                justify-content: center;
+            }
+
+            @media (max-width: 768px) {
+                .action-buttons {
+                    flex-direction: column;
+                    align-items: center;
+                }
+            }
+        </style>
+</head>
+
+<body
+    class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+    data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+        <div id="main">
+            <div class="row">
+                <!-- Breadcrumbs -->
+                <div id="breadcrumbs-wrapper" style="background-color: white;">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col s12 m6 l6">
+                                <h5 class="breadcrumbs-title"><span>Order Details</span></h5>
+                            </div>
+                            <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                                <ol class="breadcrumbs mb-0">
+                                    <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                                    <li class="breadcrumb-item active"><a href="/admin/orders">Orders</a></li>
+                                    <li class="breadcrumb-item active">View</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <%- include('messages', { messages: messages }) %>
+
+                    <div class="col s12">
+                        <div class="container">
+                            <div class="section users-view">
+
+                                <!-- HEADER CARD -->
+                                <div class="card-panel">
+                                    <div class="row valign-wrapper">
+                                        <div class="col s12 m8">
+                                            <div class="display-flex media">
+                                                <div class="media-body">
+                                                    <h5><strong>
+                                                            <%= order.orderNumber %>
+                                                        </strong></h5>
+                                                    <p>
+                                                        <span>Status:</span>
+                                                        <span class="badge status-<%= order.status %>">
+                                                            <%= order.status?.replace(/_/g, ' ' ).toUpperCase() %>
+                                                        </span>
+                                                        &nbsp;&nbsp;
+                                                        <span>Priority:</span>
+                                                        <span class="priority-<%= order.priority || 'medium' %>">
+                                                            <%= (order.priority || 'medium' ).toUpperCase() %>
+                                                        </span>
+                                                    </p>
+                                                    <p>
+                                                        <span>Created:</span>
+                                                        <%= new Date(order.createdAt).toLocaleString('en-IN') %>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col s12 m4 right-align">
+                                            <div
+                                                style="display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+                                                <a href="/admin/orders/edit/<%= order._id %>"
+                                                    class="btn-small blue waves-effect waves-light">
+                                                    <i class="material-icons left">edit</i> Edit
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Order & Customer Info -->
+                                <div class="card">
+                                    <div class="card-content">
+                                        <h5><i class="material-icons">shopping_cart</i> Order Information</h5>
+                                        <table class="striped">
+                                            <tbody>
+                                                <tr>
+                                                    <th style="width: 200px;">Order Number</th>
+                                                    <td><strong>
+                                                            <%= order.orderNumber %>
+                                                        </strong></td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Order Type</th>
+                                                    <td>
+                                                        <%= order.orderType?.toUpperCase() || 'RETAIL' %>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Priority</th>
+                                                    <td class="priority-<%= order.priority || 'medium' %>">
+                                                        <%= (order.priority || 'medium' ).toUpperCase() %>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Status</th>
+                                                    <td>
+                                                        <span class="badge status-<%= order.status %>">
+                                                            <%= order.status?.replace(/_/g, ' ' ).toUpperCase() %>
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Created Date</th>
+                                                    <td>
+                                                        <%= new Date(order.createdAt).toLocaleString('en-IN') %>
+                                                    </td>
+                                                </tr>
+                                                <% if (order.scheduledDeliveryDate) { %>
+                                                    <tr>
+                                                        <th>Scheduled Delivery</th>
+                                                        <td>
+                                                            <%= new
+                                                                Date(order.scheduledDeliveryDate).toLocaleString('en-IN')
+                                                                %>
+                                                        </td>
+                                                    </tr>
+                                                    <% } %>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Customer Information -->
+                                <div class="card">
+                                    <div class="card-content">
+                                        <h5><i class="material-icons">person</i> Customer Information</h5>
+                                        <table class="striped">
+                                            <tbody>
+                                                <tr>
+                                                    <th style="width: 200px;">Name</th>
+                                                    <td>
+                                                        <%= order.customerId?.companyName || order.customerId?.name
+                                                            || 'N/A' %>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Phone</th>
+                                                    <td>
+                                                        <a href="tel:<%= order.customerId?.phone %>">
+                                                            <%= order.customerId?.phone || 'N/A' %>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Email</th>
+                                                    <td>
+                                                        <a href="mailto:<%= order.customerId?.email %>">
+                                                            <%= order.customerId?.email || 'N/A' %>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Order Items -->
+                                <div class="card">
+                                    <div class="card-content">
+                                        <h5><i class="material-icons">list</i> Order Items</h5>
+                                        <table class="items-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Product Name</th>
+                                                    <th>Code</th>
+                                                    <th>Category</th>
+                                                    <th>Qty</th>
+                                                    <th>Description</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <% if (order.items && order.items.length> 0) { %>
+                                                    <% order.items.forEach((item, index)=> { %>
+                                                        <tr>
+                                                            <td>
+                                                                <%= index + 1 %>
+                                                            </td>
+                                                            <td><strong>
+                                                                    <%= item.productName %>
+                                                                </strong></td>
+                                                            <td>
+                                                                <%= item.productCode || '-' %>
+                                                            </td>
+                                                            <td>
+                                                                <%= item.category?.toUpperCase() || '-' %>
+                                                            </td>
+                                                            <td>
+                                                                <%= item.quantity %>
+                                                            </td>
+                                                            <td>
+                                                                <%= item.description || '-' %>
+                                                            </td>
+                                                        </tr>
+                                                        <% }) %>
+                                                            <% } else { %>
+                                                                <tr>
+                                                                    <td colspan="6" class="center-align grey-text">No
+                                                                        items added</td>
+                                                                </tr>
+                                                                <% } %>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Delivery Address -->
+                                <div class="card">
+                                    <div class="card-content">
+                                        <h5><i class="material-icons">location_on</i> Delivery Address</h5>
+                                        <p><strong>Contact:</strong>
+                                            <%= order.deliveryLocation?.contactPerson || 'N/A' %>
+                                                (<%= order.deliveryLocation?.contactPhone || 'N/A' %>)
+                                        </p>
+                                        <p>
+                                            <%= order.deliveryLocation?.address || 'N/A' %>
+                                        </p>
+                                        <p>
+                                            <%= order.deliveryLocation?.city || '' %>, <%= order.deliveryLocation?.state
+                                                    || '' %>
+                                                    <%= order.deliveryLocation?.pincode || '' %>
+                                        </p>
+                                        <% if (order.deliveryLocation?.landmark) { %>
+                                            <p><strong>Landmark:</strong>
+                                                <%= order.deliveryLocation.landmark %>
+                                            </p>
+                                            <% } %>
+                                    </div>
+                                </div>
+
+                                <!-- Special Instructions -->
+                                <% if (order.specialInstructions || order.packagingInstructions) { %>
+                                    <div class="card">
+                                        <div class="card-content">
+                                            <h5><i class="material-icons">info</i> Instructions</h5>
+                                            <% if (order.specialInstructions) { %>
+                                                <p><strong>Special Instructions:</strong><br>
+                                                    <%= order.specialInstructions %>
+                                                </p>
+                                                <% } %>
+                                                    <% if (order.packagingInstructions) { %>
+                                                        <p><strong>Packaging Instructions:</strong><br>
+                                                            <%= order.packagingInstructions %>
+                                                        </p>
+                                                        <% } %>
+                                        </div>
+                                    </div>
+                                    <% } %>
+
+                                        <!-- Delivery & Driver Info -->
+                                        <% if (order.deliveryId) { %>
+                                            <div class="card">
+                                                <div class="card-content">
+                                                    <h5><i class="material-icons">local_shipping</i> Delivery
+                                                        Information</h5>
+                                                    <p><strong>Tracking Number:</strong>
+                                                        <%= order.deliveryId.trackingNumber %>
+                                                    </p>
+                                                    <% if (order.deliveryId.driverId) { %>
+                                                        <p><strong>Driver:</strong>
+                                                            <%= order.deliveryId.driverId.name %>
+                                                                (<%= order.deliveryId.driverId.phone %>)
+                                                        </p>
+                                                        <% } else { %>
+                                                            <p><strong>Driver:</strong> <span class="grey-text">Not
+                                                                    assigned yet</span></p>
+                                                            <% } %>
+                                                                <p><strong>Status:</strong>
+                                                                    <span
+                                                                        class="badge status-<%= order.deliveryId.status %>">
+                                                                        <%= order.deliveryId.status?.replace(/_/g, ' '
+                                                                            ).toUpperCase() %>
+                                                                    </span>
+                                                                </p>
+                                                                <a href="/admin/deliveries/<%= order.deliveryId._id %>"
+                                                                    class="btn-small blue white-text">
+                                                                    View Full Delivery Details
+                                                                </a>
+                                                </div>
+                                            </div>
+                                            <% } %>
+
+                                                <!-- Order Timeline -->
+                                                <div class="card">
+                                                    <div class="card-content">
+                                                        <h5><i class="material-icons">timeline</i> Order Timeline</h5>
+                                                        <div class="status-timeline">
+                                                            <% if (statusHistory && statusHistory.length> 0) { %>
+                                                                <% statusHistory.forEach((history, index)=> { %>
+                                                                    <div
+                                                                        class="timeline-item <%= index === 0 ? 'active' : '' %>">
+                                                                        <div><strong>
+                                                                                <%= history.status?.replace(/_/g, ' '
+                                                                                    ).toUpperCase() %>
+                                                                            </strong></div>
+                                                                        <div class="grey-text"
+                                                                            style="font-size: 0.85rem;">
+                                                                            <%= new
+                                                                                Date(history.timestamp).toLocaleString('en-IN')
+                                                                                %>
+                                                                        </div>
+                                                                        <% if (history.remarks) { %>
+                                                                            <div style="margin-top: 5px;">
+                                                                                <%= history.remarks %>
+                                                                            </div>
+                                                                            <% } %>
+                                                                                <% if (history.updatedBy?.userName) { %>
+                                                                                    <div class="grey-text"
+                                                                                        style="font-size: 0.8rem; margin-top: 3px;">
+                                                                                        By: <%=
+                                                                                            history.updatedBy.userName
+                                                                                            %>
+                                                                                    </div>
+                                                                                    <% } %>
+                                                                    </div>
+                                                                    <% }) %>
+                                                                        <% } else { %>
+                                                                            <p class="grey-text">No status updates yet
+                                                                            </p>
+                                                                            <% } %>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Quick Actions -->
+                                                <div class="card">
+                                                    <div class="card-content">
+                                                        <h5><i class="material-icons">flash_on</i> Quick Actions</h5>
+                                                        <div class="quick-actions">
+                                                            <% if (order.status==='pending' ) { %>
+                                                                <button onclick="updateStatus('confirmed')"
+                                                                    class="btn green white-text waves-effect btn-block">
+                                                                    <i class="material-icons left">check</i> Confirm
+                                                                    Order
+                                                                </button>
+                                                                <% } %>
+
+                                                                    <% if (['pending', 'confirmed'
+                                                                        ].includes(order.status)) { %>
+                                                                        <button onclick="updateStatus('cancelled')"
+                                                                            class="btn red white-text waves-effect btn-block">
+                                                                            <i class="material-icons left">cancel</i>
+                                                                            Cancel Order
+                                                                        </button>
+                                                                        <% } %>
+
+                                                                            <% if (order.status==='confirmed' ) { %>
+                                                                                <button
+                                                                                    onclick="updateStatus('processing')"
+                                                                                    class="btn orange white-text waves-effect btn-block">
+                                                                                    <i
+                                                                                        class="material-icons left">sync</i>
+                                                                                    Mark as Processing
+                                                                                </button>
+                                                                                <% } %>
+
+                                                                                    <% if (order.status==='processing' )
+                                                                                        { %>
+                                                                                        <button
+                                                                                            onclick="updateStatus('ready_for_pickup')"
+                                                                                            class="btn blue white-text waves-effect btn-block">
+                                                                                            <i
+                                                                                                class="material-icons left">done_all</i>
+                                                                                            Ready for Pickup
+                                                                                        </button>
+                                                                                        <% } %>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+            </div>
+
+            <%- include('_layouts/commonJs') %>
+
+                <script>
+                    function updateStatus(newStatus) {
+                        const remarks = prompt('Enter remarks (optional):');
+
+                        fetch('/admin/orders/<%= order._id %>/status', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                status: newStatus,
+                                remarks: remarks || `Status changed to ${newStatus.replace(/_/g, ' ')}`
+                            })
+                        })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    M.toast({ html: 'Status updated successfully!', classes: 'green' });
+                                    setTimeout(() => location.reload(), 1000);
+                                } else {
+                                    M.toast({ html: data.message || 'Failed to update', classes: 'red' });
+                                }
+                            })
+                            .catch(() => M.toast({ html: 'Network error', classes: 'red' }));
+                    }
+                </script>
+</body>
+
+</html>

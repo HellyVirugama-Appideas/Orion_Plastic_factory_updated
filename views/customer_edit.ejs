@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+    <title>Edit Customer | <%= title %></title>
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css">
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="row">
+            <div id="breadcrumbs-wrapper" style="background-color: white;">
+                <div class="container">
+                    <div class="row">
+                        <div class="col s12 m6 l6">
+                            <h5 class="breadcrumbs-title"><span>Edit Customer - <%= customer.customerId %></span></h5>
+                        </div>
+                        <div class="col s12 m6 l6 right-align-md">
+                            <a href="/admin/customers/view/<%= customer._id %>" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">
+                                Back to Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <%- include('messages', { messages: messages }) %>
+
+            <div class="col s12">
+                <div class="container">
+                    <div class="section users-view">
+                        <div class="card-panel">
+                            <div class="card-content">
+                                <form id="editCustomerForm" method="POST" action="/admin/customers/<%= customer._id %>/edit" enctype="multipart/form-data">
+                                    <div class="row">
+
+                                        <!-- Personal Information -->
+                                        <div class="col s12">
+                                            <h5>Personal Information</h5>
+                                        </div>
+
+                                        <div class="input-field col s12 m6">
+                                            <input id="name" name="name" type="text" value="<%= customer.name %>" required>
+                                            <label for="name" class="<%= customer.name ? 'active' : '' %>">Full Name <span class="red-text">*</span></label>
+                                        </div>
+
+                                        <div class="input-field col s12 m6">
+                                            <input id="email" name="email" type="email" value="<%= customer.email %>" required>
+                                            <label for="email" class="<%= customer.email ? 'active' : '' %>">Email Address <span class="red-text">*</span></label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="phone" name="phone" type="tel" value="<%= customer.phone %>" maxlength="10" required>
+                                            <label for="phone" class="<%= customer.phone ? 'active' : '' %>">Phone Number (10 digits) <span class="red-text">*</span></label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="alternatePhone" name="alternatePhone" type="tel" value="<%= customer.alternatePhone || '' %>" maxlength="10">
+                                            <label for="alternatePhone" class="<%= customer.alternatePhone ? 'active' : '' %>">Alternate Phone</label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="companyName" name="companyName" type="text" value="<%= customer.companyName || '' %>">
+                                            <label for="companyName" class="<%= customer.companyName ? 'active' : '' %>">Company Name</label>
+                                        </div>
+
+                                        <!-- Business / Tax Information -->
+                                        <div class="col s12">
+                                            <h5>Business / Tax Information</h5>
+                                        </div>
+
+                                        <div class="input-field col s12 m6">
+                                            <input id="gstNumber" name="gstNumber" type="text" value="<%= customer.gstNumber || '' %>">
+                                            <label for="gstNumber" class="<%= customer.gstNumber ? 'active' : '' %>">GST Number</label>
+                                        </div>
+
+                                        <div class="input-field col s12 m6">
+                                            <input id="panNumber" name="panNumber" type="text" value="<%= customer.panNumber || '' %>">
+                                            <label for="panNumber" class="<%= customer.panNumber ? 'active' : '' %>">PAN Number</label>
+                                        </div>
+
+                                        <!-- Primary Address -->
+                                        <div class="col s12">
+                                            <h5>Primary Address / Billing Location</h5>
+                                        </div>
+
+                                        <% const primary = customer.locations?.find(l => l.isPrimary) || customer.locations?.[0] || {}; %>
+
+                                        <div class="input-field col s12 m6">
+                                            <input id="locationName" name="locationName" type="text" value="<%= primary.locationName || '' %>">
+                                            <label for="locationName" class="<%= primary.locationName ? 'active' : '' %>">Location Name</label>
+                                        </div>
+
+                                        <div class="input-field col s12 m12">
+                                            <input id="addressLine1" name="addressLine1" type="text" value="<%= primary.addressLine1 || '' %>" required>
+                                            <label for="addressLine1" class="<%= primary.addressLine1 ? 'active' : '' %>">Address Line 1 <span class="red-text">*</span></label>
+                                        </div>
+
+                                        <div class="input-field col s12 m12">
+                                            <input id="addressLine2" name="addressLine2" type="text" value="<%= primary.addressLine2 || '' %>">
+                                            <label for="addressLine2" class="<%= primary.addressLine2 ? 'active' : '' %>">Address Line 2</label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="city" name="city" type="text" value="<%= primary.city || '' %>" required>
+                                            <label for="city" class="<%= primary.city ? 'active' : '' %>">City <span class="red-text">*</span></label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="state" name="state" type="text" value="<%= primary.state || '' %>" required>
+                                            <label for="state" class="<%= primary.state ? 'active' : '' %>">State <span class="red-text">*</span></label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="zipcode" name="zipcode" type="text" value="<%= primary.zipcode || '' %>" maxlength="6" required>
+                                            <label for="zipcode" class="<%= primary.zipcode ? 'active' : '' %>">Zipcode (6 digits) <span class="red-text">*</span></label>
+                                        </div>
+
+                                        <!-- Contact Person -->
+                                        <div class="col s12">
+                                            <h5>Contact Person</h5>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="contactPersonName" name="contactPersonName" type="text" value="<%= customer.contactPerson?.name || '' %>">
+                                            <label for="contactPersonName" class="<%= customer.contactPerson?.name ? 'active' : '' %>">Name</label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="contactPersonPhone" name="contactPersonPhone" type="tel" value="<%= customer.contactPerson?.phone || '' %>" maxlength="10">
+                                            <label for="contactPersonPhone" class="<%= customer.contactPerson?.phone ? 'active' : '' %>">Phone</label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="contactPersonEmail" name="contactPersonEmail" type="email" value="<%= customer.contactPerson?.email || '' %>">
+                                            <label for="contactPersonEmail" class="<%= customer.contactPerson?.email ? 'active' : '' %>">Email</label>
+                                        </div>
+
+                                        <!-- Payment & Status -->
+                                        <div class="col s12">
+                                            <h5>Payment & Status</h5>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <select id="paymentTerms" name="paymentTerms">
+                                                <option value="cod" <%= customer.paymentTerms === 'cod' ? 'selected' : '' %>>COD</option>
+                                                <option value="prepaid" <%= customer.paymentTerms === 'prepaid' ? 'selected' : '' %>>Prepaid</option>
+                                                <option value="credit_7" <%= customer.paymentTerms === 'credit_7' ? 'selected' : '' %>>Credit 7 days</option>
+                                                <option value="credit_15" <%= customer.paymentTerms === 'credit_15' ? 'selected' : '' %>>Credit 15 days</option>
+                                                <option value="credit_30" <%= customer.paymentTerms === 'credit_30' ? 'selected' : '' %>>Credit 30 days</option>
+                                            </select>
+                                            <label for="paymentTerms">Payment Terms</label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="creditLimit" name="creditLimit" type="number" min="0" value="<%= customer.creditLimit || 0 %>">
+                                            <label for="creditLimit" class="<%= customer.creditLimit ? 'active' : '' %>">Credit Limit (₹)</label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <select id="status" name="status">
+                                                <option value="active" <%= customer.status === 'active' ? 'selected' : '' %>>Active</option>
+                                                <option value="inactive" <%= customer.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
+                                            </select>
+                                            <label for="status">Status</label>
+                                        </div>
+
+                                        <!-- Documents -->
+                                        <div class="col s12">
+                                            <h5>Update Documents (Optional)</h5>
+                                            <p class="grey-text">Upload new files to replace existing ones</p>
+                                        </div>
+
+                                        <div class="col s12 m6 l3">
+                                            <label>GST Certificate</label>
+                                            <input type="file" name="gstCertificate" class="dropify" accept="image/*,application/pdf">
+                                        </div>
+
+                                        <div class="col s12 m6 l3">
+                                            <label>PAN Card</label>
+                                            <input type="file" name="panCard" class="dropify" accept="image/*,application/pdf">
+                                        </div>
+
+                                        <div class="col s12 m6 l3">
+                                            <label>Shop License</label>
+                                            <input type="file" name="shopLicense" class="dropify" accept="image/*,application/pdf">
+                                        </div>
+
+                                        <div class="col s12 m6 l3">
+                                            <label>Other Document</label>
+                                            <input type="file" name="otherDoc" class="dropify" accept="image/*,application/pdf">
+                                        </div>
+
+                                        <!-- Submit -->
+                                        <div class="col s12 right-align mt-5">
+                                            <button type="submit" class="btn gradient-45deg-purple-deep-orange waves-effect waves-light">
+                                                Update Customer
+                                            </button>
+                                            <a href="/admin/customers/view/<%= customer._id %>" class="btn grey waves-effect waves-light ml-2">
+                                                Cancel
+                                            </a>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <%- include('_layouts/commonJs') %>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
+        <script src="/app-assets/js/scripts/form-file-uploads.min.js"></script>
+
+        <script>
+            $(document).ready(function() {
+                $('.dropify').dropify({
+                    messages: {
+                        'default': 'Drag & drop or click to replace',
+                        'remove': 'Remove',
+                        'error': 'Ooops, something wrong happened.'
+                    }
+                });
+
+                $('select').formSelect();
+                M.updateTextFields();
+            });
+        </script>
+</body>
+</html>

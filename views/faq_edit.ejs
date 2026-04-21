@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+<head>
+    <%- include('_layouts/head') %>
+    <title> FAQ's Edit | <%= title %></title>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns" 
+      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="row">
+            <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+                <div class="container">
+                    <div class="row">
+                        <div class="col s12 m6 l6">
+                            <h6 class="breadcrumbs-title"><span>Edit FAQ</span></h6>
+                        </div>
+                        <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                            <ol class="breadcrumbs mb-0">
+                                <li class="breadcrumb-item"><a href="/admin">Dashboard</a></li>
+                                <li class="breadcrumb-item"><a href="/admin/cms/faq">FAQ's</a></li>
+                                <li class="breadcrumb-item active">Edit FAQ</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container pl-2 pr-2">
+            <div class="card">
+                <div class="row">
+                    <div class="col s12">
+                        <div id="basic-form" class="card-default scrollspy">
+                            <div class="card-content">
+                                <form method="POST" action="/admin/cms/faq/edit/<%= faq._id %>" 
+                                      class="formValidate0" id="formValidate0">
+
+                                    <div class="input-field col s12">
+                                        <label for="question">Question</label>
+                                        <input class="validate" id="question" name="question" type="text" 
+                                               value="<%= faq.question || '' %>">
+                                        <div class="error-message" id="questionError"></div>
+                                    </div>
+
+                                    <div class="input-field col s12">
+                                        <label for="answer">Answer</label>
+                                        <!-- Input se better hai textarea answer ke liye -->
+                                        <textarea id="answer" name="answer" class="materialize-textarea validate" 
+                                                  rows="6"><%= faq.answer || '' %></textarea>
+                                        <div class="error-message" id="answerError"></div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col s12 display-flex justify-content-end">
+                                            <button class="btn btn-edit" type="submit">Update</button>
+                                            &nbsp;&nbsp;&nbsp;
+                                            <a class="btn btn-delete" href="/admin/cms/faq">Cancel</a>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+
+    <script>
+        $(document).ready(function() {
+
+            // Materialize textarea auto resize
+            M.textareaAutoResize($('#answer'));
+
+            function validateQuestion() {
+                const value = $('#question').val().trim();
+                if (!value) {
+                    $('#question').addClass('invalid');
+                    $('#questionError').text('Please enter a question');
+                    return false;
+                }
+                $('#question').removeClass('invalid');
+                $('#questionError').text('');
+                return true;
+            }
+
+            function validateAnswer() {
+                const value = $('#answer').val().trim();
+                if (!value) {
+                    $('#answer').addClass('invalid');
+                    $('#answerError').text('Please enter an answer');
+                    return false;
+                }
+                $('#answer').removeClass('invalid');
+                $('#answerError').text('');
+                return true;
+            }
+
+            $('#question').on('input blur', function() {
+                validateQuestion();
+            });
+
+            $('#answer').on('input blur', function() {
+                validateAnswer();
+            });
+
+            $('#formValidate0').on('submit', function(e) {
+                let valid = true;
+                valid = validateQuestion() && valid;
+                valid = validateAnswer() && valid;
+
+                if (!valid) {
+                    e.preventDefault();
+                    const firstError = $('.error-message').filter(function() { 
+                        return $(this).text().trim() !== '';
+                    }).first();
+
+                    if (firstError.length) {
+                        $('html, body').animate({
+                            scrollTop: firstError.offset().top - 80
+                        }, 500);
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html class="loading" lang="en" data-textdirection="ltr">
+
+<head>
+    <%- include('_layouts/head') %>
+    <title>Remarks Management | <%= title %></title>
+
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/extensions/responsive/css/responsive.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/select.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+    <style>
+        table tr td, th { text-align: center; }
+        [type='checkbox']+span:not(.lever):before { border-color: black; }
+        [type='checkbox']:checked+span:not(.lever):before { border-right-color: black; border-bottom-color: black; }
+        .badge { padding: 5px 10px; border-radius: 12px; font-size: 12px; }
+        .action-btn { margin: 0 5px; }
+
+        /* Only minimal change for clickable row - just cursor, no style change */
+        tr.remark-row {
+            cursor: pointer;
+        }
+
+        td.actions-column {
+            cursor: default;
+        }
+    </style>
+</head>
+
+<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+    data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+    <%- include('_layouts/sidenavbar') %>
+
+    <div id="main">
+        <div class="row">
+            <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+                <div class="container">
+                    <div class="row">
+                        <%- include('messages', { messages: messages }) %>
+                        <div class="col s12 m6 l6">
+                            <h6 class="breadcrumbs-title"><span>Manage Remarks</span></h6>
+                        </div>
+                        <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                            <ol class="breadcrumbs mb-0">
+                                <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                                <li class="breadcrumb-item active">Remarks</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="breadcrumbs-wrapper" style="background-color: white;">
+            <div class="container">
+                <div class="row">
+                    <div class="col s12 right-align-md">
+                        <a class="btn pull-right btn-add btn-breadcrumbs white-text" href="/admin/remarks/create">
+                            Create Predefined Remark
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col s12">
+            <div class="container">
+                <div class="section section-data-tables">
+
+                    <!-- Table -->
+                    <div class="card">
+                        <div class="card-content">
+                            <div class="row">
+                                <div class="col s12 overflow">
+                                    <table id="page-length-option" class="display">
+                                        <thead>
+                                            <tr>
+                                                <th>Sr</th>
+                                                <th>Remark Text</th>
+                                                <th>Type</th>
+                                                <th>Category</th>
+                                                <th>Created By</th>
+                                                <th>Status</th>
+                                                <th>Created Date</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <% if (remarks && remarks.length > 0) { %>
+                                                <% remarks.forEach((remark, index) => { %>
+                                                    <!-- Added row click feature -->
+                                                    <tr class="remark-row" data-href="/admin/remarks/<%= remark._id %>/view">
+                                                        <td><%= index + 1 %></td>
+                                                        
+                                                        <td><%= remark.remarkText.substring(0, 50) %><%= remark.remarkText.length > 50 ? '...' : '' %></td>
+                                                        <td>
+                                                            <span class="badge <%= remark.isPredefined ? 'blue' : 'purple' %>">
+                                                                <%= remark.isPredefined ? 'Predefined' : 'Custom' %>
+                                                            </span>
+                                                        </td>
+                                                        <td><%= remark.category %></td>
+                                                        <td>
+                                                            <%= remark.createdBy?.name || 'Unknown' %>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge <%= remark.approvalStatus === 'approved' ? 'green' : 'orange' %>">
+                                                                <%= remark.approvalStatus.toUpperCase() %>
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <% let formattedDate = '-'; %>
+                                                            <% if (remark.createdAt) { %>
+                                                                <% const d = new Date(remark.createdAt); %>
+                                                                <% const day = String(d.getUTCDate()).padStart(2, '0'); %>
+                                                                <% const month = String(d.getUTCMonth() + 1).padStart(2, '0'); %>
+                                                                <% const year = d.getUTCFullYear(); %>
+                                                                <% const hours = String(d.getUTCHours()).padStart(2, '0'); %>
+                                                                <% const minutes = String(d.getUTCMinutes()).padStart(2, '0'); %>
+                                                                <% formattedDate = `${day}-${month}-${year} ${hours}:${minutes}`; %>
+                                                            <% } %>
+                                                            <%= formattedDate %>
+                                                        </td>
+                                                        <!-- Protected actions column -->
+                                                        <td class="actions-column">
+                                                            <!-- View -->
+                                                            <a href="/admin/remarks/<%= remark._id %>/view" class="waves-effect waves-light accent-2 btn-edit action-btn">
+                                                                <i class="material-icons">visibility</i>
+                                                            </a>
+
+                                                            <!-- Edit (only Predefined) -->
+                                                            <% if (remark.isPredefined) { %>
+                                                                <a href="/admin/remarks/<%= remark._id %>/edit" class="waves-effect waves-light accent-2 btn-edit action-btn">
+                                                                    <i class="material-icons">edit</i>
+                                                                </a>
+
+                                                                <!-- Delete -->
+                                                                <a href="#" class="waves-effect waves-light accent-2 action-btn delete-remark"
+                                                                   data-remark-id="<%= remark._id %>"
+                                                                   data-remark-text="<%= remark.remarkText.substring(0, 50) %>">
+                                                                    <i class="material-icons">delete</i>
+                                                                </a>
+                                                            <% } %>
+                                                        </td>
+                                                    </tr>
+                                                <% }) %>
+                                            <% } else { %>
+                                                <tr>
+                                                    <td colspan="8" class="center-align grey-text">No remarks found</td>
+                                                </tr>
+                                            <% } %>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <% if (pagination && pagination.totalPages > 1) { %>
+                        <div class="right-align mt-2">
+                            Page <%= pagination.currentPage %> of <%= pagination.totalPages %>
+                            <% if (pagination.currentPage > 1) { %>
+                                <a href="?page=<%= pagination.currentPage - 1 %>&<%= new URLSearchParams(query).toString() %>" class="btn-flat">Prev</a>
+                            <% } %>
+                            <% if (pagination.currentPage < pagination.totalPages) { %>
+                                <a href="?page=<%= pagination.currentPage + 1 %>&<%= new URLSearchParams(query).toString() %>" class="btn-flat">Next</a>
+                            <% } %>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('_layouts/commonJs') %>
+
+    <script src="/app-assets/vendors/data-tables/js/jquery.dataTables.min.js"></script>
+    <script src="/app-assets/js/scripts/data-tables.js"></script>
+
+    <script>
+        // Select All Checkbox + Row Click Feature
+        document.addEventListener('DOMContentLoaded', function () {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('input[name="selectedRemarks[]"]');
+
+            if (selectAll) {
+                selectAll.addEventListener('change', function () {
+                    checkboxes.forEach(cb => cb.checked = this.checked);
+                });
+            }
+
+            // Initialize Materialize selects
+            M.FormSelect.init(document.querySelectorAll('select'));
+
+            // Make entire row clickable (except actions column & checkbox)
+            document.querySelectorAll('tr.remark-row').forEach(row => {
+                row.addEventListener('click', function (e) {
+                    // Prevent navigation if clicked on protected areas
+                    if (e.target.closest('.actions-column') || 
+                        e.target.tagName === 'INPUT' || 
+                        e.target.tagName === 'LABEL' ||
+                        e.target.tagName === 'A' ||
+                        e.target.closest('.action-btn') ||
+                        e.target.closest('.btn-edit')) {
+                        return;
+                    }
+
+                    const href = this.getAttribute('data-href');
+                    if (href) {
+                        window.location.href = href;
+                    }
+                });
+            });
+
+            // Delete Confirmation with Event Listener (Fixed)
+            document.querySelectorAll('.delete-remark').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const remarkId = this.getAttribute('data-remark-id');
+                    const remarkText = this.getAttribute('data-remark-text');
+                    
+                    if (confirm(`Are you sure you want to delete remark "${remarkText}..."? This action cannot be undone.`)) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = `/admin/remarks/${remarkId}/delete`;
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>
