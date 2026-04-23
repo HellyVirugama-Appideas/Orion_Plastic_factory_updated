@@ -692,72 +692,46 @@ exports.verifyPinResetOtp = async (req, res) => {
 };
 
 // ==================== SET NEW PIN ====================
+
 exports.setNewPin = async (req, res) => {
   try {
     const { driverId, newPin } = req.body;
-
-    if (!driverId || !newPin) {
-      return errorResponse(res, 'driverId and newPin are required', 400);
-    }
 
     if (!/^\d{4}$/.test(newPin)) {
       return errorResponse(res, 'PIN must be exactly 4 digits', 400);
     }
 
-    const session = await Session.findOne({ driverId, type: 'forgot_pin' });
-
-    if (!session) {
-      return errorResponse(res, 'No active session found. Please start again.', 400);
-    }
-
-    if (!session.verified) {
-      return errorResponse(res, 'OTP not verified. Please verify OTP first.', 400);
+    const session = await Session.findOne({ driverId });
+    if (!session || !session.verified) {
+      return errorResponse(res, 'Session expired. Please try again.', 400);
     }
 
     session.newPin = newPin;
     await session.save();
 
-    return successResponse(res, 'PIN received. Please confirm your PIN.', {
+    return successResponse(res, 'PIN received', {
       message: 'Now confirm your new PIN'
     });
 
   } catch (error) {
-    console.error('[SET-NEW-PIN] Error:', error);
-    return errorResponse(res, 'Failed to set PIN', 500);
+    return errorResponse(res, 'Failed', 500);
   }
 };
 
-// ==================== CONFIRM NEW PIN ====================
 exports.confirmNewPin = async (req, res) => {
   try {
     const { driverId, confirmPin } = req.body;
 
-    if (!driverId || !confirmPin) {
-      return errorResponse(res, 'driverId and confirmPin are required', 400);
-    }
-
-    const session = await Session.findOne({ driverId, type: 'forgot_pin' });
-
-    if (!session) {
-      return errorResponse(res, 'Session expired. Please start again.', 400);
-    }
-
-    if (!session.verified) {
-      return errorResponse(res, 'OTP not verified. Please start again.', 400);
-    }
-
-    if (!session.newPin) {
-      return errorResponse(res, 'New PIN not set. Please set PIN first.', 400);
+    const session = await Session.findOne({ driverId });
+    if (!session || !session.verified || !session.newPin) {
+      return errorResponse(res, 'Invalid session. Start again.', 400);
     }
 
     if (session.newPin !== confirmPin) {
-      return errorResponse(res, 'PINs do not match. Please try again.', 400);
+      return errorResponse(res, 'PINs do not match', 400);
     }
-
     const driver = await Driver.findById(driverId);
-    if (!driver) {
-      return errorResponse(res, 'Driver not found', 404);
-    }
+    if (!driver) return errorResponse(res, 'Driver not found', 404);
 
     const salt = await bcrypt.genSalt(10);
     driver.pin = await bcrypt.hash(confirmPin, salt);
@@ -765,16 +739,14 @@ exports.confirmNewPin = async (req, res) => {
     driver.pinLockedUntil = null;
     await driver.save();
 
-    await Session.deleteOne({ driverId, type: 'forgot_pin' });
-
-    console.log(`[CONFIRM-PIN] PIN reset successful for: ${driver.name} (${driver._id})`);
+    await Session.deleteOne({ driverId });
 
     return successResponse(res, 'PIN changed successfully!', {
-      message: 'Your PIN has been reset. You can now login with your new PIN.'
+      message: 'You can now login with your new PIN'
     });
 
   } catch (error) {
-    console.error('[CONFIRM-PIN] Error:', error);
+    console.error('Confirm PIN Error:', error);
     return errorResponse(res, 'PIN reset failed', 500);
   }
 };

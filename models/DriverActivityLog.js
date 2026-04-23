@@ -11,6 +11,7 @@ const driverActivityLogSchema = new mongoose.Schema(
       type: String,
       enum: [
         'LOGIN',
+        'LOGIN_FAILED',
         'LOGOUT',
         'PROFILE_UPDATED',
         'DOCUMENT_UPLOADED',
@@ -44,7 +45,7 @@ const driverActivityLogSchema = new mongoose.Schema(
       ref: 'Admin', // who performed the action (admin or system)
       default: null,
     },
-    expireAt: { 
+    expireAt: {
       type: Date,
       expires: 0,
       default: () => new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days TTL

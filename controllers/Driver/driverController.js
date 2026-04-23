@@ -1338,7 +1338,7 @@ exports.verifyOtpAndCreateDriver = async (req, res) => {
     const driverData = {
       phone: cleanedPhone,
       countryCode,
-      email: temp.email.toLowerCase(),
+      email: driver.email || null,
       name: temp.personalDetails?.fullName?.trim() || 'Driver',
       licenseNumber: temp.license?.licenseNumber?.toUpperCase(),
       vehicleNumber: temp.personalDetails?.vehicleNumber?.toUpperCase(),
@@ -1778,7 +1778,7 @@ exports.verifyPin = async (req, res) => {
         _id: driver._id,
         name: driver.name,
         phone: driver.phone,
-        email: temp.email.toLowerCase(),
+        email: driver.email || null,
         region: driver.address?.city || driver.address?.country || null,
         vehicleNumber: driver.vehicleNumber,
         vehicleType: driver.vehicleType,
