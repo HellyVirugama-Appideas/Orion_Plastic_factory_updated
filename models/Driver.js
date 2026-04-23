@@ -349,7 +349,7 @@ const driverSchema = new mongoose.Schema({
   // Government IDs 
   governmentIds: {
     // EID Number (Emirates ID)
-    eidNumber: {
+    emiratesId: {
       type: String,
       required: false,
       trim: true,
@@ -513,6 +513,7 @@ const driverSchema = new mongoose.Schema({
 // Indexes
 driverSchema.index({ phone: 1 }, { unique: true });
 
+driverSchema.index({ email: 1 }, { unique: true });
 driverSchema.index({ profileStatus: 1 });
 driverSchema.index({ isAvailable: 1 });
 driverSchema.index({ 'blockStatus.isBlocked': 1 });

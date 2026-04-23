@@ -34,13 +34,18 @@ const mongoose = require('mongoose');
 
 const tempDriverSchema = new mongoose.Schema({
   tempId: { type: String, required: true, unique: true },
-
+  email: {
+    type: String,
+    default: null,
+    lowercase: true,
+    trim: true
+  },
   personalDetails: {
     fullName: String,
     contactNumber: String,
     emiratesId: String,
     vehicleNumber: String,
-    region: String
+    region: String,
   },
 
   license: {

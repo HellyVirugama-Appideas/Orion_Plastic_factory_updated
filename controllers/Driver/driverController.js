@@ -1113,6 +1113,12 @@ exports.finalSignup = async (req, res) => {
       { new: true }
     );
 
+    console.log('TempDriver after finalSignup:', {
+      tempId: updated.tempId,
+      email: updated.email,     // ← Yeh null nahi hona chahiye
+      otp: updated.otp
+    });
+
     if (!updated) {
       return errorResponse(res, 'Failed to save OTP. Try again.', 500);
     }
@@ -1248,13 +1254,23 @@ exports.verifyOtpAndCreateDriver = async (req, res) => {
 
     const temp = await TempDriver.findOne({
       tempId,
-      phone,
       otp,
       otpExpiresAt: { $gt: new Date() }
     });
 
     if (!temp) {
       return errorResponse(res, 'Invalid or expired OTP', 400);
+    }
+
+    // ✅ EMAIL CHECK (IMPORTANT)
+    if (!temp.email) {
+      return errorResponse(res, 'Email not found. Please restart signup.', 400);
+    }
+
+    // Duplicate Checks
+    const existingEmail = await Driver.findOne({ email: temp.email.toLowerCase() });
+    if (existingEmail) {
+      return errorResponse(res, 'Email already registered', 400);
     }
 
     // Duplicate Checks
@@ -1322,6 +1338,7 @@ exports.verifyOtpAndCreateDriver = async (req, res) => {
     const driverData = {
       phone: cleanedPhone,
       countryCode,
+      email: temp.email.toLowerCase(),
       name: temp.personalDetails?.fullName?.trim() || 'Driver',
       licenseNumber: temp.license?.licenseNumber?.toUpperCase(),
       vehicleNumber: temp.personalDetails?.vehicleNumber?.toUpperCase(),
@@ -1761,6 +1778,7 @@ exports.verifyPin = async (req, res) => {
         _id: driver._id,
         name: driver.name,
         phone: driver.phone,
+        email: temp.email.toLowerCase(),
         region: driver.address?.city || driver.address?.country || null,
         vehicleNumber: driver.vehicleNumber,
         vehicleType: driver.vehicleType,
