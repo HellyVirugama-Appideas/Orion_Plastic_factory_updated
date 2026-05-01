@@ -68,7 +68,7 @@
                         </div>
 
                         <div class="input-field col s12 m6">
-                          <input class="validate" id="password" name="password" type="password" minlength="6" required>
+                          <input class="validate" id="password" name="password" type="password" minlength="8" required>
                           <label for="password">Password *</label>
                           <div class="error-message" id="passwordError"></div>
                         </div>
@@ -246,6 +246,7 @@
               return true;
             }
           }
+          
           // Password Validation
           function validatePassword() {
             const value = $('#password').val().trim();

@@ -455,12 +455,13 @@ exports.renderDashboard = async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
+
+    const todayEnd = new Date();           // ← Yeh add karo
     todayEnd.setHours(23, 59, 59, 999);
+
     const last7DaysStart = new Date(today);
     last7DaysStart.setDate(today.getDate() - 6);
 
-    // ✅ Consistent filter — har jagah same condition
     const approvedDriverFilter = {
       profileStatus: 'approved',
       isActive: true,
@@ -480,20 +481,22 @@ exports.renderDashboard = async (req, res) => {
     ] = await Promise.all([
       Order.countDocuments(),
       Delivery.countDocuments(),
-
-      // ✅ Sirf approved drivers
       Driver.countDocuments(approvedDriverFilter),
-
       Customer.countDocuments(),
 
       Delivery.countDocuments({
-        createdAt: { $gte: today, $lte: todayEnd }
+        createdAt: {
+          $gte: today,
+          $lte: todayEnd
+        }
       }),
 
+      Driver.countDocuments({ isAvailable: true }),
+
       // ✅ Sirf approved + available drivers
-      Driver.countDocuments({ 
+      Driver.countDocuments({
         ...approvedDriverFilter,
-        isAvailable: true 
+        isAvailable: true
       }),
 
       Vehicle.countDocuments({ status: "available" }),
@@ -530,7 +533,6 @@ exports.renderDashboard = async (req, res) => {
       title: 'Dashboard',
       user: req.admin,
       url: currentUrl,
-      messages: req.flash(),
       stats: {
         totalOrders: totalOrders || 0,
         totalDeliveries: totalDeliveries || 0,
@@ -546,22 +548,141 @@ exports.renderDashboard = async (req, res) => {
 
   } catch (error) {
     console.error('Dashboard render error:', error);
+
     const currentUrl = req.originalUrl || req.url;
+
     res.render('index', {
       title: 'Dashboard',
       user: req.admin,
       url: currentUrl,
-      messages: req.flash(),
       stats: {
-        totalOrders: 0, totalDeliveries: 0, totalDrivers: 0,
-        totalCustomers: 0, todayDeliveries: 0,
-        availableDrivers: 0, availableVehicles: 0
+        totalOrders: 0,
+        totalDeliveries: 0,
+        totalDrivers: 0,
+        totalCustomers: 0,
+        todayDeliveries: 0,
+        availableDrivers: 0,
+        availableVehicles: 0
       },
       recentOrders: [],
-      chartData: []
+      chartData: [],
+      error: 'Failed to load dashboard data. Please try again.'
     });
   }
 };
+
+
+// exports.renderDashboard = async (req, res) => {
+//   try {
+//     const today = new Date();
+//     today.setHours(0, 0, 0, 0);
+//     const todayEnd = new Date();
+//     todayEnd.setHours(23, 59, 59, 999);
+//     const last7DaysStart = new Date(today);
+//     last7DaysStart.setDate(today.getDate() - 6);
+
+//     // ✅ Consistent filter — har jagah same condition
+//     const approvedDriverFilter = {
+//       profileStatus: 'approved',
+//       isActive: true,
+//       'blockStatus.isBlocked': { $ne: true }
+//     };
+
+//     const [
+//       totalOrders,
+//       totalDeliveries,
+//       totalDrivers,
+//       totalCustomers,
+//       todayDeliveries,
+//       availableDrivers,
+//       availableVehicles,
+//       recentOrders,
+//       chartData
+//     ] = await Promise.all([
+//       Order.countDocuments(),
+//       Delivery.countDocuments(),
+
+//       // ✅ Sirf approved drivers
+//       Driver.countDocuments(approvedDriverFilter),
+
+//       Customer.countDocuments(),
+
+//       Delivery.countDocuments({
+//         createdAt: { $gte: today, $lte: todayEnd }
+//       }),
+
+//       // ✅ Sirf approved + available drivers
+//       Driver.countDocuments({ 
+//         ...approvedDriverFilter,
+//         isAvailable: true 
+//       }),
+
+//       Vehicle.countDocuments({ status: "available" }),
+
+//       Order.find()
+//         .populate('customerId', 'name companyName phone')
+//         .sort({ createdAt: -1 })
+//         .limit(10),
+
+//       Order.aggregate([
+//         {
+//           $match: {
+//             createdAt: { $gte: last7DaysStart, $lte: today }
+//           }
+//         },
+//         {
+//           $group: {
+//             _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+//             orders: { $sum: 1 },
+//             deliveries: {
+//               $sum: {
+//                 $cond: [{ $eq: ["$status", "delivered"] }, 1, 0]
+//               }
+//             }
+//           }
+//         },
+//         { $sort: { _id: 1 } }
+//       ])
+//     ]);
+
+//     const currentUrl = req.originalUrl || req.url;
+
+//     res.render('index', {
+//       title: 'Dashboard',
+//       user: req.admin,
+//       url: currentUrl,
+//       messages: req.flash(),
+//       stats: {
+//         totalOrders: totalOrders || 0,
+//         totalDeliveries: totalDeliveries || 0,
+//         totalDrivers: totalDrivers || 0,
+//         totalCustomers: totalCustomers || 0,
+//         todayDeliveries: todayDeliveries || 0,
+//         availableDrivers: availableDrivers || 0,
+//         availableVehicles: availableVehicles || 0
+//       },
+//       recentOrders: recentOrders || [],
+//       chartData: chartData || []
+//     });
+
+//   } catch (error) {
+//     console.error('Dashboard render error:', error);
+//     const currentUrl = req.originalUrl || req.url;
+//     res.render('index', {
+//       title: 'Dashboard',
+//       user: req.admin,
+//       url: currentUrl,
+//       messages: req.flash(),
+//       stats: {
+//         totalOrders: 0, totalDeliveries: 0, totalDrivers: 0,
+//         totalCustomers: 0, todayDeliveries: 0,
+//         availableDrivers: 0, availableVehicles: 0
+//       },
+//       recentOrders: [],
+//       chartData: []
+//     });
+//   }
+// };
 
 // ==================== NEW: GET ALL DRIVER LOCATIONS ====================
 /**
