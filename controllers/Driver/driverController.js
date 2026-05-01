@@ -1126,9 +1126,7 @@ exports.finalSignup = async (req, res) => {
     // Send OTP via EMAIL (not SMS)
     try {
       const { sendOTPEmail } = require('../../utils/emailHelper');
-      sendOTPEmail(email, otp, tempExists.name || 'Driver')
-        .then(() => console.log("OTP email sent"))
-        .catch(err => console.error("Email failed:", err.message));
+      await sendOTPEmail(email, otp, tempExists.name || 'Driver');
       console.log(`Email OTP sent to ${email}: ${otp}`);
     } catch (emailErr) {
       console.error('Email OTP send failed:', emailErr.message);

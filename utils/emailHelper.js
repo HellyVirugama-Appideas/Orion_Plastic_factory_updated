@@ -20,7 +20,7 @@
 //     };
 
 //     const info = await transporter.sendMail(mailOptions);
-
+    
 //     return {
 //       success: true,
 //       messageId: info.messageId
@@ -41,14 +41,14 @@
 //     <p>Thank you for registering with us.</p>
 //     <p>Your account has been created successfully.</p>
 //   `;
-
+  
 //   return await this.sendEmail(to, 'Welcome to Our Platform', html);
 // };
 
 // // Send Password Reset Email
 // exports.sendPasswordResetEmail = async (to, resetToken) => {
 //   const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-
+  
 //   const html = `
 //     <h2>Password Reset Request</h2>
 //     <p>Click the link below to reset your password:</p>
@@ -56,9 +56,9 @@
 //     <p>This link expires in 1 hour.</p>
 //     <p>If you didn't request this, please ignore this email.</p>
 //   `;
-
+  
 //   return await this.sendEmail(to, 'Password Reset Request', html);
-
+  
 // };
 
 // // ── Send OTP Email (for driver email verification) ──
@@ -92,25 +92,11 @@ const nodemailer = require('nodemailer');
 
 // Create transporter with proper Gmail config
 const transporter = nodemailer.createTransport({
-  // service: 'gmail',                    // Simple & reliable for Gmail
+  service: 'gmail',                    // Simple & reliable for Gmail
   // Agar service: 'gmail' nahi kaam kare to yeh use karo:
   // host: process.env.EMAIL_HOST || 'smtp.gmail.com',
   // port: process.env.EMAIL_PORT || 587,
   // secure: process.env.EMAIL_SECURE === 'true',   // false for 587
-
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
-  },
-  pool: true,                 // 🔥 important
-  maxConnections: 5,
-  maxMessages: 100,
-  connectionTimeout: 10000,   // 🔥 10 sec
-  greetingTimeout: 5000,
-  socketTimeout: 10000,
 
   auth: {
     user: process.env.EMAIL_USER,
@@ -134,7 +120,7 @@ exports.sendEmail = async (to, subject, html) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-
+    
     console.log('Email sent successfully → Message ID:', info.messageId);
     return {
       success: true,
@@ -192,7 +178,7 @@ exports.sendWelcomeEmail = async (to, name) => {
 // Password Reset Email
 exports.sendPasswordResetEmail = async (to, resetToken) => {
   const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-
+  
   const html = `
     <h2>Password Reset Request</h2>
     <p>Click the link below to reset your password:</p>
@@ -200,7 +186,7 @@ exports.sendPasswordResetEmail = async (to, resetToken) => {
     <p>This link expires in 1 hour.</p>
     <p>If you didn't request this, please ignore this email.</p>
   `;
-
+  
   return await exports.sendEmail(to, 'Password Reset Request', html);
 };
 
