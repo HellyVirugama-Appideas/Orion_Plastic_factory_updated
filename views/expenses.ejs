@@ -3,217 +3,263 @@
 
 <head>
     <%- include('_layouts/head') %>
-    <title>Expense Management | <%= title %></title>
+        <title>Expense Management | <%= title %>
+        </title>
 
-    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tabs/extensions/responsive/css/responsive.dataTables.min.css">
-    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/select.dataTables.min.css">
-    <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
+        <link rel="stylesheet" type="text/css"
+            href="/app-assets/vendors/data-tabs/extensions/responsive/css/responsive.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/select.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
 
-    <style>
-        table tr td, th { text-align: center; }
+        <style>
+            table tr td,
+            th {
+                text-align: center;
+            }
 
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 130px;
-            height: 32px;
-            padding: 0 12px;
-            border-radius: 20px;
-            font-size: 12.5px;
-            font-weight: 500;
-            white-space: nowrap;
-        }
+            .status-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 130px;
+                height: 32px;
+                padding: 0 12px;
+                border-radius: 20px;
+                font-size: 12.5px;
+                font-weight: 500;
+                white-space: nowrap;
+            }
 
-        .status-badge.Pending { background: #fff3cd; color: #856404; }
-        .status-badge.Approved { background: #d4edda; color: #155724; }
-        .status-badge.Rejected { background: #f8d7da; color: #721c24; }
+            .status-badge.Pending {
+                background: #fff3cd;
+                color: #856404;
+            }
 
-        .type-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 100px;
-            height: 28px;
-            padding: 0 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            white-space: nowrap;
-        }
+            .status-badge.Approved {
+                background: #d4edda;
+                color: #155724;
+            }
 
-        .type-badge.fuel { background-color: rgb(212, 240, 216); color: green; }
-        .type-badge.vehicle { background-color: rgb(212, 215, 240); color: blue; }
+            .status-badge.Rejected {
+                background: #f8d7da;
+                color: #721c24;
+            }
 
-        /* Status Tabs */
-        .status-tabs {
-            margin: 15px 0 25px 0;
-        }
+            .type-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 100px;
+                height: 28px;
+                padding: 0 10px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: 500;
+                white-space: nowrap;
+            }
 
-        .status-tabs .tab {
-            display: inline-flex;
-            align-items: center;
-            padding: 10px 22px;
-            margin-right: 10px;
-            border-radius: 25px;
-            font-weight: 500;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: #f1f1f1;
-            color: #555;
-        }
+            .type-badge.fuel {
+                background-color: rgb(212, 240, 216);
+                color: green;
+            }
 
-        .status-tabs .tab.active {
-            background: #1e88e5;
-            color: white;
-            box-shadow: 0 3px 10px rgba(30, 136, 229, 0.35);
-        }
+            .type-badge.vehicle {
+                background-color: rgb(212, 215, 240);
+                color: blue;
+            }
 
-        .tab-count {
-            background: rgba(255,255,255,0.25);
-            font-size: 0.82rem;
-            padding: 2px 9px;
-            border-radius: 20px;
-            margin-left: 10px;
-        }
+            /* Status Tabs */
+            .status-tabs {
+                margin: 15px 0 25px 0;
+            }
 
-        tr.expense-row { cursor: pointer; }
-        td.checkbox-column, td.actions-column { cursor: default; }
-    </style>
+            .status-tabs .tab {
+                display: inline-flex;
+                align-items: center;
+                padding: 10px 22px;
+                margin-right: 10px;
+                border-radius: 25px;
+                font-weight: 500;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                background: #f1f1f1;
+                color: #555;
+            }
+
+            .status-tabs .tab.active {
+                background: #1e88e5;
+                color: white;
+                box-shadow: 0 3px 10px rgba(30, 136, 229, 0.35);
+            }
+
+            .tab-count {
+                background: rgba(255, 255, 255, 0.25);
+                font-size: 0.82rem;
+                padding: 2px 9px;
+                border-radius: 20px;
+                margin-left: 10px;
+            }
+
+            tr.expense-row {
+                cursor: pointer;
+            }
+
+            td.checkbox-column,
+            td.actions-column {
+                cursor: default;
+            }
+        </style>
 </head>
 
-<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+<body
+    class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
     data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
 
     <%- include('_layouts/sidenavbar') %>
 
-    <div id="main">
-        <div class="row">
-            <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
-                <div class="container">
-                    <div class="row">
-                        <%- include('messages', { messages: messages }) %>
-                        <div class="col s12 m6 l6">
-                            <h6 class="breadcrumbs-title"><span>Manage Expenses</span></h6>
-                        </div>
-                        <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
-                            <ol class="breadcrumbs mb-0">
-                                <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
-                                <li class="breadcrumb-item active">Expenses</li>
-                            </ol>
+        <div id="main">
+            <div class="row">
+                <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+                    <div class="container">
+                        <div class="row">
+                            <%- include('messages', { messages: messages }) %>
+                                <div class="col s12 m6 l6">
+                                    <h6 class="breadcrumbs-title"><span>Manage Expenses</span></h6>
+                                </div>
+                                <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                                    <ol class="breadcrumbs mb-0">
+                                        <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                                        <li class="breadcrumb-item active">Expenses</li>
+                                    </ol>
+                                </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="col s12">
-            <div class="container">
-                <div class="section section-data-tables">
-                    <div class="row">
-                        <div class="col s12">
-                            <div class="card">
-                                <div class="card-content">
+            <div class="col s12">
+                <div class="container">
+                    <div class="section section-data-tables">
+                        <div class="row">
+                            <div class="col s12">
+                                <div class="card">
+                                    <div class="card-content">
 
-                                    <!-- ==================== STATUS TABS ==================== -->
-                                    <div class="status-tabs">
-                                        <% 
-                                            const currentStatus = (typeof approvalStatus !== 'undefined' ? approvalStatus : '') || 
-                                                                 (currentQuery ? new URLSearchParams(currentQuery).get('approvalStatus') : '') || 'all';
-                                        %>
-                                        <span class="tab <%= currentStatus === 'all' ? 'active' : '' %>" data-status="all">
-                                            All <span class="tab-count"><%= pagination.total || 0 %></span>
-                                        </span>
-                                        
-                                        <span class="tab <%= currentStatus === 'Pending' ? 'active' : '' %>" data-status="Pending">
-                                            Pending <span class="tab-count"><%= summary.pendingCount || 0 %></span>
-                                        </span>
-                                        
-                                        <span class="tab <%= currentStatus === 'Approved' ? 'active' : '' %>" data-status="Approved">
-                                            Approved <span class="tab-count"><%= summary.approvedByAdminCount || 0 %></span>
-                                        </span>
-                                        
-                                        <span class="tab <%= currentStatus === 'Rejected' ? 'active' : '' %>" data-status="Rejected">
-                                            Rejected <span class="tab-count"><%= summary.rejectedCount || 0 %></span>
-                                        </span>
-                                    </div>
-                                    <!-- ==================================================== -->
+                                        <!-- ==================== STATUS TABS ==================== -->
+                                        <div class="status-tabs">
+                                            <% const currentStatus=(typeof approvalStatus !=='undefined' ?
+                                                approvalStatus : '' ) || (currentQuery ? new
+                                                URLSearchParams(currentQuery).get('approvalStatus') : '' ) || 'all' ; %>
+                                                <span class="tab <%= currentStatus === 'all' ? 'active' : '' %>"
+                                                    data-status="all">
+                                                    All <span class="tab-count">
+                                                        <%= pagination.total || 0 %>
+                                                    </span>
+                                                </span>
 
-                                    <div class="row">
-                                        <div class="col s12 overflow">
-                                            <table id="page-length-option" class="display">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Sr</th>
-                                                        <th>Date</th>
-                                                        <th>Driver</th>
-                                                        <th>Vehicle</th>
-                                                        <th>Type</th>
-                                                        <th>Amount (₹)</th>
-                                                        <th>Status</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <% if (expenses && expenses.length > 0) { %>
-                                                        <% expenses.forEach((exp, index) => { %>
-                                                            <tr class="expense-row" data-href="/admin/expenses/<%= exp._id %>">
-                                                                <td><%= index + 1 + ((pagination.page - 1) * (pagination.limit || 20)) %></td>
-                                                                <td><%= new Date(exp.expenseDate).toLocaleDateString('en-IN') %></td>
-                                                                <td><%= exp.driver?.name || 'N/A' %></td>
-                                                                <td><%= exp.vehicle?.vehicleNumber || 'N/A' %></td>
-                                                                <td>
-                                                                    <span class="type-badge <%= exp.expenseType %>">
-                                                                        <%= exp.expenseType.toUpperCase() %>
-                                                                    </span>
-                                                                </td>
-                                                                <td>₹ <%= (exp.totalAmount || 0).toLocaleString('en-IN') %></td>
-                                                                <td>
-                                                                    <span class="status-badge <%= exp.approvalStatus %>">
-                                                                        <%= exp.approvalStatus %>
-                                                                    </span>
-                                                                </td>
-                                                                <td class="actions-column">
-                                                                    <a href="/admin/expenses/<%= exp._id %>" 
-                                                                       class="waves-effect waves-light accent-2 btn-edit"
-                                                                       title="View Details">
-                                                                        <i class="material-icons">visibility</i>
-                                                                    </a>
-                                                                </td>
-                                                            </tr>
-                                                        <% }) %>
-                                                    <% } else { %>
+                                                <span class="tab <%= currentStatus === 'Pending' ? 'active' : '' %>"
+                                                    data-status="Pending">
+                                                    Pending <span class="tab-count">
+                                                        <%= summary.pendingCount || 0 %>
+                                                    </span>
+                                                </span>
+
+                                                <span class="tab <%= currentStatus === 'Approved' ? 'active' : '' %>"
+                                                    data-status="Approved">
+                                                    Approved <span class="tab-count">
+                                                        <%= summary.approvedByAdminCount || 0 %>
+                                                    </span>
+                                                </span>
+
+                                                <span class="tab <%= currentStatus === 'Rejected' ? 'active' : '' %>"
+                                                    data-status="Rejected">
+                                                    Rejected <span class="tab-count">
+                                                        <%= summary.rejectedCount || 0 %>
+                                                    </span>
+                                                </span>
+                                        </div>
+                                        <!-- ==================================================== -->
+
+                                        <div class="row">
+                                            <div class="col s12 overflow">
+                                                <table id="page-length-option" class="display">
+                                                    <thead>
                                                         <tr>
-                                                            <td colspan="8" class="center-align grey-text">
-                                                                No expenses found
-                                                            </td>
+                                                            <th>Sr</th>
+                                                            <th>Date</th>
+                                                            <th>Driver</th>
+                                                            <th>Vehicle</th>
+                                                            <th>Type</th>
+                                                            <th>Amount</th>
+                                                            <th>Status</th>
+                                                            <th>Actions</th>
                                                         </tr>
-                                                    <% } %>
-                                                </tbody>
-                                            </table>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% if (expenses && expenses.length> 0) { %>
+                                                            <% expenses.forEach((exp, index)=> { %>
+                                                                <tr class="expense-row"
+                                                                    data-href="/admin/expenses/<%= exp._id %>">
+                                                                    <td>
+                                                                        <%= index + 1 + ((pagination.page - 1) *
+                                                                            (pagination.limit || 20)) %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= new
+                                                                            Date(exp.expenseDate).toLocaleDateString('en-IN')
+                                                                            %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= exp.driver?.name || 'N/A' %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <%= exp.vehicle?.vehicleNumber || 'N/A' %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span class="type-badge <%= exp.expenseType %>">
+                                                                            <%= exp.expenseType.toUpperCase() %>
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>
+                                                                         <%= (exp.expenseType==='fuel' ?
+                                                                            (exp.fuelDetails?.totalFuelCost || 0) :
+                                                                            (exp.vehicleExpenseDetails?.expenseAmount ||
+                                                                            exp.totalAmount || 0)
+                                                                            ).toLocaleString('en-IN') %>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span
+                                                                            class="status-badge <%= exp.approvalStatus %>">
+                                                                            <%= exp.approvalStatus %>
+                                                                        </span>
+                                                                    </td>
+                                                                    <td class="actions-column">
+                                                                        <a href="/admin/expenses/<%= exp._id %>"
+                                                                            class="waves-effect waves-light accent-2 btn-edit"
+                                                                            title="View Details">
+                                                                            <i class="material-icons">visibility</i>
+                                                                        </a>
+                                                                    </td>
+                                                                </tr>
+                                                                <% }) %>
+                                                                    <% } else { %>
+                                                                        <tr>
+                                                                            <td colspan="8"
+                                                                                class="center-align grey-text">
+                                                                                No expenses found
+                                                                            </td>
+                                                                        </tr>
+                                                                        <% } %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
+
+                                     
+
                                     </div>
-
-                                    <!-- Pagination -->
-                                    <% if (pagination && pagination.pages > 1) { %>
-                                        <div class="right-align mt-3">
-                                            Page <%= pagination.page %> of <%= pagination.pages %> 
-                                            (Total: <%= pagination.total %>)
-
-                                            <% if (pagination.page > 1) { %>
-                                                <a href="?page=<%= pagination.page - 1 %><%= currentQuery ? '&' + currentQuery : '' %>" 
-                                                   class="btn-flat">Prev</a>
-                                            <% } %>
-
-                                            <% if (pagination.page < pagination.pages) { %>
-                                                <a href="?page=<%= pagination.page + 1 %><%= currentQuery ? '&' + currentQuery : '' %>" 
-                                                   class="btn-flat">Next</a>
-                                            <% } %>
-                                        </div>
-                                    <% } %>
-
                                 </div>
                             </div>
                         </div>
@@ -221,48 +267,48 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <%- include('_layouts/commonJs') %>
+        <%- include('_layouts/commonJs') %>
 
-    <script src="/app-assets/vendors/data-tables/js/jquery.dataTables.min.js"></script>
-    <script src="/app-assets/js/scripts/data-tables.js"></script>
+            <script src="/app-assets/vendors/data-tables/js/jquery.dataTables.min.js"></script>
+            <script src="/app-assets/js/scripts/data-tables.js"></script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
 
-            // Status Tab Click Handler
-            document.querySelectorAll('.status-tabs .tab').forEach(tab => {
-                tab.addEventListener('click', function () {
-                    const status = this.getAttribute('data-status');
-                    let url = '/admin/expenses';
+                    // Status Tab Click Handler
+                    document.querySelectorAll('.status-tabs .tab').forEach(tab => {
+                        tab.addEventListener('click', function () {
+                            const status = this.getAttribute('data-status');
+                            let url = '/admin/expenses';
 
-                    if (status !== 'all') {
-                        url += `?approvalStatus=${status}`;
-                    }
+                            if (status !== 'all') {
+                                url += `?approvalStatus=${status}`;
+                            }
 
-                    // Preserve other filters
-                    const params = new URLSearchParams(window.location.search);
-                    params.delete('approvalStatus');
-                    params.delete('page');
+                            // Preserve other filters
+                            const params = new URLSearchParams(window.location.search);
+                            params.delete('approvalStatus');
+                            params.delete('page');
 
-                    if (params.toString()) {
-                        url += (status === 'all' ? '?' : '&') + params.toString();
-                    }
+                            if (params.toString()) {
+                                url += (status === 'all' ? '?' : '&') + params.toString();
+                            }
 
-                    window.location.href = url;
+                            window.location.href = url;
+                        });
+                    });
+
+                    // Row Clickable (except actions column)
+                    document.querySelectorAll('tr.expense-row').forEach(row => {
+                        row.addEventListener('click', function (e) {
+                            if (e.target.closest('.actions-column') || e.target.tagName === 'A') return;
+                            const href = this.getAttribute('data-href');
+                            if (href) window.location.href = href;
+                        });
+                    });
                 });
-            });
-
-            // Row Clickable (except actions column)
-            document.querySelectorAll('tr.expense-row').forEach(row => {
-                row.addEventListener('click', function (e) {
-                    if (e.target.closest('.actions-column') || e.target.tagName === 'A') return;
-                    const href = this.getAttribute('data-href');
-                    if (href) window.location.href = href;
-                });
-            });
-        });
-    </script>
+            </script>
 </body>
+
 </html>

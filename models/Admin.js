@@ -54,7 +54,7 @@ const adminSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Phone number is required'],
     unique: true,
-    match: [/^[0-9]{10}$/, 'Please provide a valid 10-digit phone number']
+    match: [/^\+971\s?(50|52|54|55|56|58)[0-9]{7}$/, 'Please provide a valid UAE phone number']
   },
   password: {
     type: String,

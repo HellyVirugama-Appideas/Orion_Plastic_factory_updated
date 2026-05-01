@@ -1338,16 +1338,14 @@ exports.verifyOtpAndCreateDriver = async (req, res) => {
     const driverData = {
       phone: cleanedPhone,
       countryCode,
-      email: driver.email || null,
+      email: temp.email || null,   // ✅ FIX HERE
       name: temp.personalDetails?.fullName?.trim() || 'Driver',
       licenseNumber: temp.license?.licenseNumber?.toUpperCase(),
       vehicleNumber: temp.personalDetails?.vehicleNumber?.toUpperCase(),
       'address.city': temp.personalDetails?.region,
       'governmentIds.emiratesId': temp.personalDetails?.emiratesId,
       fcmToken: fcmToken || null,
-
-      documents: documents,        // ← Safe & Clean
-
+      documents: documents,
       profileStatus: 'pending_pin_setup'
     };
 

@@ -332,6 +332,7 @@ exports.getAllDrivers = async (req, res) => {
 
     return successResponse(res, 'Drivers retrieved successfully', {
       drivers,
+      messages: req.flash(),
       pagination: {
         total,
         page: parseInt(page),
@@ -446,6 +447,7 @@ exports.getCreateDriver = async (req, res) => {
 
     res.render('driver_add', {
       title: 'Create New Driver',
+      messages: req.flash(),
       user: req.admin,
       url: req.originalUrl,
       regions
@@ -595,7 +597,7 @@ exports.createDriver = async (req, res) => {
       email,
       contactCountryCode,
       contactNumber,
-      eidNumber,
+      emiratesId,
       vehicleNumber,
       region,
       licenseNumber,
@@ -603,12 +605,12 @@ exports.createDriver = async (req, res) => {
     } = req.body;
 
     if (!fullName || !contactNumber || !licenseNumber) {
-      req.flash('error', 'Full Name, phone, and license number are required');
+      req.flash('red', 'Full Name, phone, and license number are required');
       return res.redirect('/admin/drivers/create');
     }
 
     if (!email || !email.includes('@')) {
-      req.flash('error', 'Valid email address is required for sending login credentials');
+      req.flash('red', 'Valid email address is required for sending login credentials');
       return res.redirect('/admin/drivers/create');
     }
 
@@ -647,7 +649,7 @@ exports.createDriver = async (req, res) => {
       phone: fullPhone,
       licenseNumber,
       vehicleNumber: vehicleNumber || null,
-      governmentIds: { eidNumber: eidNumber?.trim() || null },
+      governmentIds: { emiratesId: emiratesId?.trim() || null },
       region: region || null,
       pin: pin || undefined,
       documents,
@@ -697,7 +699,7 @@ exports.createDriver = async (req, res) => {
     }
 
     console.log('[CREATE-DRIVER] Successfully created:', newDriver._id);
-    req.flash('success', `Driver created! Login credentials sent to ${email}`);
+    req.flash('green', `Driver created! Login credentials sent to ${email}`);
     res.redirect(`/admin/drivers/view/${newDriver._id}`);
 
   } catch (error) {
@@ -711,7 +713,7 @@ exports.createDriver = async (req, res) => {
     } else if (error.message) {
       errorMsg = error.message;
     }
-    req.flash('error', errorMsg);
+    req.flash('red', errorMsg);
     res.redirect('/admin/drivers/create');
   }
 };
@@ -722,7 +724,7 @@ exports.getEditDriverForm = async (req, res) => {
     const { driverId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(driverId)) {
-      req.flash('error', 'Invalid driver ID');
+      req.flash('red', 'Invalid driver ID');
       return res.redirect('/admin/drivers');
     }
 
@@ -731,7 +733,7 @@ exports.getEditDriverForm = async (req, res) => {
       .lean();
 
     if (!driver) {
-      req.flash('error', 'Driver not found');
+      req.flash('red', 'Driver not found');
       return res.redirect('/admin/drivers');
     }
 
@@ -745,7 +747,7 @@ exports.getEditDriverForm = async (req, res) => {
 
   } catch (err) {
     console.error('Get Edit Driver Error:', err);
-    req.flash('error', 'Failed to load edit form');
+    req.flash('red', 'Failed to load edit form');
     res.redirect('/admin/drivers');
   }
 };
@@ -868,12 +870,12 @@ exports.updateDriverDetails = async (req, res) => {
     ).select('-password -pin -__v');
 
     if (!driver) {
-      req.flash('error', 'Driver not found');
+      req.flash('red', 'Driver not found');
       return res.redirect(`/admin/drivers/edit/${driverId}`);
     }
 
     console.log('[UPDATE-DRIVER] Successfully updated:', driver.name);
-    req.flash('success', 'Driver updated successfully!');
+    req.flash('green', 'Driver updated successfully!');
     res.redirect(`/admin/drivers/view/${driverId}`);
 
   } catch (error) {
@@ -890,7 +892,7 @@ exports.updateDriverDetails = async (req, res) => {
         .join(', ');
     }
 
-    req.flash('error', msg);
+    req.flash('red', msg);
     res.redirect(`/admin/drivers/edit/${req.params.driverId}`);
   }
 };
@@ -902,7 +904,7 @@ exports.deleteDriver = async (req, res) => {
 
     // Validate ID
     if (!mongoose.Types.ObjectId.isValid(driverId)) {
-      req.flash('error', 'Invalid driver ID');
+      req.flash('red', 'Invalid driver ID');
       return res.redirect('/admin/drivers');
     }
 
@@ -910,7 +912,7 @@ exports.deleteDriver = async (req, res) => {
     const driver = await Driver.findByIdAndDelete(driverId);
 
     if (!driver) {
-      req.flash('error', 'Driver not found');
+      req.flash('red', 'Driver not found');
       return res.redirect('/admin/drivers');
     }
 
@@ -925,13 +927,13 @@ exports.deleteDriver = async (req, res) => {
     if (driver.licenseBack) fs.unlinkSync(path.join(__dirname, '../../public', driver.licenseBack));
 
 
-    req.flash('success', `Driver ${driver.name} (${driver.phone}) deleted successfully`);
-    res.redirect('/admin/drivers');
+    req.flash('green', `Driver ${driver.name} (${driver.phone}) deleted successfully`);
+    return req.session.save(() => res.redirect('/admin/drivers'));
 
   } catch (error) {
     console.error('Delete Driver Error:', error);
-    req.flash('error', 'Failed to delete driver. Please try again.');
-    res.redirect('/admin/drivers');
+    req.flash('red', 'Failed to delete driver. Please try again.');
+    return req.session.save(() => res.redirect('/admin/drivers'));
   }
 };
 

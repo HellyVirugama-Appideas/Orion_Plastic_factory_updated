@@ -1,31 +1,66 @@
 <!DOCTYPE html>
 <html class="loading" lang="en" data-textdirection="ltr">
+
 <head>
-    <%- include('_layouts/head') %>
-    <title>Create New Driver | <%= title %></title>
-    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css">
+  <%- include('_layouts/head') %>
+    <title>Create New Driver | <%= title %>
+    </title>
+    <link rel="stylesheet" type="text/css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css">
     <style>
-        .select-wrapper input.select-dropdown { color:#000 !important; }
-        .select-wrapper .caret { fill:#000 !important; }
-        .dropdown-content li>span { color:#000 !important; }
-        .card-panel .row { overflow:visible !important; }
-        .section-title { font-size:1rem; font-weight:600; color:#1a237e; border-left:4px solid #3949ab; padding-left:10px; margin:20px 0 10px; }
-        .info-box { background:#e8f5e9; border-left:4px solid #43a047; padding:10px 14px; border-radius:4px; margin-bottom:12px; font-size:13px; }
+      .select-wrapper input.select-dropdown {
+        color: #000 !important;
+      }
+
+      .select-wrapper .caret {
+        fill: #000 !important;
+      }
+
+      .dropdown-content li>span {
+        color: #000 !important;
+      }
+
+      .card-panel .row {
+        overflow: visible !important;
+      }
+
+      .section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1a237e;
+        border-left: 4px solid #3949ab;
+        padding-left: 10px;
+        margin: 20px 0 10px;
+      }
+
+      .info-box {
+        background: #e8f5e9;
+        border-left: 4px solid #43a047;
+        padding: 10px 14px;
+        border-radius: 4px;
+        margin-bottom: 12px;
+        font-size: 13px;
+      }
     </style>
 </head>
-<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
-      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
 
-    <%- include('_layouts/sidenavbar') %>
+<body
+  class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+  data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+  <%- include('_layouts/sidenavbar') %>
 
     <div id="main">
       <div class="row">
         <div id="breadcrumbs-wrapper" style="background-color:white;">
           <div class="container">
             <div class="row">
-              <div class="col s12 m6 l6"><h5 class="breadcrumbs-title">Create New Driver</h5></div>
+              <div class="col s12 m6 l6">
+                <h5 class="breadcrumbs-title">Create New Driver</h5>
+              </div>
               <div class="col s12 m6 l6 right-align-md">
-                <a href="/admin/drivers" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">Back to Drivers</a>
+                <a href="/admin/drivers" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">Back
+                  to Drivers</a>
               </div>
             </div>
           </div>
@@ -33,130 +68,144 @@
 
         <%- include('messages', { messages: messages }) %>
 
-        <div class="col s12">
-          <div class="container">
-            <div class="section users-view">
-              <div class="card-panel">
-                <div class="card-content">
+          <div class="col s12">
+            <div class="container">
+              <div class="section users-view">
+                <div class="card-panel">
+                  <div class="card-content">
 
-                  <div class="info-box">
-                    <strong>ℹ️ Auto Email:</strong> After creating, login credentials will be sent to the driver's email address automatically via SMTP.
-                  </div>
-
-                  <form id="createDriverForm" method="POST" action="/admin/drivers/create" enctype="multipart/form-data">
-                    <div class="row">
-
-                      <!-- Personal Information -->
-                      <div class="col s12"><p class="section-title">Personal Information</p></div>
-                      <div class="input-field col s12 m6">
-                        <input id="fullName" name="fullName" type="text" required>
-                        <label for="fullName">Full Name <span class="red-text">*</span></label>
-                      </div>
-                      <div class="input-field col s12 m6">
-                        <input id="email" name="email" type="email" required>
-                        <label for="email">Email Address <span class="red-text">*</span></label>
-                        <span class="helper-text">Login credentials & OTP will be sent to this email</span>
-                      </div>
-                      <div class="input-field col s12 m3">
-                        <select id="contactCountryCode" name="contactCountryCode" required>
-                          <option value="+971" selected>+971 (UAE)</option>
-                          <option value="+91">+91 (India)</option>
-                          <option value="+1">+1 (USA)</option>
-                        </select>
-                        <label for="contactCountryCode">Country Code <span class="red-text">*</span></label>
-                      </div>
-                      <div class="input-field col s12 m3">
-                        <input id="contactNumber" name="contactNumber" type="text" required>
-                        <label for="contactNumber">Contact Number <span class="red-text">*</span></label>
-                      </div>
-
-                      <!-- EID Number only (no Aadhar) -->
-                      <div class="input-field col s12 m6">
-                        <input id="eidNumber" name="eidNumber" type="text" placeholder="e.g. 784-XXXX-XXXXXXX-X">
-                        <label for="eidNumber">EID Number (Emirates ID)</label>
-                      </div>
-
-                      <!-- Vehicle Information -->
-                      <div class="col s12"><p class="section-title">Vehicle Information</p></div>
-                      <!-- Only ONE vehicle number field — registration number removed -->
-                      <div class="input-field col s12 m6">
-                        <input id="vehicleNumber" name="vehicleNumber" type="text">
-                        <label for="vehicleNumber">Vehicle Number</label>
-                      </div>
-
-                      <div class="row">
-                        <div class="input-field col s12 m6">
-                          <select name="region" id="region">
-                            <option value="" disabled selected>Select Region</option>
-                            <% if (regions && regions.length > 0) { %>
-                              <% regions.forEach(region => { %>
-                                <option value="<%= region._id %>"><%= region.regionName %> (<%= region.regionCode %> - <%= region.state %>)</option>
-                              <% }) %>
-                            <% } else { %>
-                              <option value="" disabled>No regions available</option>
-                            <% } %>
-                          </select>
-                        </div>
-                      </div>
-
-                      <!-- Documents -->
-                      <div class="col s12"><p class="section-title">Documents</p></div>
-                      <div class="input-field col s12 m6">
-                        <input id="licenseNumber" name="licenseNumber" type="text" required>
-                        <label for="licenseNumber">License Number <span class="red-text">*</span></label>
-                      </div>
-                      <div class="col s12 m6">
-                        <label>License Front</label>
-                        <input type="file" name="licenseFront" class="dropify" accept="image/*">
-                      </div>
-                      <div class="col s12 m6">
-                        <label>License Back</label>
-                        <input type="file" name="licenseBack" class="dropify" accept="image/*">
-                      </div>
-
-                      <!-- RC renamed to Mulkia as per requirement -->
-                      <div class="col s12 m6">
-                        <label>Mulkia Front</label>
-                        <input type="file" name="MulkiaFront" class="dropify" accept="image/*">
-                      </div>
-                      <div class="col s12 m6">
-                        <label>Mulkia Back</label>
-                        <input type="file" name="MulkiaBack" class="dropify" accept="image/*">
-                      </div>
-
-                      <!-- Additional Info -->
-                      <div class="col s12"><p class="section-title">Additional Information</p></div>
-                      <div class="input-field col s12 m6">
-                        <input id="pin" name="pin" type="text" placeholder="e.g. 1234">
-                        <label for="pin">Initial PIN / Password</label>
-                        <span class="helper-text">Set a temporary PIN — driver can change after first login</span>
-                      </div>
-
-                      <div class="col s12 right-align" style="margin-top:16px;">
-                        <button type="submit" class="btn gradient-45deg-purple-deep-orange waves-effect waves-light">
-                          <i class="material-icons left">person_add</i> Create Driver &amp; Send Login Email
-                        </button>
-                        <a href="/admin/drivers" class="btn grey waves-effect waves-light" style="margin-left:8px;">Cancel</a>
-                      </div>
-
+                    <div class="info-box">
+                      <strong>ℹ️ Auto Email:</strong> After creating, login credentials will be sent to the driver's
+                      email address automatically via SMTP.
                     </div>
-                  </form>
+
+                    <form id="createDriverForm" method="POST" action="/admin/drivers/create"
+                      enctype="multipart/form-data">
+                      <div class="row">
+
+                        <!-- Personal Information -->
+                        <div class="col s12">
+                          <p class="section-title">Personal Information</p>
+                        </div>
+                        <div class="input-field col s12 m6">
+                          <input id="fullName" name="fullName" type="text" required>
+                          <label for="fullName">Full Name <span class="red-text">*</span></label>
+                        </div>
+                        <div class="input-field col s12 m6">
+                          <input id="email" name="email" type="email" required>
+                          <label for="email">Email Address <span class="red-text">*</span></label>
+                          <span class="helper-text">Login credentials & OTP will be sent to this email</span>
+                        </div>
+                        <div class="input-field col s12 m3">
+                          <select id="contactCountryCode" name="contactCountryCode" required>
+                            <option value="+971" selected>+971 (UAE)</option>
+                            <option value="+91">+91 (India)</option>
+                            <option value="+1">+1 (USA)</option>
+                          </select>
+                          <label for="contactCountryCode">Country Code <span class="red-text">*</span></label>
+                        </div>
+                        <div class="input-field col s12 m3">
+                          <input id="contactNumber" name="contactNumber" type="text" required>
+                          <label for="contactNumber">Contact Number <span class="red-text">*</span></label>
+                        </div>
+
+                        <!-- EID Number only (no Aadhar) -->
+                        <div class="input-field col s12 m6">
+                          <input id="eidNumber" name="emiratesId" type="text" placeholder="e.g. 784-XXXX-XXXXXXX-X">
+                          <label for="eidNumber">EID Number (Emirates ID)</label>
+                        </div>
+
+                        <!-- Vehicle Information -->
+                        <div class="col s12">
+                          <p class="section-title">Vehicle Information</p>
+                        </div>
+                        <!-- Only ONE vehicle number field — registration number removed -->
+                        <div class="input-field col s12 m6">
+                          <input id="vehicleNumber" name="vehicleNumber" type="text">
+                          <label for="vehicleNumber">Vehicle Number</label>
+                        </div>
+
+                        <div class="row">
+                          <div class="input-field col s12 m6">
+                            <select name="region" id="region">
+                              <option value="" disabled selected>Select Region</option>
+                              <% if (regions && regions.length> 0) { %>
+                                <% regions.forEach(region=> { %>
+                                  <option value="<%= region._id %>">
+                                    <%= region.regionName %> (<%= region.regionCode %> - <%= region.state %>)
+                                  </option>
+                                  <% }) %>
+                                    <% } else { %>
+                                      <option value="" disabled>No regions available</option>
+                                      <% } %>
+                            </select>
+                          </div>
+                        </div>
+
+                        <!-- Documents -->
+                        <div class="col s12">
+                          <p class="section-title">Documents</p>
+                        </div>
+                        <div class="input-field col s12 m6">
+                          <input id="licenseNumber" name="licenseNumber" type="text" required>
+                          <label for="licenseNumber">License Number <span class="red-text">*</span></label>
+                        </div>
+                        <div class="col s12 m6">
+                          <label>License Front</label>
+                          <input type="file" name="licenseFront" class="dropify" accept="image/*">
+                        </div>
+                        <div class="col s12 m6">
+                          <label>License Back</label>
+                          <input type="file" name="licenseBack" class="dropify" accept="image/*">
+                        </div>
+
+                        <!-- RC renamed to Mulkia as per requirement -->
+                        <div class="col s12 m6">
+                          <label>Mulkia Front</label>
+                          <input type="file" name="MulkiaFront" class="dropify" accept="image/*">
+                        </div>
+                        <div class="col s12 m6">
+                          <label>Mulkia Back</label>
+                          <input type="file" name="MulkiaBack" class="dropify" accept="image/*">
+                        </div>
+
+                        <!-- Additional Info -->
+                        <div class="col s12">
+                          <p class="section-title">Additional Information</p>
+                        </div>
+                        <div class="input-field col s12 m6">
+                          <input id="pin" name="pin" type="text" placeholder="e.g. 1234">
+                          <label for="pin">Initial PIN / Password</label>
+                          <span class="helper-text">Set a temporary PIN — driver can change after first login</span>
+                        </div>
+
+                        <div class="col s12 right-align" style="margin-top:16px;">
+                          <button type="submit" class="btn gradient-45deg-purple-deep-orange waves-effect waves-light">
+                            <i class="material-icons left">person_add</i> Create Driver &amp; Send Login Email
+                          </button>
+                          <a href="/admin/drivers" class="btn grey waves-effect waves-light"
+                            style="margin-left:8px;">Cancel</a>
+                        </div>
+
+                      </div>
+                    </form>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
       </div>
     </div>
 
     <%- include('_layouts/commonJs') %>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
-    <script src="/app-assets/js/scripts/form-file-uploads.min.js"></script>
-    <script>
-      $(document).ready(function () {
-        $('select').formSelect();
-        $('.dropify').dropify({ messages: { 'default': 'Drag and drop or click to upload', 'remove': 'Remove', 'error': 'Something went wrong.' } });
-      });
-    </script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
+      <script src="/app-assets/js/scripts/form-file-uploads.min.js"></script>
+      <script>
+        $(document).ready(function () {
+          $('select').formSelect();
+          $('.dropify').dropify({ messages: { 'default': 'Drag and drop or click to upload', 'remove': 'Remove', 'error': 'Something went wrong.' } });
+        });
+      </script>
 </body>
+
 </html>

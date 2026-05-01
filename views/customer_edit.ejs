@@ -55,8 +55,9 @@
                                         </div>
 
                                         <div class="input-field col s12 m4">
-                                            <input id="phone" name="phone" type="tel" value="<%= customer.phone %>" maxlength="10" required>
-                                            <label for="phone" class="<%= customer.phone ? 'active' : '' %>">Phone Number (10 digits) <span class="red-text">*</span></label>
+                                            <input id="phone" name="phone" type="tel" value="<%= customer.phone %>" value="+971 "
+                            maxlength="14" pattern="^\+971\s?(50|52|54|55|56|58)[0-9]{7}$" required>
+                                            <label for="phone" class="<%= customer.phone ? 'active' : '' %>">Phone Number <span class="red-text">*</span></label>
                                         </div>
 
                                         <div class="input-field col s12 m4">
@@ -76,12 +77,7 @@
 
                                         <div class="input-field col s12 m6">
                                             <input id="gstNumber" name="gstNumber" type="text" value="<%= customer.gstNumber || '' %>">
-                                            <label for="gstNumber" class="<%= customer.gstNumber ? 'active' : '' %>">GST Number</label>
-                                        </div>
-
-                                        <div class="input-field col s12 m6">
-                                            <input id="panNumber" name="panNumber" type="text" value="<%= customer.panNumber || '' %>">
-                                            <label for="panNumber" class="<%= customer.panNumber ? 'active' : '' %>">PAN Number</label>
+                                            <label for="gstNumber" class="<%= customer.gstNumber ? 'active' : '' %>">VAT Number</label>
                                         </div>
 
                                         <!-- Primary Address -->
@@ -117,8 +113,8 @@
                                         </div>
 
                                         <div class="input-field col s12 m4">
-                                            <input id="zipcode" name="zipcode" type="text" value="<%= primary.zipcode || '' %>" maxlength="6" required>
-                                            <label for="zipcode" class="<%= primary.zipcode ? 'active' : '' %>">Zipcode (6 digits) <span class="red-text">*</span></label>
+                                            <input id="zipcode" name="zipcode" type="text" value="<%= primary.zipcode || '' %>" maxlength="4" required>
+                                            <label for="zipcode" class="<%= primary.zipcode ? 'active' : '' %>">Zipcode (4 digits) <span class="red-text">*</span></label>
                                         </div>
 
                                         <!-- Contact Person -->
@@ -132,7 +128,8 @@
                                         </div>
 
                                         <div class="input-field col s12 m4">
-                                            <input id="contactPersonPhone" name="contactPersonPhone" type="tel" value="<%= customer.contactPerson?.phone || '' %>" maxlength="10">
+                                            <input id="contactPersonPhone" name="contactPersonPhone" type="tel" value="<%= customer.contactPerson?.phone || '' %>" value="+971 "
+                            maxlength="14" pattern="^\+971\s?(50|52|54|55|56|58)[0-9]{7}$">
                                             <label for="contactPersonPhone" class="<%= customer.contactPerson?.phone ? 'active' : '' %>">Phone</label>
                                         </div>
 
@@ -177,14 +174,10 @@
                                         </div>
 
                                         <div class="col s12 m6 l3">
-                                            <label>GST Certificate</label>
+                                            <label>VAT Certificate</label>
                                             <input type="file" name="gstCertificate" class="dropify" accept="image/*,application/pdf">
                                         </div>
 
-                                        <div class="col s12 m6 l3">
-                                            <label>PAN Card</label>
-                                            <input type="file" name="panCard" class="dropify" accept="image/*,application/pdf">
-                                        </div>
 
                                         <div class="col s12 m6 l3">
                                             <label>Shop License</label>

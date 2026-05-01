@@ -1,15 +1,15 @@
-<% Object.keys(messages).forEach(function (type) { %>
+<!-- <% Object.keys(messages).forEach(function (type) { %>
 <div class="card-alert card <%= type %> alert-auto-close">
-    <div class="card-content black-text">
+    <div class="card-content white-text">
         <% messages[type].forEach(function (message) { %>
         <%= message %>
         <% }) %> 
     </div>
-    <button type="button" class="close black-text" data-dismiss="alert" aria-label="Close">
+    <button type="button" class="close white-text" data-dismiss="alert" aria-label="Close">
         <span aria-hidden="true">×</span>
     </button>
 </div>
-<% }) %>
+<% }) %> -->
 
 <!-- 
   <% Object.keys(messages).forEach(function (type) { %>
@@ -42,3 +42,25 @@
 
 
  -->
+
+ <%
+const classMap = {
+    'error'  : 'red',
+    'success': 'green',
+    'warning': 'orange',
+    'info'   : 'blue'
+};
+Object.keys(messages).forEach(function (type) {
+    const cssClass = classMap[type] || type;
+%>
+<div class="card-alert card <%= cssClass %> alert-auto-close">
+    <div class="card-content black-text">
+        <% messages[type].forEach(function (message) { %>
+            <%= message %>
+        <% }) %>
+    </div>
+    <button type="button" class="close black-text" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">×</span>
+    </button>
+</div>
+<% }) %>

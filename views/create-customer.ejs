@@ -1,28 +1,51 @@
 <!DOCTYPE html>
 <html class="loading" lang="en" data-textdirection="ltr">
+
 <head>
-    <%- include('_layouts/head') %>
-    <title>Create New Customer | <%= title %></title>
-    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css">
+  <%- include('_layouts/head') %>
+    <title>Create New Customer | <%= title %>
+    </title>
+    <link rel="stylesheet" type="text/css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css">
     <style>
-        .section-title { font-size:1rem; font-weight:600; color:#1a237e; border-left:4px solid #3949ab; padding-left:10px; margin:20px 0 10px; }
-        .required-star { color:#e53935; }
-        .form-note { font-size:12px; color:#757575; margin-top:4px; }
+      .section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1a237e;
+        border-left: 4px solid #3949ab;
+        padding-left: 10px;
+        margin: 20px 0 10px;
+      }
+
+      .required-star {
+        color: #e53935;
+      }
+
+      .form-note {
+        font-size: 12px;
+        color: #757575;
+        margin-top: 4px;
+      }
     </style>
 </head>
-<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
-      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
 
-    <%- include('_layouts/sidenavbar') %>
+<body
+  class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+  data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+
+  <%- include('_layouts/sidenavbar') %>
 
     <div id="main">
       <div class="row">
         <div id="breadcrumbs-wrapper" style="background-color:white;">
           <div class="container">
             <div class="row">
-              <div class="col s12 m6 l6"><h5 class="breadcrumbs-title">Create New Customer</h5></div>
+              <div class="col s12 m6 l6">
+                <h5 class="breadcrumbs-title">Create New Customer</h5>
+              </div>
               <div class="col s12 m6 l6 right-align-md">
-                <a href="/admin/customers" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">Back to Customers</a>
+                <a href="/admin/customers" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">Back
+                  to Customers</a>
               </div>
             </div>
           </div>
@@ -30,163 +53,189 @@
 
         <%- include('messages', { messages: messages }) %>
 
-        <div class="col s12">
-          <div class="container">
-            <div class="section users-view">
-              <div class="card-panel">
-                <div class="card-content">
-                  <form id="createCustomerForm" method="POST" action="/admin/customers" enctype="multipart/form-data">
-                    <div class="row">
+          <div class="col s12">
+            <div class="container">
+              <div class="section users-view">
+                <div class="card-panel">
+                  <div class="card-content">
+                    <form id="createCustomerForm" method="POST" action="/admin/customers" enctype="multipart/form-data">
+                      <div class="row">
 
-                      <div class="col s12"><p class="section-title">Personal Information</p></div>
-                      <div class="input-field col s12 m6">
-                        <input id="name" name="name" type="text" required>
-                        <label for="name">Full Name <span class="required-star">*</span></label>
-                      </div>
-                      <div class="input-field col s12 m6">
-                        <input id="email" name="email" type="email" required>
-                        <label for="email">Email Address <span class="required-star">*</span></label>
-                      </div>
-                      <div class="input-field col s12 m6">
-                        <input id="phone" name="phone" type="tel" required>
-                        <label for="phone">Phone Number <span class="required-star">*</span></label>
-                      </div>
-                      <div class="input-field col s12 m6">
-                        <input id="alternatePhone" name="alternatePhone" type="tel">
-                        <label for="alternatePhone">Alternate Phone (Optional)</label>
-                      </div>
-                      <div class="input-field col s12">
-                        <input id="companyName" name="companyName" type="text">
-                        <label for="companyName">Company Name (Optional)</label>
-                      </div>
+                        <div class="col s12">
+                          <p class="section-title">Personal Information</p>
+                        </div>
+                        <div class="input-field col s12 m6">
+                          <input id="name" name="name" type="text" required>
+                          <label for="name">Full Name <span class="required-star">*</span></label>
+                        </div>
+                        <div class="input-field col s12 m6">
+                          <input id="email" name="email" type="email" required>
+                          <label for="email">Email Address <span class="required-star">*</span></label>
+                        </div>
+                        <div class="input-field col s12 m6">
+                          <input id="phone" name="phone" type="tel" value="+971 " maxlength="14" required
+                            pattern="^\+971\s?(50|52|54|55|56|58)[0-9]{7}$">
+                          <label for="phone">Phone Number (+971) <span class="required-star">*</span></label>
+                        </div>
 
-                      <div class="col s12"><p class="section-title">Business / Tax Information</p></div>
-                      <div class="input-field col s12 m6">
-                        <input id="gstNumber" name="gstNumber" type="text" placeholder="VAT Number">
-                        <label for="gstNumber">VAT Number (Optional)</label>
-                      </div>
-                      <!-- PAN Number removed as per requirement -->
+                        <div class="input-field col s12 m6">
+                          <input id="alternatePhone" name="alternatePhone" type="tel" value="+971 " maxlength="14"
+                            pattern="^\+971\s?(50|52|54|55|56|58)[0-9]{7}$">
+                          <label for="alternatePhone">Alternate Phone (+971) (Optional)</label>
+                        </div>
+                        <div class="input-field col s12">
+                          <input id="companyName" name="companyName" type="text">
+                          <label for="companyName">Company Name</label>
+                        </div>
 
-                      <div class="col s12"><p class="section-title">Primary Address / Billing Location</p></div>
-                      <div class="input-field col s12 m6">
-                        <input id="locationName" name="locationName" type="text">
-                        <label for="locationName">Location Name (e.g. Head Office)</label>
-                      </div>
-                      <div class="input-field col s12">
-                        <input id="addressLine1" name="addressLine1" type="text" required>
-                        <label for="addressLine1">Address Line 1 <span class="required-star">*</span></label>
-                      </div>
-                      <div class="input-field col s12">
-                        <input id="addressLine2" name="addressLine2" type="text">
-                        <label for="addressLine2">Address Line 2 (Optional)</label>
-                      </div>
-                      <div class="input-field col s12 m4">
-                        <input id="city" name="city" type="text">
-                        <label for="city">City</label>
-                      </div>
-                      <div class="input-field col s12 m4">
-                        <input id="zipcode" name="zipcode" type="text" maxlength="4" pattern="\d{4}">
-                        <label for="zipcode">Pincode / Zipcode (4 digits)</label>
-                        <span class="helper-text form-note">Enter 4-digit pincode/zipcode</span>
-                      </div>
-                      <div class="input-field col s12 m4">
-                        <select id="region" name="region">
-                          <option value="" selected>— Select Region —</option>
-                          <% if (regions && regions.length > 0) { %>
-                            <% regions.forEach(r => { %>
-                              <option value="<%= r._id %>"><%= r.regionName %> (<%= r.regionCode %>)</option>
-                            <% }) %>
-                          <% } else { %>
-                            <option value="" disabled>No active regions found</option>
-                          <% } %>
-                        </select>
-                        <label>Region (provided by client)</label>
-                      </div>
+                        <div class="col s12">
+                          <p class="section-title">Business / Tax Information</p>
+                        </div>
+                        <div class="input-field col s12 m6">
+                          <input id="gstNumber" name="gstNumber" type="text" placeholder="VAT Number">
+                          <label for="gstNumber">VAT Number</label>
+                        </div>
+                        <!-- PAN Number removed as per requirement -->
 
-                      <!-- Google Map Link -->
-                      <div class="input-field col s12">
-                        <input id="googleMapLink" name="googleMapLink" type="url" placeholder="https://maps.google.com/...">
-                        <label for="googleMapLink">Google Map Link (Optional)</label>
-                        <span class="helper-text form-note">Paste Google Maps link — admin/driver can open it directly for navigation</span>
-                      </div>
+                        <div class="col s12">
+                          <p class="section-title">Primary Address / Billing Location</p>
+                        </div>
+                        <div class="input-field col s12 m6">
+                          <input id="locationName" name="locationName" type="text">
+                          <label for="locationName">Location Name (e.g. Head Office)</label>
+                        </div>
+                        <div class="input-field col s12">
+                          <input id="addressLine1" name="addressLine1" type="text" required>
+                          <label for="addressLine1">Address Line 1 <span class="required-star">*</span></label>
+                        </div>
+                        <div class="input-field col s12">
+                          <input id="addressLine2" name="addressLine2" type="text">
+                          <label for="addressLine2">Address Line 2 (Optional)</label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                          <input id="city" name="city" type="text">
+                          <label for="city">City</label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                          <input id="zipcode" name="zipcode" type="text" maxlength="4" pattern="\d{4}">
+                          <label for="zipcode">Pincode / Zipcode (4 digits)</label>
+                          <span class="helper-text form-note">Enter 4-digit pincode/zipcode</span>
+                        </div>
+                        <div class="input-field col s12 m4">
+                          <select id="region" name="region">
+                            <option value="" selected>— Select Region —</option>
+                            <% if (regions && regions.length> 0) { %>
+                              <% regions.forEach(r=> { %>
+                                <option value="<%= r._id %>">
+                                  <%= r.regionName %> (<%= r.regionCode %>)
+                                </option>
+                                <% }) %>
+                                  <% } else { %>
+                                    <option value="" disabled>No active regions found</option>
+                                    <% } %>
+                          </select>
+                          <label>Region (provided by client)</label>
+                        </div>
 
-                      <div class="col s12"><p class="section-title">Contact Person (Optional)</p></div>
-                      <div class="input-field col s12 m4">
-                        <input id="contactPersonName" name="contactPersonName" type="text">
-                        <label for="contactPersonName">Name</label>
-                      </div>
-                      <div class="input-field col s12 m4">
-                        <input id="contactPersonPhone" name="contactPersonPhone" type="tel">
-                        <label for="contactPersonPhone">Phone</label>
-                      </div>
-                      <div class="input-field col s12 m4">
-                        <input id="contactPersonEmail" name="contactPersonEmail" type="email">
-                        <label for="contactPersonEmail">Email</label>
-                      </div>
+                        <!-- Google Map Link -->
+                        <div class="input-field col s12">
+                          <input id="googleMapLink" name="googleMapLink" type="url"
+                            placeholder="https://maps.google.com/...">
+                          <label for="googleMapLink">Google Map Link (Optional)</label>
+                          <span class="helper-text form-note">Paste Google Maps link — admin/driver can open it directly
+                            for navigation</span>
+                        </div>
 
-                      <div class="col s12"><p class="section-title">Payment &amp; Status</p></div>
-                      <div class="input-field col s12 m4">
-                        <select id="paymentTerms" name="paymentTerms">
-                          <option value="cod" selected>Cash On Delivery (COD)</option>
-                          <option value="credit_30">Credit — 30 Days</option>
-                          <option value="credit_45">Credit — 45 Days</option>
-                          <option value="credit_60">Credit — 60 Days</option>
-                          <option value="credit_90">Credit — 90 Days</option>
-                          <option value="credit_120">Credit — 120 Days</option>
-                        </select>
-                        <label>Payment Terms</label>
-                      </div>
-                      <div class="input-field col s12 m4">
-                        <input id="creditLimit" name="creditLimit" type="number" min="0" step="100" value="0">
-                        <label for="creditLimit">Credit Limit</label>
-                      </div>
-                      <div class="input-field col s12 m4">
-                        <select id="status" name="status">
-                          <option value="active" selected>Active</option>
-                          <option value="inactive">Inactive</option>
-                        </select>
-                        <label>Status</label>
-                      </div>
-                      <div class="input-field col s12">
-                        <textarea id="specialInstructions" name="specialInstructions" class="materialize-textarea"></textarea>
-                        <label for="specialInstructions">Special Instructions / Delivery Notes</label>
-                      </div>
+                        <div class="col s12">
+                          <p class="section-title">Contact Person (Optional)</p>
+                        </div>
+                        <div class="input-field col s12 m4">
+                          <input id="contactPersonName" name="contactPersonName" type="text">
+                          <label for="contactPersonName">Name</label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                          <input id="contactPersonPhone" name="contactPersonPhone" type="tel" value="+971 "
+                            maxlength="14" pattern="^\+971\s?(50|52|54|55|56|58)[0-9]{7}$">
+                          <label for="contactPersonPhone">Phone (+971)</label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                          <input id="contactPersonEmail" name="contactPersonEmail" type="email">
+                          <label for="contactPersonEmail">Email</label>
+                        </div>
 
-                      <div class="col s12"><p class="section-title">Documents (Optional)</p></div>
-                      <div class="col s12 m6 l4"><label>VAT / GST Certificate</label><input type="file" name="gstCertificate" class="dropify" accept="image/*,application/pdf"></div>
-                      <div class="col s12 m6 l4"><label>Shop License</label><input type="file" name="shopLicense" class="dropify" accept="image/*,application/pdf"></div>
-                      <div class="col s12 m6 l4"><label>Other Document</label><input type="file" name="otherDoc" class="dropify" accept="image/*,application/pdf"></div>
+                        <div class="col s12">
+                          <p class="section-title">Payment &amp; Status</p>
+                        </div>
+                        <div class="input-field col s12 m4">
+                          <select id="paymentTerms" name="paymentTerms">
+                            <option value="cod" selected>Cash On Delivery (COD)</option>
+                            <option value="credit_30">Credit — 30 Days</option>
+                            <option value="credit_45">Credit — 45 Days</option>
+                            <option value="credit_60">Credit — 60 Days</option>
+                            <option value="credit_90">Credit — 90 Days</option>
+                            <option value="credit_120">Credit — 120 Days</option>
+                          </select>
+                          <label>Payment Terms</label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                          <input id="creditLimit" name="creditLimit" type="number" min="0" step="100" value="0">
+                          <label for="creditLimit">Credit Limit</label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                          <select id="status" name="status">
+                            <option value="active" selected>Active</option>
+                            <option value="inactive">Inactive</option>
+                          </select>
+                          <label>Status</label>
+                        </div>
+                        <div class="input-field col s12">
+                          <textarea id="specialInstructions" name="specialInstructions"
+                            class="materialize-textarea"></textarea>
+                          <label for="specialInstructions">Special Instructions / Delivery Notes</label>
+                        </div>
 
-                      <div class="col s12 right-align" style="margin-top:20px;">
-                        <button type="submit" class="btn gradient-45deg-purple-deep-orange waves-effect waves-light">
-                          <i class="material-icons left">person_add</i> Create Customer
-                        </button>
-                        <a href="/admin/customers" class="btn grey waves-effect waves-light" style="margin-left:8px;">Cancel</a>
+                        <div class="col s12">
+                          <p class="section-title">Documents (Optional)</p>
+                        </div>
+                        <div class="col s12 m6 l4"><label>VAT / GST Certificate</label><input type="file"
+                            name="gstCertificate" class="dropify" accept="image/*,application/pdf"></div>
+                        <div class="col s12 m6 l4"><label>Shop License</label><input type="file" name="shopLicense"
+                            class="dropify" accept="image/*,application/pdf"></div>
+                        <div class="col s12 m6 l4"><label>Other Document</label><input type="file" name="otherDoc"
+                            class="dropify" accept="image/*,application/pdf"></div>
+
+                        <div class="col s12 right-align" style="margin-top:20px;">
+                          <button type="submit" class="btn gradient-45deg-purple-deep-orange waves-effect waves-light">
+                            <i class="material-icons left">person_add</i> Create Customer
+                          </button>
+                          <a href="/admin/customers" class="btn grey waves-effect waves-light"
+                            style="margin-left:8px;">Cancel</a>
+                        </div>
                       </div>
-                    </div>
-                  </form>
+                    </form>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
       </div>
     </div>
 
     <%- include('_layouts/commonJs') %>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
-    <script src="/app-assets/js/scripts/form-file-uploads.min.js"></script>
-    <script>
-      $(document).ready(function() {
-        $('.dropify').dropify({ messages: { 'default': 'Drag & drop or click', 'remove': 'Remove', 'error': 'Error' } });
-        $('select').formSelect();
-        M.updateTextFields();
-        M.textareaAutoResize($('#specialInstructions'));
-        $('#zipcode').on('blur', function() {
-          var v = $(this).val().trim();
-          if (v && !/^\d{4}$/.test(v)) { M.toast({ html: 'Pincode must be exactly 4 digits', classes: 'red darken-1', displayLength: 3000 }); }
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
+      <script src="/app-assets/js/scripts/form-file-uploads.min.js"></script>
+      <script>
+        $(document).ready(function () {
+          $('.dropify').dropify({ messages: { 'default': 'Drag & drop or click', 'remove': 'Remove', 'error': 'Error' } });
+          $('select').formSelect();
+          M.updateTextFields();
+          M.textareaAutoResize($('#specialInstructions'));
+          $('#zipcode').on('blur', function () {
+            var v = $(this).val().trim();
+            if (v && !/^\d{4}$/.test(v)) { M.toast({ html: 'Pincode must be exactly 4 digits', classes: 'red darken-1', displayLength: 3000 }); }
+          });
         });
-      });
-    </script>
+      </script>
 </body>
+
 </html>

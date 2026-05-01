@@ -188,8 +188,17 @@
                                         <label for="contactPerson">Contact Person <span style="color:red">*</span></label>
                                     </div>
                                     <div class="input-field col s12 m6">
-                                        <input id="contactPhone" name="deliveryLocation[contactPhone]" type="tel" required>
-                                        <label for="contactPhone">Contact Phone <span style="color:red">*</span></label>
+                                         <input 
+        id="contactPhone" 
+        name="deliveryLocation[contactPhone]"
+        type="tel" 
+        value="+971 "
+        pattern="^\+971\s?5[0-9]{8}$"
+        maxlength="14"
+        required
+    >
+    <label for="contactPhone">Contact Phone (+971) <span style="color:red">*</span></label>
+    <span class="helper-text" data-error="Enter valid UAE number (e.g. +971 5XXXXXXXX)"></span>
                                     </div>
                                     <div class="input-field col s12">
                                         <textarea id="delAddress" name="deliveryLocation[address]" class="materialize-textarea" required></textarea>

@@ -171,4 +171,12 @@ router.post(
   adminAuthController.deleteSubAdmin
 );
 
+router.get(
+  "/sub-admin/status/:id/:status",
+  protectAdmin,
+  isSuperAdmin,
+  adminAuthController.updateSubAdminStatus
+)
+
+
 module.exports = router;

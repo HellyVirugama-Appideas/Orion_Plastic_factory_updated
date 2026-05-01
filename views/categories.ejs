@@ -169,14 +169,16 @@
                                                         </tr>
 
                                                         <!-- Edit Modal -->
+                                                        <!-- Edit Modal -->
                                                         <div id="edit-<%= cat._id %>" class="modal">
                                                             <div class="modal-content">
                                                                 <h4>Edit Category: <%= cat.name %>
                                                                 </h4>
+
                                                                 <form action="/admin/categories/<%= cat._id %>/update"
                                                                     method="POST">
                                                                     <div class="row">
-                                                                        <div class="input-field col s12">
+                                                                        <div class="input-field col s12 m6">
                                                                             <input id="edit-name-<%= cat._id %>"
                                                                                 name="name" type="text"
                                                                                 value="<%= cat.name %>" required>
@@ -184,7 +186,10 @@
                                                                                 for="edit-name-<%= cat._id %>">Category
                                                                                 Name *</label>
                                                                         </div>
+
+
                                                                     </div>
+
                                                                     <div class="row">
                                                                         <div class="input-field col s12">
                                                                             <textarea id="edit-desc-<%= cat._id %>"
@@ -195,15 +200,17 @@
                                                                         </div>
                                                                     </div>
 
+
                                                                     <button type="submit"
-                                                                        class="btn green waves-effect">
-                                                                        Update Category
+                                                                        class="btn green waves-effect waves-light">
+                                                                        <i class="material-icons left">save</i> Update
+                                                                        Category
                                                                     </button>
                                                                 </form>
                                                             </div>
                                                             <div class="modal-footer">
                                                                 <a href="#!"
-                                                                    class="modal-close waves-effect waves-green btn-flat">Close</a>
+                                                                    class="modal-close waves-effect waves-green btn-flat">Cancel</a>
                                                             </div>
                                                         </div>
                                                         <% }) %>

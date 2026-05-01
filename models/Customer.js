@@ -22,7 +22,7 @@ const locationSchema = new mongoose.Schema({
   zipcode: {
     type: String,
     // required: true,
-    match: [/^\d{6}$/, 'Zipcode must be 6 digits']
+    // match: [/^\d{6}$/, 'Zipcode must be 6 digits']
   },
   country: {
     type: String,
@@ -96,11 +96,11 @@ const customerSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: true,
-    match: [/^5[0-9]{8}$/, 'Valid UAE phone number required (9 digits starting with 5)']
+    // match: [/^5[0-9]{8}$/, 'Valid UAE phone number required (9 digits starting with 5)']
   },
   alternatePhone: {
     type: String,
-    match: [/^5[0-9]{8}$/, 'Valid UAE phone number required (9 digits starting with 5)']
+    // match: [/^5[0-9]{8}$/, 'Valid UAE phone number required (9 digits starting with 5)']
   },
 
   // Business Information (VAT Number)

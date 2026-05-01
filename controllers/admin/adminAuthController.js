@@ -470,16 +470,20 @@ exports.adminSignin = async (req, res) => {
 
     const admin = await Admin.findOne({ email });
     if (!admin) {
-      return errorResponse(res, 'Invalid email or password', 401);
+      // return errorResponse(res, 'Invalid email or password', 401);
+      return res.render("login", { error: "Invalid email or password" });
     }
 
     if (!admin.isActive) {
-      return errorResponse(res, 'Admin account is deactivated', 403);
+      // return errorResponse(res, 'Admin account is deactivated', 403);
+      return res.render("login", { error: "Admin account is deactivated" });
     }
 
     const isValid = await admin.comparePassword(password);
     if (!isValid) {
-      return errorResponse(res, 'Invalid email or password', 401);
+      // return errorResponse(res, 'Invalid email or password', 401);
+      return res.render("login", { error: "Invalid email or password" });
+
     }
 
     // Generate tokens
@@ -632,69 +636,142 @@ exports.adminLogoutAll = async (req, res) => {
 };
 
 // 
+// exports.getChangePass = (req, res) => {
+//   res.render('change_pass', {
+//     title: 'Change Password',
+//     url: req.originalUrl,
+//     messages: req.flash()
+//   });
+// };
+
 exports.getChangePass = (req, res) => {
+  const msgs = req.flash();
+  console.log('=== GET CHANGEPASS ===');
+  console.log('Session ID:', req.sessionID);
+  console.log('Session data:', req.session);
+  console.log('Flash messages:', msgs);
+
   res.render('change_pass', {
     title: 'Change Password',
     url: req.originalUrl,
-    messages: req.flash()
+    messages: msgs
   });
 };
 
+// exports.postChangePass = async (req, res) => {
+//   try {
+//     const { currentpass, newpass, cfnewpass } = req.body;
+
+//     if (!currentpass || !newpass || !cfnewpass) {
+//       req.flash('error', 'All fields are required');
+//       return res.redirect('/admin/changepass');
+//     }
+
+//     if (newpass !== cfnewpass) {
+//       req.flash('error', 'New password and confirm password do not match');
+//       return res.redirect('/admin/changepass');
+//     }
+
+//     if (newpass.length < 8) {
+//       req.flash('error', 'New password must be at least 8 characters long');
+//       return res.redirect('/admin/changepass');
+//     }
+//     if (newpass === currentpass) {
+//       req.flash('error', 'New password cannot be the same as current password');
+//       return res.redirect('/admin/changepass');
+//     }
+
+//     // 4. Find admin
+//     const admin = await Admin.findOne({ email: req.admin.email }).select('+password');
+
+//     if (!admin) {
+//       req.flash('error', 'Admin not found');
+//       return res.redirect('/admin/changepass');
+//     }
+
+//     const isMatch = await admin.comparePassword(currentpass);
+//     if (!isMatch) {
+//       req.flash('error', 'Current password is incorrect');
+//       return res.redirect('/admin/changepass');
+//     }
+
+//     admin.password = newpass;
+//     await admin.save();
+
+//     req.flash('success', 'Password changed successfully! Please login again with new password.');
+//     res.redirect('/admin/logout');
+//   } catch (error) {
+//     console.error('Change Password Error:', error);
+
+//     if (error.name === 'ValidationError') {
+//       Object.values(error.errors).forEach(err => {
+//         req.flash('error', err.message);
+//       });
+//     } else {
+//       req.flash('error', 'Something went wrong. Please try again.');
+//     }
+
+//     res.redirect('/admin/changepass');
+//   }
+// };
 exports.postChangePass = async (req, res) => {
   try {
     const { currentpass, newpass, cfnewpass } = req.body;
 
     if (!currentpass || !newpass || !cfnewpass) {
-      req.flash('error', 'All fields are required');
-      return res.redirect('/admin/changepass');
-    }
-
-    if (newpass !== cfnewpass) {
-      req.flash('error', 'New password and confirm password do not match');
-      return res.redirect('/admin/changepass');
+      return res.redirect('/admin/changepass?error=All fields are required');
     }
 
     if (newpass.length < 8) {
-      req.flash('error', 'New password must be at least 8 characters long');
-      return res.redirect('/admin/changepass');
-    }
-    if (newpass === currentpass) {
-      req.flash('error', 'New password cannot be the same as current password');
-      return res.redirect('/admin/changepass');
+      return res.redirect('/admin/changepass?error=New password must be at least 8 characters long');
     }
 
-    // 4. Find admin
-    const admin = await Admin.findOne({ email: req.admin.email }).select('+password');
+    if (newpass === currentpass) {
+      return res.redirect('/admin/changepass?error=New password cannot be same as current password');
+    }
+
+    if (newpass !== cfnewpass) {
+      return res.redirect('/admin/changepass?error=New password and confirm password do not match');
+    }
+
+    const admin = await Admin.findById(req.admin._id).select('+password');
 
     if (!admin) {
-      req.flash('error', 'Admin not found');
-      return res.redirect('/admin/changepass');
+      return res.redirect('/admin/changepass?error=Admin not found');
     }
 
     const isMatch = await admin.comparePassword(currentpass);
+
     if (!isMatch) {
-      req.flash('error', 'Current password is incorrect');
-      return res.redirect('/admin/changepass');
+      return res.redirect('/admin/changepass?error=Current password is incorrect');
     }
 
     admin.password = newpass;
     await admin.save();
 
-    req.flash('success', 'Password changed successfully! Please login again with new password.');
-    res.redirect('/admin/logout');
+    return res.redirect('/admin/logout?success=Password changed successfully');
+
   } catch (error) {
     console.error('Change Password Error:', error);
-
-    if (error.name === 'ValidationError') {
-      Object.values(error.errors).forEach(err => {
-        req.flash('error', err.message);
-      });
-    } else {
-      req.flash('error', 'Something went wrong. Please try again.');
-    }
-
-    res.redirect('/admin/changepass');
+    return res.redirect('/admin/changepass?error=Something went wrong. Please try again.');
   }
+};
+
+exports.getChangePass = (req, res) => {
+  const messages = {};
+
+  if (req.query.error) {
+    messages.error = [req.query.error];
+  }
+  if (req.query.success) {
+    messages.success = [req.query.success];
+  }
+
+  res.render('change_pass', {
+    title: 'Change Password',
+    url: req.originalUrl,
+    messages: messages
+  });
 };
 
 /* ============================================
@@ -713,7 +790,8 @@ exports.getSubAdminList = async (req, res) => {
       subadmins,
       admin: req.admin,
       title: "sub-admin",
-      url: req.originalUrl
+      url: req.originalUrl,
+      messages: req.flash()
     });
   } catch (error) {
     req.flash('red', 'Error fetching sub admins');
@@ -727,6 +805,7 @@ exports.getAddSubAdmin = async (req, res) => {
     const modules = [
       { key: 'customers', name: 'Customer Management' },
       { key: 'drivers', name: 'Driver Management' },
+      { key: 'categories', name: 'Category Management' },
       { key: 'orders', name: 'Order Management' },
       { key: 'deliveries', name: 'Delivery Management' },
       { key: 'vehicles', name: 'vehicle Management' },
@@ -851,6 +930,7 @@ exports.getEditSubAdmin = async (req, res) => {
       { key: 'drivers', name: 'Driver Management' },
       { key: 'orders', name: 'Order Management' },
       { key: 'deliveries', name: 'Delivery Management' },
+      { key: 'categories', name: 'Category Management' },
       { key: 'vehicles', name: 'vehicle Management' },
       { key: 'chat', name: 'Chat' },
       { key: 'regions', name: 'regions' },
@@ -945,6 +1025,39 @@ exports.deleteSubAdmin = async (req, res) => {
   } catch (error) {
     console.error('Delete Sub Admin Error:', error);
     req.flash('red', 'Failed to delete sub admin');
+    res.redirect('/admin/sub-admin/list');
+  }
+};
+
+// controllers/admin/adminAuthController.js
+exports.updateSubAdminStatus = async (req, res) => {
+  try {
+    const { id, status } = req.params;
+
+    // "true"/"false" string ko boolean me convert karo
+    const isActive = status === 'true';
+
+    const updatedAdmin = await Admin.findByIdAndUpdate(
+      id,
+      { isActive: isActive },
+      { new: true }
+    );
+
+    if (!updatedAdmin) {
+      req.flash('error', 'Sub Admin not found');
+      return res.redirect('/admin/sub-admin/list');
+    }
+
+    req.flash(
+      'success',
+      `Sub Admin ${isActive ? 'activated' : 'deactivated'} successfully`
+    );
+
+    res.redirect('/admin/sub-admin/list');
+
+  } catch (error) {
+    console.error('Status Update Error:', error);
+    req.flash('error', 'Something went wrong');
     res.redirect('/admin/sub-admin/list');
   }
 };

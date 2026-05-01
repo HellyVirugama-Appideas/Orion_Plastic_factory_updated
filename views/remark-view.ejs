@@ -35,29 +35,16 @@
                 font-size: 0.85rem;
             }
 
-            .blue {
-                background: #e3f2fd;
+            /* .blue {
                 color: #1565c0;
-            }
+            } */
 
             .purple {
-                background: #f3e5f5;
                 color: #7b1fa2;
             }
 
             .green {
-                background: #e8f5e9;
-                color: #2e7d32;
-            }
-
-            .orange {
-                background: #fff3e0;
-                color: #ef6c00;
-            }
-
-            .red {
-                background: #ffebee;
-                color: #c62828;
+                color: #ffffff;
             }
 
             .action-section {
@@ -78,6 +65,16 @@
                     align-items: flex-start;
                     gap: 10px;
                 }
+            }
+
+            .text-blue {
+                color: blue;
+                font-weight: 900;
+            }
+
+            .text-purple {
+                color: purple;
+                font-weight: 900;
             }
         </style>
 </head>
@@ -127,7 +124,7 @@
                                                     <span>Type:</span>
                                                     <span class="users-view-id">
                                                         <span
-                                                            class="badge <%= remark.isPredefined ? 'blue' : 'purple' %>">
+                                                            class="<%= remark.isPredefined ? 'text-blue' : 'text-purple' %>">
                                                             <%= remark.isPredefined ? 'Predefined' : 'Custom' %>
                                                         </span>
                                                     </span><br>
@@ -151,7 +148,7 @@
 
                                                 <!-- Action Buttons -->
                                                 <div
-                                                    style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+                                                    style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
                                                     <% if (remark.approvalStatus==='pending' ) { %>
                                                         <!-- Approve Button -->
                                                         <form action="/admin/remarks/custom/<%= remark._id %>/approve"
@@ -198,8 +195,7 @@
                                                         <tr>
                                                             <th>Type</th>
                                                             <td>
-                                                                <span
-                                                                    class="badge <%= remark.isPredefined ? 'blue' : 'purple' %>">
+                                                                <span>
                                                                     <%= remark.isPredefined ? 'Predefined' : 'Custom' %>
                                                                 </span>
                                                             </td>
@@ -223,8 +219,10 @@
                                                         <tr>
                                                             <th>Status</th>
                                                             <td>
-                                                                <span class="badge <%= remark.approvalStatus === 'approved' ? 'green' : 
-                                                                             remark.approvalStatus === 'pending' ? 'orange' : 'red' %>" style="color: white !important ;">
+                                                                <span
+                                                                    class="badge <%= remark.approvalStatus === 'approved' ? 'green' : 
+                                                                             remark.approvalStatus === 'pending' ? 'orange' : 'red' %>"
+                                                                    style="color: white !important ;">
                                                                     <%= remark.approvalStatus.toUpperCase() %>
                                                                 </span>
                                                             </td>
@@ -259,9 +257,8 @@
                                                                 <br>
                                                                 <small>
                                                                     Role: <%= remark.createdBy?.role || 'N/A' %>
-                                                                            <br>
-                                                                            Phone: <%= remark.createdBy?.phone || 'N/A'
-                                                                                %>
+                                                                        <br>
+                                                                        Phone: <%= remark.createdBy?.phone || 'N/A' %>
                                                                 </small>
                                                             </td>
                                                         </tr>

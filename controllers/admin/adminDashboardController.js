@@ -450,13 +450,22 @@ const { sendNotification } = require('../../utils/sendNotification');
 // };
 
 //render dashboard
+
 exports.renderDashboard = async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
     const last7DaysStart = new Date(today);
     last7DaysStart.setDate(today.getDate() - 6);
+
+    // ✅ Consistent filter — har jagah same condition
+    const approvedDriverFilter = {
+      profileStatus: 'approved',
+      isActive: true,
+      'blockStatus.isBlocked': { $ne: true }
+    };
 
     const [
       totalOrders,
@@ -471,15 +480,21 @@ exports.renderDashboard = async (req, res) => {
     ] = await Promise.all([
       Order.countDocuments(),
       Delivery.countDocuments(),
-      Driver.countDocuments(),
+
+      // ✅ Sirf approved drivers
+      Driver.countDocuments(approvedDriverFilter),
+
       Customer.countDocuments(),
 
       Delivery.countDocuments({
-        status: 'delivered',
-        actualDeliveryTime: { $gte: today }
+        createdAt: { $gte: today, $lte: todayEnd }
       }),
 
-      Driver.countDocuments({ isAvailable: true }),
+      // ✅ Sirf approved + available drivers
+      Driver.countDocuments({ 
+        ...approvedDriverFilter,
+        isAvailable: true 
+      }),
 
       Vehicle.countDocuments({ status: "available" }),
 
@@ -515,6 +530,7 @@ exports.renderDashboard = async (req, res) => {
       title: 'Dashboard',
       user: req.admin,
       url: currentUrl,
+      messages: req.flash(),
       stats: {
         totalOrders: totalOrders || 0,
         totalDeliveries: totalDeliveries || 0,
@@ -530,25 +546,19 @@ exports.renderDashboard = async (req, res) => {
 
   } catch (error) {
     console.error('Dashboard render error:', error);
-
     const currentUrl = req.originalUrl || req.url;
-
     res.render('index', {
       title: 'Dashboard',
       user: req.admin,
       url: currentUrl,
+      messages: req.flash(),
       stats: {
-        totalOrders: 0,
-        totalDeliveries: 0,
-        totalDrivers: 0,
-        totalCustomers: 0,
-        todayDeliveries: 0,
-        availableDrivers: 0,
-        availableVehicles: 0
+        totalOrders: 0, totalDeliveries: 0, totalDrivers: 0,
+        totalCustomers: 0, todayDeliveries: 0,
+        availableDrivers: 0, availableVehicles: 0
       },
       recentOrders: [],
-      chartData: [],
-      error: 'Failed to load dashboard data. Please try again.'
+      chartData: []
     });
   }
 };
@@ -559,30 +569,65 @@ exports.renderDashboard = async (req, res) => {
  * @desc    Get all drivers with their current locations for live map
  * @access  Private (Admin only)
  */
+// exports.getAllDriverLocations = async (req, res) => {
+//   try {
+//     const drivers = await Driver.find({
+//       'currentLocation.latitude': { $exists: true },
+//       'currentLocation.longitude': { $exists: true }
+//     })
+//       .select('name phone vehicleNumber currentLocation isAvailable currentJourney activeDelivery lastLocationUpdate')
+//       .populate({
+//         path: 'currentJourney',
+//         select: 'status deliveryId',
+//         strictPopulate: false
+//       })
+//       .lean();
+
+//     // Filter out drivers without valid coordinates
+//     const validDrivers = drivers.filter(driver =>
+//       driver.currentLocation?.latitude &&
+//       driver.currentLocation?.longitude
+//     );
+
+//     return res.json({
+//       success: true,
+//       count: validDrivers.length,
+//       data: validDrivers,
+//       timestamp: new Date().toISOString()
+//     });
+
+//   } catch (error) {
+//     console.error('Get Driver Locations Error:', error);
+//     return res.status(500).json({
+//       success: false,
+//       message: 'Failed to fetch driver locations',
+//       error: error.message
+//     });
+//   }
+// };
+
+// ==================== NEW: GET SINGLE DRIVER LOCATION ====================
+
 exports.getAllDriverLocations = async (req, res) => {
   try {
+    // Sirf approved + active + non-blocked drivers
     const drivers = await Driver.find({
-      'currentLocation.latitude': { $exists: true },
-      'currentLocation.longitude': { $exists: true }
+      profileStatus: 'approved',
+      isActive: true,
+      'blockStatus.isBlocked': { $ne: true }
     })
-      .select('name phone vehicleNumber currentLocation isAvailable currentJourney activeDelivery lastLocationUpdate')
+      .select('name phone vehicleNumber currentLocation isAvailable currentJourney lastLocationUpdate')
       .populate({
         path: 'currentJourney',
         select: 'status deliveryId',
         strictPopulate: false
-      })  
+      })
       .lean();
-
-    // Filter out drivers without valid coordinates
-    const validDrivers = drivers.filter(driver =>
-      driver.currentLocation?.latitude &&
-      driver.currentLocation?.longitude
-    );
 
     return res.json({
       success: true,
-      count: validDrivers.length,
-      data: validDrivers,
+      count: drivers.length,
+      data: drivers,
       timestamp: new Date().toISOString()
     });
 
@@ -595,8 +640,6 @@ exports.getAllDriverLocations = async (req, res) => {
     });
   }
 };
-
-// ==================== NEW: GET SINGLE DRIVER LOCATION ====================
 /**
  * @route   GET /admin/api/drivers/:driverId/location
  * @desc    Get specific driver's current location
@@ -903,6 +946,7 @@ exports.renderDriversList = async (req, res) => {
       title: 'Drivers Management',
       user: req.admin,
       drivers,
+      messages: req.flash(),
       pagination: {
         currentPage: page,
         totalPages,

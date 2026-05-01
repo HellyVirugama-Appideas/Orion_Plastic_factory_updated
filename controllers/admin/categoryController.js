@@ -54,6 +54,44 @@ exports.createCategory = async (req, res) => {
 };
 
 // Update category
+// exports.updateCategory = async (req, res) => {
+//     try {
+//         const { categoryId } = req.params;
+//         const { name, description, icon, displayOrder, isActive } = req.body;
+
+//         const category = await Category.findById(categoryId);
+//         if (!category) {
+//             req.flash('error', 'Category not found');
+//             return res.redirect('/admin/categories');
+//         }
+
+//         // Check unique name (exclude current)
+//         if (name && name.trim() !== category.name) {
+//             const existing = await Category.findOne({ name: name.trim() });
+//             if (existing) {
+//                 req.flash('error', 'Category name already exists');
+//                 return res.redirect('/admin/categories');
+//             }
+//         }
+
+//         category.name = name?.trim() || category.name;
+//         category.description = description?.trim() || category.description;
+//         category.icon = icon?.trim() || category.icon;
+//         category.displayOrder = parseInt(displayOrder) || category.displayOrder;
+//         category.isActive = isActive === 'on' || isActive === true;
+
+//         await category.save();
+
+//         req.flash('success', 'Category updated successfully');
+//         res.redirect('/admin/categories');
+//     } catch (error) {
+//         console.error('Update Category Error:', error);
+//         req.flash('error', error.message || 'Failed to update category');
+//         res.redirect('/admin/categories');
+//     }
+// };
+
+// Update category
 exports.updateCategory = async (req, res) => {
     try {
         const { categoryId } = req.params;
@@ -65,9 +103,12 @@ exports.updateCategory = async (req, res) => {
             return res.redirect('/admin/categories');
         }
 
-        // Check unique name (exclude current)
+        // Unique name check (exclude self)
         if (name && name.trim() !== category.name) {
-            const existing = await Category.findOne({ name: name.trim() });
+            const existing = await Category.findOne({ 
+                name: name.trim(), 
+                _id: { $ne: categoryId } 
+            });
             if (existing) {
                 req.flash('error', 'Category name already exists');
                 return res.redirect('/admin/categories');
@@ -78,7 +119,7 @@ exports.updateCategory = async (req, res) => {
         category.description = description?.trim() || category.description;
         category.icon = icon?.trim() || category.icon;
         category.displayOrder = parseInt(displayOrder) || category.displayOrder;
-        category.isActive = isActive === 'on' || isActive === true;
+        category.isActive = isActive === 'on' || isActive === true || isActive === 'true';
 
         await category.save();
 

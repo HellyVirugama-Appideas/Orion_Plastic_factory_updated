@@ -1441,11 +1441,217 @@ exports.getCreateCustomer = async (req, res) => {
   }
 };
 
-// CREATE CUSTOMER (Admin Only) - With Document Uploads
+// // CREATE CUSTOMER (Admin Only) - With Document Uploads
+// exports.createCustomer = async (req, res) => {
+//   try {
+//     console.log('[CREATE-CUSTOMER] Body:', req.body);
+//     console.log('[CREATE-CUSTOMER] Files:', req.files ? Object.keys(req.files) : 'No files');
+
+//     const {
+//       customerType = 'individual',
+//       name,
+//       companyName,
+//       email,
+//       phone,
+//       alternatePhone,
+//       gstNumber,
+//       panNumber,
+//       paymentTerms = 'cod',
+//       creditLimit = 0,
+//       category = 'regular',
+//       status = 'active',
+//       addressLine1,
+//       addressLine2,
+//       city,
+//       state,
+//       zipcode,
+//       locationName,
+//       contactPersonName,
+//       contactPersonPhone,
+//       contactPersonEmail,
+//       specialInstructions,
+//       googleMapLink,
+//       region // Optional manual region selection
+//     } = req.body;
+
+//     // // Validation - Required fields
+//     // if (!name || !email || !phone || !addressLine1 || !city || !state || !zipcode) {
+//     //   req.flash('error', 'Name, email, phone, and billing address are required');
+//     //   return res.redirect('/admin/customers/create');
+//     // }
+
+//     // Phone validation (10 digits)
+//     // const cleanPhone = phone.replace(/\D/g, '');
+//     // if (cleanPhone.length !== 10) {
+//     //   req.flash('error', 'Phone number must be exactly 10 digits');
+//     //   return res.redirect('/admin/customers/create');
+//     // }
+
+//     // Zipcode validation (6 digits)
+//     if (zipcode && !/^\d{4}$/.test(zipcode)) {
+//       req.flash('error', 'Pincode/Zipcode must be exactly 4 digits');
+//       return res.redirect('/admin/customers/create');
+//     }
+
+//     // Email validation
+//     // const emailRegex = /^\S+@\S+\.\S+$/;
+//     // if (!emailRegex.test(email)) {
+//     //   req.flash('error', 'Valid email is required');
+//     //   return res.redirect('/admin/customers/create');
+//     // }
+
+//     // ========== AUTO-ASSIGN REGION BASED ON ZIPCODE ==========
+//     let assignedRegion = null;
+//     let regionAutoAssigned = false;
+
+//     if (!region || region === '') {
+//       // No manual region selected - auto-assign based on zipcode
+//       const foundRegion = await Region.findOne({
+//         zipcodes: zipcode,
+//         isActive: true
+//       }).select('_id regionName regionCode');
+
+//       if (foundRegion) {
+//         assignedRegion = foundRegion._id;
+//         regionAutoAssigned = true;
+//         console.log('[CREATE-CUSTOMER] Auto-assigned region:', foundRegion.regionName);
+//       } else {
+//         console.log('[CREATE-CUSTOMER] No region found for zipcode:', zipcode);
+//       }
+//     } else {
+//       // Manual region selected
+//       assignedRegion = region;
+//       regionAutoAssigned = false;
+//       console.log('[CREATE-CUSTOMER] Manual region selected:', region);
+//     }
+
+//     // ========== BUILD LOCATION (Primary Location) ==========
+//     let locations = [];
+//     if (locationName || addressLine1 || city || state || zipcode) {
+//       locations.push({
+//         locationName: locationName?.trim() || `${name}'s Location`,
+//         addressLine1: addressLine1?.trim(),
+//         addressLine2: addressLine2?.trim() || '',
+//         city: city?.trim(),
+//         state: state?.trim(),
+//         zipcode: zipcode?.trim(),
+//         country: 'India',
+//         regionId: assignedRegion,
+//         regionAutoAssigned: regionAutoAssigned,
+//         googleMapLink: googleMapLink?.trim() || null,
+//         isPrimary: true,
+//         isActive: true
+//       });
+//     }
+
+//     // ========== CONTACT PERSON ==========
+//     const contactPerson = {};
+//     if (contactPersonName || contactPersonPhone || contactPersonEmail) {
+//       contactPerson.name = contactPersonName?.trim();
+//       contactPerson.phone = contactPersonPhone?.replace(/\D/g, '');
+//       contactPerson.email = contactPersonEmail;
+//       contactPerson.designation = 'Primary Contact';
+//     }
+
+//     // ========== DOCUMENTS HANDLING ==========
+//     const documents = [];
+//     const baseUrl = process.env.NODE_ENV === 'production'
+//       ? 'https://yourdomain.com'
+//       : 'http://localhost:5001';
+//     const documentBasePath = '/uploads/documents/';
+
+//     const addDocument = (fieldName, docType) => {
+//       if (req.files?.[fieldName]?.[0]) {
+//         const file = req.files[fieldName][0];
+//         const relativePath = documentBasePath + file.filename;
+
+//         documents.push({
+//           documentType: docType,
+//           fileUrl: relativePath,
+//           uploadedAt: new Date()
+//         });
+
+//         console.log(`[CREATE-CUSTOMER] Added ${docType}:`, relativePath);
+//       }
+//     };
+
+//     addDocument('gstCertificate', 'gst_certificate');
+//     addDocument('panCard', 'pan_card');
+//     addDocument('shopLicense', 'shop_license');
+//     addDocument('otherDoc', 'other_document');
+
+//     // Console log full URLs
+//     const consoleDetails = {};
+//     documents.forEach(doc => {
+//       consoleDetails[doc.documentType] = `${baseUrl}${doc.fileUrl}`;
+//     });
+//     if (documents.length > 0) {
+//       console.log('[CREATE-CUSTOMER] Fixed Document URLs:', consoleDetails);
+//     }
+
+//     // ========== CREATE CUSTOMER ==========
+//     const newCustomer = new Customer({
+//       customerType,
+//       name: name.trim(),
+//       companyName: companyName?.trim() || null,
+//       email: email.toLowerCase().trim(),
+//       phone: phone,
+//       alternatePhone: alternatePhone, //?.replace(/\D/g, '') || null,
+//       gstNumber: gstNumber?.trim() || null,
+//       panNumber: panNumber?.trim() || null,
+//       locations,
+//       billingAddress: {
+//         addressLine1: addressLine1?.trim(),
+//         addressLine2: addressLine2?.trim() || '',
+//         city: city?.trim(),
+//         // state: state?.trim(),
+//         zipcode: zipcode?.trim(),
+//         country: 'India'
+//       },
+//       paymentTerms,
+//       creditLimit: parseFloat(creditLimit) || 0,
+//       category,
+//       status,
+//       documents,
+//       preferences: {
+//         feedbackNotification: true,
+//         smsNotification: true,
+//         emailNotification: true,
+//         specialInstructions: specialInstructions?.trim() || ''
+//       },
+//       contactPerson,
+//       isActive: status === 'active'
+//     });
+
+//     await newCustomer.save();
+
+//     console.log('[CREATE-CUSTOMER] Successfully created:', newCustomer.customerId);
+//     req.flash('success', `Customer ${newCustomer.customerId} created successfully!`);
+//     res.redirect(`/admin/customers/view/${newCustomer.customerId}`);
+
+//   } catch (error) {
+//     console.error('[CREATE-CUSTOMER] ERROR:', error);
+
+//     let errorMsg = 'Failed to create customer';
+
+//     if (error.code === 11000) {
+//       const field = Object.keys(error.keyPattern || {})[0];
+//       errorMsg = `Duplicate ${field} already exists`;
+//     } else if (error.name === 'ValidationError') {
+//       errorMsg = Object.values(error.errors).map(err => err.message).join(', ');
+//     } else if (error.message) {
+//       errorMsg = error.message;
+//     }
+
+//     req.flash('error', errorMsg);
+//     res.redirect('/admin/customers/create-customer');
+//   }
+// };
+
+// CREATE CUSTOMER (Admin Only) - FINAL FIXED
 exports.createCustomer = async (req, res) => {
   try {
     console.log('[CREATE-CUSTOMER] Body:', req.body);
-    console.log('[CREATE-CUSTOMER] Files:', req.files ? Object.keys(req.files) : 'No files');
 
     const {
       customerType = 'individual',
@@ -1471,179 +1677,166 @@ exports.createCustomer = async (req, res) => {
       contactPersonEmail,
       specialInstructions,
       googleMapLink,
-      region // Optional manual region selection
+      region
     } = req.body;
 
-    // // Validation - Required fields
-    // if (!name || !email || !phone || !addressLine1 || !city || !state || !zipcode) {
-    //   req.flash('error', 'Name, email, phone, and billing address are required');
-    //   return res.redirect('/admin/customers/create');
-    // }
-
-    // Phone validation (10 digits)
-    // const cleanPhone = phone.replace(/\D/g, '');
-    // if (cleanPhone.length !== 10) {
-    //   req.flash('error', 'Phone number must be exactly 10 digits');
-    //   return res.redirect('/admin/customers/create');
-    // }
-
-    // Zipcode validation (6 digits)
+    // ✅ Zipcode validation (UAE: 4 digit)
     if (zipcode && !/^\d{4}$/.test(zipcode)) {
-      req.flash('error', 'Pincode/Zipcode must be exactly 4 digits');
-      return res.redirect('/admin/customers/create');
+      req.flash('error', 'Zipcode must be 4 digits');
+      return res.redirect('/admin/customers/create-customer');
     }
 
-    // Email validation
-    // const emailRegex = /^\S+@\S+\.\S+$/;
-    // if (!emailRegex.test(email)) {
-    //   req.flash('error', 'Valid email is required');
-    //   return res.redirect('/admin/customers/create');
-    // }
+    // ✅ UAE Phone Validation
+    const phoneRegex = /^\+971\s?(50|52|54|55|56|58)[0-9]{7}$/;
 
-    // ========== AUTO-ASSIGN REGION BASED ON ZIPCODE ==========
+    if (!phoneRegex.test(phone)) {
+      req.flash('error', 'Invalid UAE phone number');
+      return res.redirect('/admin/customers/create-customer');
+    }
+
+    if (alternatePhone && !phoneRegex.test(alternatePhone)) {
+      req.flash('error', 'Invalid alternate phone number');
+      return res.redirect('/admin/customers/create-customer');
+    }
+
+    if (contactPersonPhone && !phoneRegex.test(contactPersonPhone)) {
+      req.flash('error', 'Invalid contact person phone');
+      return res.redirect('/admin/customers/create-customer');
+    }
+
+    // ========== REGION ==========
     let assignedRegion = null;
     let regionAutoAssigned = false;
 
-    if (!region || region === '') {
-      // No manual region selected - auto-assign based on zipcode
+    if (!region) {
       const foundRegion = await Region.findOne({
         zipcodes: zipcode,
         isActive: true
-      }).select('_id regionName regionCode');
+      }).select('_id');
 
       if (foundRegion) {
         assignedRegion = foundRegion._id;
         regionAutoAssigned = true;
-        console.log('[CREATE-CUSTOMER] Auto-assigned region:', foundRegion.regionName);
-      } else {
-        console.log('[CREATE-CUSTOMER] No region found for zipcode:', zipcode);
       }
     } else {
-      // Manual region selected
       assignedRegion = region;
-      regionAutoAssigned = false;
-      console.log('[CREATE-CUSTOMER] Manual region selected:', region);
     }
 
-    // ========== BUILD LOCATION (Primary Location) ==========
-    let locations = [];
-    if (locationName || addressLine1 || city || state || zipcode) {
-      locations.push({
-        locationName: locationName?.trim() || `${name}'s Location`,
-        addressLine1: addressLine1?.trim(),
-        addressLine2: addressLine2?.trim() || '',
-        city: city?.trim(),
-        state: state?.trim(),
-        zipcode: zipcode?.trim(),
-        country: 'India',
-        regionId: assignedRegion,
-        regionAutoAssigned: regionAutoAssigned,
-        googleMapLink: googleMapLink?.trim() || null,
-        isPrimary: true,
-        isActive: true
-      });
-    }
+    // ========== LOCATION ==========
+    const locations = [{
+      locationName: locationName || `${name}'s Location`,
+      addressLine1,
+      addressLine2: addressLine2 || '',
+      city,
+      state,
+      zipcode,
+      country: 'UAE',
+      regionId: assignedRegion,
+      regionAutoAssigned,
+      googleMapLink: googleMapLink || null,
+      isPrimary: true,
+      isActive: true
+    }];
 
     // ========== CONTACT PERSON ==========
-    const contactPerson = {};
-    if (contactPersonName || contactPersonPhone || contactPersonEmail) {
-      contactPerson.name = contactPersonName?.trim();
-      contactPerson.phone = contactPersonPhone?.replace(/\D/g, '');
-      contactPerson.email = contactPersonEmail;
-      contactPerson.designation = 'Primary Contact';
-    }
+    const contactPerson = {
+      name: contactPersonName || '',
+      phone: contactPersonPhone || '',
+      email: contactPersonEmail || '',
+      designation: 'Primary Contact'
+    };
 
-    // ========== DOCUMENTS HANDLING ==========
+    // ========== DOCUMENTS ==========
     const documents = [];
-    const baseUrl = process.env.NODE_ENV === 'production'
-      ? 'https://yourdomain.com'
-      : 'http://localhost:5001';
-    const documentBasePath = '/uploads/documents/';
+    const basePath = '/uploads/documents/';
 
-    const addDocument = (fieldName, docType) => {
-      if (req.files?.[fieldName]?.[0]) {
-        const file = req.files[fieldName][0];
-        const relativePath = documentBasePath + file.filename;
-
+    const addDoc = (field, type) => {
+      if (req.files?.[field]?.[0]) {
         documents.push({
-          documentType: docType,
-          fileUrl: relativePath,
+          documentType: type,
+          fileUrl: basePath + req.files[field][0].filename,
           uploadedAt: new Date()
         });
-
-        console.log(`[CREATE-CUSTOMER] Added ${docType}:`, relativePath);
       }
     };
 
-    addDocument('gstCertificate', 'gst_certificate');
-    addDocument('panCard', 'pan_card');
-    addDocument('shopLicense', 'shop_license');
-    addDocument('otherDoc', 'other_document');
+    addDoc('gstCertificate', 'gst_certificate');
+    addDoc('panCard', 'pan_card');
+    addDoc('shopLicense', 'shop_license');
+    addDoc('otherDoc', 'other_document');
 
-    // Console log full URLs
-    const consoleDetails = {};
-    documents.forEach(doc => {
-      consoleDetails[doc.documentType] = `${baseUrl}${doc.fileUrl}`;
-    });
-    if (documents.length > 0) {
-      console.log('[CREATE-CUSTOMER] Fixed Document URLs:', consoleDetails);
+    // ========== 🔥 CUSTOMER ID GENERATION ==========
+    let saved = false;
+    let newCustomer;
+
+    while (!saved) {
+      try {
+        const lastCustomer = await Customer.findOne().sort({ createdAt: -1 });
+
+        let newId = 1;
+        if (lastCustomer?.customerId) {
+          const lastNumber = parseInt(lastCustomer.customerId.replace('CUST', ''));
+          newId = lastNumber + 1;
+        }
+
+        const customerId = `CUST${String(newId).padStart(6, '0')}`;
+
+        newCustomer = new Customer({
+          customerId,
+          customerType,
+          name: name.trim(),
+          companyName: companyName || null,
+          email: email.toLowerCase().trim(),
+          phone,
+          alternatePhone: alternatePhone || null,
+          gstNumber: gstNumber || null,
+          panNumber: panNumber || null,
+          locations,
+          billingAddress: {
+            addressLine1,
+            addressLine2: addressLine2 || '',
+            city,
+            zipcode,
+            country: 'UAE'
+          },
+          paymentTerms,
+          creditLimit: parseFloat(creditLimit) || 0,
+          category,
+          status,
+          documents,
+          contactPerson,
+          isActive: status === 'active'
+        });
+
+        await newCustomer.save();
+        saved = true;
+
+      } catch (err) {
+        if (err.code === 11000) {
+          console.log('Retrying customerId...');
+        } else {
+          throw err;
+        }
+      }
     }
 
-    // ========== CREATE CUSTOMER ==========
-    const newCustomer = new Customer({
-      customerType,
-      name: name.trim(),
-      companyName: companyName?.trim() || null,
-      email: email.toLowerCase().trim(),
-      phone: phone,
-      alternatePhone: alternatePhone, //?.replace(/\D/g, '') || null,
-      gstNumber: gstNumber?.trim() || null,
-      panNumber: panNumber?.trim() || null,
-      locations,
-      billingAddress: {
-        addressLine1: addressLine1?.trim(),
-        addressLine2: addressLine2?.trim() || '',
-        city: city?.trim(),
-        // state: state?.trim(),
-        zipcode: zipcode?.trim(),
-        country: 'India'
-      },
-      paymentTerms,
-      creditLimit: parseFloat(creditLimit) || 0,
-      category,
-      status,
-      documents,
-      preferences: {
-        feedbackNotification: true,
-        smsNotification: true,
-        emailNotification: true,
-        specialInstructions: specialInstructions?.trim() || ''
-      },
-      contactPerson,
-      isActive: status === 'active'
-    });
+    console.log('[CREATE-CUSTOMER] Created:', newCustomer.customerId);
 
-    await newCustomer.save();
-
-    console.log('[CREATE-CUSTOMER] Successfully created:', newCustomer.customerId);
-    req.flash('success', `Customer ${newCustomer.customerId} created successfully!`);
+    req.flash('success', `Customer ${newCustomer.customerId} created successfully`);
     res.redirect(`/admin/customers/view/${newCustomer.customerId}`);
 
   } catch (error) {
     console.error('[CREATE-CUSTOMER] ERROR:', error);
 
-    let errorMsg = 'Failed to create customer';
+    let msg = 'Failed to create customer';
 
     if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern || {})[0];
-      errorMsg = `Duplicate ${field} already exists`;
-    } else if (error.name === 'ValidationError') {
-      errorMsg = Object.values(error.errors).map(err => err.message).join(', ');
+      msg = 'Duplicate field already exists';
     } else if (error.message) {
-      errorMsg = error.message;
+      msg = error.message;
     }
 
-    req.flash('error', errorMsg);
+    req.flash('error', msg);
     res.redirect('/admin/customers/create-customer');
   }
 };
@@ -1711,7 +1904,7 @@ exports.getAllCustomers = async (req, res) => {
       // messages: {
       //   success: req.flash('success'),
       //   error: req.flash('error')
-      // } 
+      // },
       messages: req.flash()
     });
 
@@ -2102,8 +2295,9 @@ exports.deleteCustomer = async (req, res) => {
     }
 
     console.log(`[DELETE-CUSTOMER] Permanently deleted: ${customer.customerId}`);
-    req.flash('success', `Customer ${customer.customerId} deleted successfully`);
-    res.redirect('/admin/customers');
+    req.flash('green', `Customer ${customer.customerId} deleted successfully`);
+    // res.redirect('/admin/customers');
+    return req.session.save(() => res.redirect('/admin/customers'));
 
   } catch (error) {
     console.error('[DELETE-CUSTOMER] ERROR:', error);
