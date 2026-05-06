@@ -301,7 +301,7 @@
 // //     // Clean phone - only digits
 // //     const cleanedPhone = phone.replace(/\D/g, '');
 
-   
+
 
 // //     // Use provided country code or default +91
 // //     const countryCode = inputCountryCode?.trim() || '+91';
@@ -444,7 +444,7 @@
 //     if (!session || session.otp !== otp || Date.now() > session.otpExpires) {
 //       return errorResponse(res, 'Invalid or expired OTP', 400);
 //     }
- 
+
 //     session.verified = true;
 //     await session.save();
 
@@ -621,7 +621,7 @@ exports.resendPinResetOtp = async (req, res) => {
       return errorResponse(res, 'No active PIN reset request found. Please initiate forgot PIN first.', 400);
     }
 
-    const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = Date.now() + 5 * 60 * 1000;
 
     await Session.findOneAndUpdate(

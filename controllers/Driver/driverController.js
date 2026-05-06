@@ -1074,6 +1074,77 @@ exports.saveStep3 = async (req, res) => {
   }
 };
 
+// exports.finalSignup = async (req, res) => {
+//   try {
+//     let { tempId, email, phone, countryCode } = req.body;
+
+//     countryCode = countryCode || '+971';
+
+//     const tempExists = await TempDriver.findOne({ tempId });
+//     if (!tempExists) {
+//       return errorResponse(res, 'Session expired. Please start again.', 400);
+//     }
+
+//     // Validate email
+//     if (!email || !email.includes('@')) {
+//       return errorResponse(res, 'Valid email address is required for OTP verification', 400);
+//     }
+
+//     // Check duplicate email
+//     const driverExists = await Driver.findOne({ email: email.toLowerCase() });
+//     if (driverExists) {
+//       return errorResponse(res, 'Email already registered', 400);
+//     }
+
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+//     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+//     const updated = await TempDriver.findOneAndUpdate(
+//       { tempId },
+//       {
+//         $set: {
+//           email: email.toLowerCase(),
+//           phone: phone || tempExists.phone,
+//           countryCode,
+//           otp,
+//           otpExpiresAt
+//         }
+//       },
+//       { new: true }
+//     );
+
+//     console.log('TempDriver after finalSignup:', {
+//       tempId: updated.tempId,
+//       email: updated.email,     // ← Yeh null nahi hona chahiye
+//       otp: updated.otp
+//     });
+
+//     if (!updated) {
+//       return errorResponse(res, 'Failed to save OTP. Try again.', 500);
+//     }
+
+//     // Send OTP via EMAIL (not SMS)
+//     try {
+//       const { sendOTPEmail } = require('../../utils/emailHelper');
+//       await sendOTPEmail(email, otp, tempExists.name || 'Driver');
+//       console.log(`Email OTP sent to ${email}: ${otp}`);
+//     } catch (emailErr) {
+//       console.error('Email OTP send failed:', emailErr.message);
+//       // Still return otp in dev for testing
+//     }
+
+//     return successResponse(res, 'OTP sent to your email!', {
+//       message: 'Check your email for 6-digit OTP code',
+//       otp
+//       // ...(process.env.NODE_ENV !== 'production' && { otp }) // expose in dev only
+//     });
+
+//   } catch (error) {
+//     console.error('Final Signup Error:', error.message);
+//     return errorResponse(res, 'Server error', 500);
+//   }
+// };
+
 exports.finalSignup = async (req, res) => {
   try {
     let { tempId, email, phone, countryCode } = req.body;
@@ -1087,7 +1158,7 @@ exports.finalSignup = async (req, res) => {
 
     // Validate email
     if (!email || !email.includes('@')) {
-      return errorResponse(res, 'Valid email address is required for OTP verification', 400);
+      return errorResponse(res, 'Valid email address is required', 400);
     }
 
     // Check duplicate email
@@ -1099,6 +1170,7 @@ exports.finalSignup = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+    // Update TempDriver
     const updated = await TempDriver.findOneAndUpdate(
       { tempId },
       {
@@ -1113,29 +1185,23 @@ exports.finalSignup = async (req, res) => {
       { new: true }
     );
 
-    console.log('TempDriver after finalSignup:', {
-      tempId: updated.tempId,
-      email: updated.email,     // ← Yeh null nahi hona chahiye
-      otp: updated.otp
-    });
-
     if (!updated) {
       return errorResponse(res, 'Failed to save OTP. Try again.', 500);
     }
 
-    // Send OTP via EMAIL (not SMS)
-    try {
-      const { sendOTPEmail } = require('../../utils/emailHelper');
-      await sendOTPEmail(email, otp, tempExists.name || 'Driver');
-      console.log(`Email OTP sent to ${email}: ${otp}`);
-    } catch (emailErr) {
-      console.error('Email OTP send failed:', emailErr.message);
-      // Still return otp in dev for testing
-    }
+    // Logging for debugging
+    console.log('✅ TempDriver Updated:', {
+      tempId: updated.tempId,
+      email: updated.email,
+      otp: updated.otp,
+      expiresAt: updated.otpExpiresAt
+    });
 
-    return successResponse(res, 'OTP sent to your email!', {
-      message: 'Check your email for 6-digit OTP code',
-      ...(process.env.NODE_ENV !== 'production' && { otp }) // expose in dev only
+    // ✅ Sirf OTP response mein bhej rahe hain (No Email Sending)
+    return successResponse(res, 'OTP generated successfully!', {
+      message: 'Use this OTP to verify your account',
+      otp: otp,                    // ← Ye frontend ko chahiye
+      tempId: updated.tempId
     });
 
   } catch (error) {
@@ -1143,7 +1209,6 @@ exports.finalSignup = async (req, res) => {
     return errorResponse(res, 'Server error', 500);
   }
 };
-
 
 exports.verifyOtpAndCreateDriver = async (req, res) => {
   try {
@@ -1317,7 +1382,8 @@ exports.resendOtp = async (req, res) => {
     return successResponse(res, 'New OTP sent successfully!', {
       message: 'Check your email for the new 6-digit OTP code',
       // Remove otp in production for security
-      ...(process.env.NODE_ENV !== 'production' && { otp: newOtp })
+      // ...(process.env.NODE_ENV !== 'production' && { otp: newOtp })
+      otp : newOtp
     });
 
   } catch (error) {

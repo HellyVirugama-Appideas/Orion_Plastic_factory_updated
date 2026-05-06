@@ -1187,11 +1187,12 @@ exports.deleteOrder = async (req, res) => {
     // 6. Finally delete the order
     await Order.findByIdAndDelete(order._id);
 
-    return res.status(200).json({
-      success: true,
-      message: 'Order deleted successfully',
-      deletedOrderId: orderId
-    });
+    // return res.status(200).json({
+    //   success: true,
+    //   message: 'Order deleted successfully',
+    //   deletedOrderId: orderId
+    // });
+     res.redirect(`/admin/orders`);
 
   } catch (error) {
     console.error('[DELETE-ORDER] Error:', error);

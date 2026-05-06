@@ -18,7 +18,6 @@
         }
         .remove-item-btn { position: absolute; top: 12px; right: 12px; }
 
-        /* Pickup location list inside modal */
         .pickup-loc-item {
             background: #f5f5f5;
             border: 1px solid #e0e0e0;
@@ -38,7 +37,6 @@
             white-space: nowrap;
         }
 
-        /* Selected pickup preview */
         .pickup-preview {
             display: none;
             background: #e8f5e9;
@@ -55,6 +53,56 @@
         
         #addNewPickupForm { display: none; }
         #addNewPickupForm.show { display: block; }
+
+        /* ===== MAPS LINK PASTE WIDGET ===== */
+        .maps-link-box {
+            background: #f3f0ff;
+            border: 1px dashed #9c7ee8;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .maps-link-box input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 0.85rem;
+            outline: none;
+            color: #424242;
+            height: 32px;
+            box-shadow: none !important;
+            margin: 0 !important;
+        }
+        .maps-link-box .parse-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .maps-link-box .parse-btn:hover { background: #5569d4; }
+        .maps-link-spinner { display: none; }
+        .maps-link-status {
+            font-size: 0.78rem;
+            margin-top: 4px;
+            padding: 0 2px;
+        }
+        .maps-link-status.success { color: #2e7d32; }
+        .maps-link-status.error   { color: #c62828; }
+
+        /* Delivery address fields wrapper — highlight when auto-filled */
+        .autofill-highlight input,
+        .autofill-highlight textarea {
+            border-bottom: 2px solid #667eea !important;
+            transition: border-color 0.3s;
+        }
     </style>
 </head>
 
@@ -62,6 +110,11 @@
       data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
 
     <%- include('_layouts/sidenavbar') %>
+
+    <!-- Hidden: Google Maps API key for front-end geocoding -->
+    <script>
+        const GMAPS_KEY = '<%= process.env.GOOGLE_MAPS_API_KEY || "" %>';
+    </script>
 
     <div id="main">
         <div class="row">
@@ -139,7 +192,6 @@
                                                 </select>
                                                 <label>Pickup Location <span style="color:red">*</span></label>
                                             </div>
-                                            <!-- Manage button — opens modal -->
                                             <a href="#pickupModal" class="modal-trigger btn blue darken-1 waves-effect waves-light"
                                                style="margin-top:0; white-space:nowrap;">
                                                 <i class="material-icons left">edit_location</i> Manage
@@ -183,40 +235,59 @@
                                         </h5>
                                     </div>
 
-                                    <div class="input-field col s12 m6">
-                                        <input id="contactPerson" name="deliveryLocation[contactPerson]" type="text" required>
-                                        <label for="contactPerson">Contact Person <span style="color:red">*</span></label>
+                                    <!-- 🗺️ GOOGLE MAPS LINK PASTE (DELIVERY) -->
+                                    <div class="col s12 m8 l7" style="margin-bottom:8px;">
+                                        <div class="maps-link-box">
+                                            <i class="material-icons" style="color:#667eea; font-size:20px;">location_on</i>
+                                            <input type="text" id="deliveryMapsLink"
+                                                   placeholder="Paste Google Maps link to auto-fill delivery address…"
+                                                   onkeydown="if(event.key==='Enter'){event.preventDefault();parseDeliveryLink();}">
+                                            <button type="button" class="parse-btn" onclick="parseDeliveryLink()">
+                                                <i class="material-icons tiny">my_location</i> Fill
+                                            </button>
+                                        </div>
+                                        <div class="maps-link-status" id="deliveryLinkStatus"></div>
                                     </div>
-                                    <div class="input-field col s12 m6">
-                                         <input 
-        id="contactPhone" 
-        name="deliveryLocation[contactPhone]"
-        type="tel" 
-        value="+971 "
-        pattern="^\+971\s?5[0-9]{8}$"
-        maxlength="14"
-        required
-    >
-    <label for="contactPhone">Contact Phone (+971) <span style="color:red">*</span></label>
-    <span class="helper-text" data-error="Enter valid UAE number (e.g. +971 5XXXXXXXX)"></span>
+
+                                    <!-- Hidden lat/lng for delivery -->
+                                    <input type="hidden" name="deliveryLocation[coordinates][latitude]"  id="delLat">
+                                    <input type="hidden" name="deliveryLocation[coordinates][longitude]" id="delLng">
+
+                                    <div id="deliveryFields">
+                                        <div class="input-field col s12 m6">
+                                            <input id="contactPerson" name="deliveryLocation[contactPerson]" type="text" required>
+                                            <label for="contactPerson">Contact Person <span style="color:red">*</span></label>
+                                        </div>
+                                        <div class="input-field col s12 m6">
+                                            <input 
+                                                id="contactPhone" 
+                                                name="deliveryLocation[contactPhone]"
+                                                type="tel" 
+                                                value="+971 "
+                                                pattern="^\+971\s?5[0-9]{8}$"
+                                                maxlength="14"
+                                                required
+                                            >
+                                            <label for="contactPhone">Contact Phone (+971) <span style="color:red">*</span></label>
+                                            <span class="helper-text" data-error="Enter valid UAE number (e.g. +971 5XXXXXXXX)"></span>
+                                        </div>
+                                        <div class="input-field col s12">
+                                            <textarea id="delAddress" name="deliveryLocation[address]" class="materialize-textarea" required></textarea>
+                                            <label for="delAddress">Full Delivery Address <span style="color:red">*</span></label>
+                                        </div>
+                                        <div class="input-field col s12 m4">
+                                            <input id="city" name="deliveryLocation[city]" type="text" required>
+                                            <label for="city">City <span style="color:red">*</span></label>
+                                        </div>
+                                        <div class="input-field col s12 m4">
+                                            <input id="state" name="deliveryLocation[state]" type="text" required>
+                                            <label for="state">State <span style="color:red">*</span></label>
+                                        </div>
+                                        <div class="input-field col s12 m4">
+                                            <input id="pincode" name="deliveryLocation[pincode]" type="text" maxlength="12" required>
+                                            <label for="pincode">Pincode / ZIP <span style="color:red">*</span></label>
+                                        </div>
                                     </div>
-                                    <div class="input-field col s12">
-                                        <textarea id="delAddress" name="deliveryLocation[address]" class="materialize-textarea" required></textarea>
-                                        <label for="delAddress">Full Delivery Address <span style="color:red">*</span></label>
-                                    </div>
-                                    <div class="input-field col s12 m4">
-                                        <input id="city" name="deliveryLocation[city]" type="text" required>
-                                        <label for="city">City <span style="color:red">*</span></label>
-                                    </div>
-                                    <div class="input-field col s12 m4">
-                                        <input id="state" name="deliveryLocation[state]" type="text" required>
-                                        <label for="state">State <span style="color:red">*</span></label>
-                                    </div>
-                                    <div class="input-field col s12 m4">
-                                        <input id="pincode" name="deliveryLocation[pincode]" type="text" maxlength="6" required>
-                                        <label for="pincode">Pincode <span style="color:red">*</span></label>
-                                    </div>
-                                    
 
                                     <!-- ===== ORDER DETAILS ===== -->
                                     <div class="col s12" style="margin-top:16px;">
@@ -244,7 +315,6 @@
                                         </select>
                                         <label>Priority</label>
                                     </div>
-                                
 
                                     <!-- ===== SPECIAL INSTRUCTIONS ===== -->
                                     <div class="col s12" style="margin-top:16px;">
@@ -282,7 +352,7 @@
     </div>
 
     <!-- ================================================================
-         PICKUP LOCATION MODAL — add/edit/delete, page change nahi hoga
+         PICKUP LOCATION MODAL
     ================================================================ -->
     <div id="pickupModal" class="modal" style="width:620px; max-width:95vw;">
         <div class="modal-content">
@@ -292,18 +362,26 @@
             </h5>
             <hr class="section-divider">
 
-            <!-- Existing locations list -->
-            <div id="pickupLocList">
-                <!-- JS se render hoga -->
-            </div>
+            <div id="pickupLocList"></div>
 
-            <!-- Toggle add form -->
+            <!-- 🗺️ GOOGLE MAPS LINK PASTE (inside modal — for new/edit forms) -->
+            <div class="maps-link-box" style="margin-bottom:12px;">
+                <i class="material-icons" style="color:#667eea; font-size:20px;">location_on</i>
+                <input type="text" id="modalMapsLink"
+                       placeholder="Paste Google Maps link to auto-fill below fields…"
+                       onkeydown="if(event.key==='Enter'){event.preventDefault();parseModalLink();}">
+                <button type="button" class="parse-btn" onclick="parseModalLink()">
+                    <i class="material-icons tiny">my_location</i> Fill
+                </button>
+            </div>
+            <div class="maps-link-status" id="modalLinkStatus"></div>
+
             <button type="button" id="toggleAddBtn" onclick="toggleAddForm()"
                     class="btn btn-gradient waves-effect waves-light" style="margin-bottom:16px;">
                 <i class="material-icons left">add</i> Add New Location
             </button>
 
-            <!-- Add New Location Form (hidden by default) -->
+            <!-- Add New Location Form -->
             <div id="addNewPickupForm">
                 <hr class="section-divider">
                 <p style="font-weight:600; color:#424242; margin-bottom:12px;">New Pickup Location</p>
@@ -329,7 +407,7 @@
                         <label for="n_state">State</label>
                     </div>
                     <div class="input-field col s12 m4">
-                        <input type="text" id="n_pincode" maxlength="6">
+                        <input type="text" id="n_pincode" maxlength="12">
                         <label for="n_pincode">Pincode</label>
                     </div>
                     <div class="input-field col s12 m6">
@@ -363,7 +441,7 @@
                 </div>
             </div>
 
-            <!-- Edit form (hidden, shown when edit clicked) -->
+            <!-- Edit form -->
             <div id="editPickupForm" style="display:none;">
                 <hr class="section-divider">
                 <p style="font-weight:600; color:#424242; margin-bottom:12px;">Edit Location</p>
@@ -390,7 +468,7 @@
                         <label for="e_state" class="active">State</label>
                     </div>
                     <div class="input-field col s12 m4">
-                        <input type="text" id="e_pincode" maxlength="6">
+                        <input type="text" id="e_pincode" maxlength="12">
                         <label for="e_pincode" class="active">Pincode</label>
                     </div>
                     <div class="input-field col s12 m6">
@@ -440,8 +518,7 @@
 
     <script>
         // ================================================================
-        // In-memory store — page reload nahi hoga
-        // Server se initial data mila, baaki AJAX se handle hoga
+        // In-memory store
         // ================================================================
         let pickupLocations = <%- JSON.stringify(pickupLocations || []) %>;
         let itemCounter = 0;
@@ -453,13 +530,223 @@
             M.updateTextFields();
             addItem();
             renderPickupDropdown();
-
             document.getElementById('pickupLocationId').addEventListener('change', updatePickupPreview);
         });
 
-        // ===== PICKUP DROPDOWN RENDER =====
+        // ================================================================
+        //  GOOGLE MAPS LINK PARSER
+        //  Supports:
+        //    1. maps.app.goo.gl short links  → first expand via no-cors trick,
+        //       then extract coords from redirect URL
+        //    2. google.com/maps?q=lat,lng
+        //    3. google.com/maps/@lat,lng,zoom
+        //    4. google.com/maps/place/name/@lat,lng,zoom
+        //    5. google.com/maps/search/query  → geocode query text
+        //    Falls back to Geocoding API for any plain address string too.
+        // ================================================================
+
+        // Extract lat/lng directly from a Google Maps full URL
+        function extractCoordsFromUrl(url) {
+            // @lat,lng,zoom pattern (most common in place & directions URLs)
+            let m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+            if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+            // ?q=lat,lng
+            m = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+            if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+            // !3d<lat>!4d<lng>  (embedded map urls)
+            m = url.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
+            if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+            return null;
+        }
+
+        // Extract a search query string from a Maps URL (for geocoding fallback)
+        function extractQueryFromUrl(url) {
+            let m = url.match(/\/maps\/(?:search|place)\/([^/@?]+)/);
+            if (m) return decodeURIComponent(m[1].replace(/\+/g, ' '));
+
+            m = url.match(/[?&]q=([^&]+)/);
+            if (m) return decodeURIComponent(m[1].replace(/\+/g, ' '));
+
+            return null;
+        }
+
+        // Reverse-geocode lat/lng → address components via Google Geocoding API
+        async function reverseGeocode(lat, lng) {
+            if (!GMAPS_KEY) throw new Error('Google Maps API key not configured');
+            const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GMAPS_KEY}`;
+            const res  = await fetch(url);
+            const data = await res.json();
+            if (data.status !== 'OK' || !data.results.length) throw new Error('Reverse geocode failed: ' + data.status);
+            return parseGeocodeResult(data.results[0], lat, lng);
+        }
+
+        // Forward-geocode address/query → lat/lng + address components
+        async function forwardGeocode(query) {
+            if (!GMAPS_KEY) throw new Error('Google Maps API key not configured');
+            const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${GMAPS_KEY}`;
+            const res  = await fetch(url);
+            const data = await res.json();
+            if (data.status !== 'OK' || !data.results.length) throw new Error('Geocode failed: ' + data.status);
+            const loc = data.results[0].geometry.location;
+            return parseGeocodeResult(data.results[0], loc.lat, loc.lng);
+        }
+
+        // Parse a Google Geocoding result into { address, city, state, pincode, lat, lng }
+        function parseGeocodeResult(result, lat, lng) {
+            const components = result.address_components || [];
+            const get = (types) => {
+                const c = components.find(c => types.some(t => c.types.includes(t)));
+                return c ? c.long_name : '';
+            };
+
+            const streetNumber = get(['street_number']);
+            const route        = get(['route']);
+            const sublocality  = get(['sublocality', 'sublocality_level_1']);
+            const locality     = get(['locality']);
+            const adminArea2   = get(['administrative_area_level_2']);
+            const adminArea1   = get(['administrative_area_level_1']);
+            const country      = get(['country']);
+            const postal       = get(['postal_code']);
+
+            // Build a readable address from available parts
+            const addressParts = [streetNumber, route, sublocality, locality].filter(Boolean);
+            const address = addressParts.length
+                ? addressParts.join(', ')
+                : result.formatted_address;
+
+            const city  = locality || adminArea2 || '';
+            const state = adminArea1 || '';
+
+            return { address, city, state, pincode: postal, lat, lng, country };
+        }
+
+        // Master function: parse any Google Maps URL or plain address
+        async function resolveLocation(rawInput) {
+            const input = rawInput.trim();
+
+            // 1. Full Google Maps URL — try to extract coords directly
+            if (input.includes('google.com/maps') || input.includes('goo.gl') || input.includes('maps.app')) {
+                // Try direct coord extraction first (works for most long-form URLs)
+                const coords = extractCoordsFromUrl(input);
+                if (coords) {
+                    return await reverseGeocode(coords.lat, coords.lng);
+                }
+
+                // Try search query extraction + forward geocode
+                const query = extractQueryFromUrl(input);
+                if (query) {
+                    return await forwardGeocode(query);
+                }
+
+                // Short link (maps.app.goo.gl) — expand via HEAD fetch (same-origin workaround)
+                // Browser can't follow cross-origin redirects, so we route through a proxy endpoint
+                // if available, otherwise alert user to use the full shared URL.
+                if (input.includes('goo.gl') || input.includes('maps.app')) {
+                    throw new Error('Short link detected. Please tap "Share" → "Copy link" and use the FULL Google Maps URL (starts with https://www.google.com/maps/...)');
+                }
+
+                throw new Error('Could not extract location from this URL. Try sharing the full Maps link.');
+            }
+
+            // 2. Plain lat,lng string  e.g. "23.0225, 72.5714"
+            const latLngMatch = input.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+            if (latLngMatch) {
+                return await reverseGeocode(parseFloat(latLngMatch[1]), parseFloat(latLngMatch[2]));
+            }
+
+            // 3. Treat as plain address / place name → forward geocode
+            return await forwardGeocode(input);
+        }
+
+        // ================================================================
+        //  DELIVERY ADDRESS AUTO-FILL
+        // ================================================================
+        async function parseDeliveryLink() {
+            const raw    = document.getElementById('deliveryMapsLink').value.trim();
+            const status = document.getElementById('deliveryLinkStatus');
+            if (!raw) { status.textContent = 'Please paste a Google Maps link or address.'; status.className = 'maps-link-status error'; return; }
+
+            status.textContent = '⏳ Fetching location…';
+            status.className   = 'maps-link-status';
+
+            try {
+                const loc = await resolveLocation(raw);
+
+                // Fill fields
+                setFieldValue('delAddress', loc.address);
+                setFieldValue('city',       loc.city);
+                setFieldValue('state',      loc.state);
+                setFieldValue('pincode',    loc.pincode);
+                document.getElementById('delLat').value = loc.lat;
+                document.getElementById('delLng').value = loc.lng;
+
+                M.updateTextFields();
+                M.textareaAutoResize(document.getElementById('delAddress'));
+
+                status.innerHTML = `✅ Location filled — <strong>${loc.address}</strong>${loc.city ? ', ' + loc.city : ''} (${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})`;
+                status.className = 'maps-link-status success';
+
+                // Highlight filled fields briefly
+                document.getElementById('deliveryFields').classList.add('autofill-highlight');
+                setTimeout(() => document.getElementById('deliveryFields').classList.remove('autofill-highlight'), 2500);
+
+            } catch (err) {
+                status.textContent = '❌ ' + err.message;
+                status.className   = 'maps-link-status error';
+            }
+        }
+
+        // Helper: set input/textarea value and trigger Materialize label float
+        function setFieldValue(id, value) {
+            const el = document.getElementById(id);
+            if (!el || value === undefined) return;
+            el.value = value || '';
+            el.dispatchEvent(new Event('input'));
+        }
+
+        // ================================================================
+        //  MODAL MAPS LINK — fills the currently-open Add/Edit form
+        // ================================================================
+        async function parseModalLink() {
+            const raw    = document.getElementById('modalMapsLink').value.trim();
+            const status = document.getElementById('modalLinkStatus');
+            if (!raw) { status.textContent = 'Please paste a Google Maps link or address.'; status.className = 'maps-link-status error'; return; }
+
+            status.textContent = '⏳ Fetching location…';
+            status.className   = 'maps-link-status';
+
+            try {
+                const loc = await resolveLocation(raw);
+
+                // Detect which form is open (edit takes priority)
+                const editOpen = document.getElementById('editPickupForm').style.display !== 'none';
+                const prefix   = editOpen ? 'e_' : 'n_';
+
+                setFieldValue(prefix + 'address', loc.address);
+                setFieldValue(prefix + 'city',    loc.city);
+                setFieldValue(prefix + 'state',   loc.state);
+                setFieldValue(prefix + 'pincode', loc.pincode);
+                setFieldValue(prefix + 'lat',     loc.lat);
+                setFieldValue(prefix + 'lng',     loc.lng);
+                M.updateTextFields();
+
+                status.innerHTML = `✅ <strong>${loc.address}</strong>${loc.city ? ', ' + loc.city : ''} (${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})`;
+                status.className = 'maps-link-status success';
+
+            } catch (err) {
+                status.textContent = '❌ ' + err.message;
+                status.className   = 'maps-link-status error';
+            }
+        }
+
+        // ================================================================
+        // PICKUP DROPDOWN RENDER
+        // ================================================================
         function renderPickupDropdown(selectId) {
-            const sel = document.getElementById('pickupLocationId');
+            const sel  = document.getElementById('pickupLocationId');
             const prev = sel.value;
             sel.innerHTML = '<option value="" disabled>-- Select Pickup Location --</option>';
             pickupLocations.forEach(loc => {
@@ -468,18 +755,15 @@
                 opt.dataset.name          = loc.name;
                 opt.dataset.address       = loc.address;
                 opt.dataset.contactPerson = loc.contactPerson || '';
-                opt.dataset.contactPhone  = loc.contactPhone || '';
+                opt.dataset.contactPhone  = loc.contactPhone  || '';
                 opt.dataset.default       = loc.isDefault ? '1' : '0';
-                opt.textContent = loc.name + (loc.isDefault ? ' (Default)' : '');
+                opt.textContent           = loc.name + (loc.isDefault ? ' (Default)' : '');
                 sel.appendChild(opt);
             });
 
-            // Restore previous or select default
-            if (selectId) {
-                sel.value = selectId;
-            } else if (prev) {
-                sel.value = prev;
-            } else {
+            if (selectId)      sel.value = selectId;
+            else if (prev)     sel.value = prev;
+            else {
                 const def = pickupLocations.find(l => l.isDefault);
                 if (def) sel.value = def._id;
             }
@@ -493,7 +777,7 @@
             const opt = sel.options[sel.selectedIndex];
             if (!opt || !opt.value) return;
 
-            document.getElementById('previewName').textContent    = opt.dataset.name || '';
+            document.getElementById('previewName').textContent    = opt.dataset.name    || '';
             document.getElementById('previewAddress').textContent = opt.dataset.address || '';
 
             const cr = document.getElementById('previewContactRow');
@@ -502,7 +786,6 @@
                 document.getElementById('previewContact').textContent = opt.dataset.contactPerson;
                 cr.style.display = 'block';
             } else { cr.style.display = 'none'; }
-
             if (opt.dataset.contactPhone) {
                 document.getElementById('previewPhone').textContent = opt.dataset.contactPhone;
                 pr.style.display = 'block';
@@ -511,11 +794,13 @@
             document.getElementById('pickupPreview').classList.add('show');
         }
 
-        // ===== MODAL LIST RENDER =====
+        // ================================================================
+        // MODAL LIST RENDER
+        // ================================================================
         function renderPickupList() {
             const el = document.getElementById('pickupLocList');
             if (pickupLocations.length === 0) {
-                el.innerHTML = '<p style="color:#999; margin-bottom:12px;">Koi location nahi hai. Neeche add karein.</p>';
+                el.innerHTML = '<p style="color:#999; margin-bottom:12px;">No locations yet. Add one below.</p>';
                 return;
             }
             el.innerHTML = pickupLocations.map(loc => `
@@ -545,29 +830,31 @@
             `).join('');
         }
 
-        // Open modal — render list fresh
-        document.getElementById('pickupModal').addEventListener('M_Modal_Open', renderPickupList);
-        // Materialize modal open event
         document.querySelector('a[href="#pickupModal"]').addEventListener('click', function() {
             setTimeout(renderPickupList, 100);
         });
 
-        // ===== TOGGLE ADD FORM =====
+        // ================================================================
+        // TOGGLE ADD FORM
+        // ================================================================
         function toggleAddForm() {
             const f = document.getElementById('addNewPickupForm');
             f.classList.toggle('show');
             cancelEdit();
             if (f.classList.contains('show')) {
-                // Clear fields
                 ['n_name','n_contactPerson','n_address','n_city','n_state','n_pincode','n_contactPhone','n_lat','n_lng'].forEach(id => {
                     document.getElementById(id).value = '';
                 });
                 document.getElementById('n_isDefault').checked = false;
+                document.getElementById('modalMapsLink').value = '';
+                document.getElementById('modalLinkStatus').textContent = '';
                 M.updateTextFields();
             }
         }
 
-        // ===== SAVE NEW PICKUP (AJAX) =====
+        // ================================================================
+        // SAVE NEW PICKUP (AJAX)
+        // ================================================================
         async function saveNewPickup() {
             const name    = document.getElementById('n_name').value.trim();
             const address = document.getElementById('n_address').value.trim();
@@ -600,7 +887,6 @@
                 const data = await res.json();
                 if (!data.success) throw new Error(data.message);
 
-                // Agar default set kiya to baaki sab ka isDefault false karo
                 if (body.isDefault) pickupLocations.forEach(l => l.isDefault = false);
                 pickupLocations.push(data.location);
 
@@ -614,37 +900,39 @@
             }
         }
 
-        // ===== OPEN EDIT =====
+        // ================================================================
+        // OPEN EDIT
+        // ================================================================
         function openEdit(id) {
             const loc = pickupLocations.find(l => l._id === id);
             if (!loc) return;
 
             cancelAddForm();
-            document.getElementById('e_id').value              = loc._id;
-            document.getElementById('e_name').value            = loc.name;
-            document.getElementById('e_address').value         = loc.address;
-            document.getElementById('e_city').value            = loc.city || '';
-            document.getElementById('e_state').value           = loc.state || '';
-            document.getElementById('e_pincode').value         = loc.pincode || '';
-            document.getElementById('e_contactPerson').value   = loc.contactPerson || '';
-            document.getElementById('e_contactPhone').value    = loc.contactPhone || '';
-            document.getElementById('e_lat').value             = loc.coordinates?.latitude || '';
-            document.getElementById('e_lng').value             = loc.coordinates?.longitude || '';
-            document.getElementById('e_isDefault').checked     = !!loc.isDefault;
-            document.getElementById('e_isActive').checked      = loc.isActive !== false;
+            document.getElementById('e_id').value             = loc._id;
+            document.getElementById('e_name').value           = loc.name;
+            document.getElementById('e_address').value        = loc.address;
+            document.getElementById('e_city').value           = loc.city    || '';
+            document.getElementById('e_state').value          = loc.state   || '';
+            document.getElementById('e_pincode').value        = loc.pincode || '';
+            document.getElementById('e_contactPerson').value  = loc.contactPerson || '';
+            document.getElementById('e_contactPhone').value   = loc.contactPhone  || '';
+            document.getElementById('e_lat').value            = loc.coordinates?.latitude  || '';
+            document.getElementById('e_lng').value            = loc.coordinates?.longitude || '';
+            document.getElementById('e_isDefault').checked    = !!loc.isDefault;
+            document.getElementById('e_isActive').checked     = loc.isActive !== false;
+            document.getElementById('modalMapsLink').value    = '';
+            document.getElementById('modalLinkStatus').textContent = '';
 
             document.getElementById('editPickupForm').style.display = 'block';
             M.updateTextFields();
         }
 
-        function cancelEdit() {
-            document.getElementById('editPickupForm').style.display = 'none';
-        }
-        function cancelAddForm() {
-            document.getElementById('addNewPickupForm').classList.remove('show');
-        }
+        function cancelEdit()    { document.getElementById('editPickupForm').style.display = 'none'; }
+        function cancelAddForm() { document.getElementById('addNewPickupForm').classList.remove('show'); }
 
-        // ===== UPDATE PICKUP (AJAX) =====
+        // ================================================================
+        // UPDATE PICKUP (AJAX)
+        // ================================================================
         async function updatePickup() {
             const id      = document.getElementById('e_id').value;
             const name    = document.getElementById('e_name').value.trim();
@@ -679,7 +967,6 @@
                 const data = await res.json();
                 if (!data.success) throw new Error(data.message);
 
-                // Update in-memory
                 if (body.isDefault) pickupLocations.forEach(l => l.isDefault = false);
                 const idx = pickupLocations.findIndex(l => l._id === id);
                 if (idx > -1) pickupLocations[idx] = data.location;
@@ -694,9 +981,11 @@
             }
         }
 
-        // ===== DELETE PICKUP (AJAX) =====
+        // ================================================================
+        // DELETE PICKUP (AJAX)
+        // ================================================================
         async function deletePickup(id, name) {
-            if (!confirm(`"${name}" ko delete karna chahte hain?`)) return;
+            if (!confirm(`Delete "${name}"?`)) return;
             try {
                 const res  = await fetch(`/admin/orders/pickup-locations/${id}/delete`, { method: 'DELETE' });
                 const data = await res.json();
