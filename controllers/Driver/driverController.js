@@ -1670,6 +1670,8 @@ exports.verifyPin = async (req, res) => {
     driver.pinLockedUntil = null;
     driver.lastLoginAt = new Date();
 
+    driver.isAvailable = true;
+
     // ★★★ FCM TOKEN UPDATE - Login time pe save/update karo ★★★
     if (fcmToken && fcmToken.trim()) {
       driver.fcmToken = fcmToken.trim();
@@ -1750,7 +1752,7 @@ exports.verifyPin = async (req, res) => {
         profileImage: driver.profileImage || null,
         isAvailable: driver.isAvailable,
         rating: driver.rating || 0,
-        fcmTokenRegistered: !!driver.fcmToken,  // ← Client ko batao ki token registered hai
+        fcmTokenRegistered: !!driver.fcmToken, 
 
         license: {
           number: licenseNumber,
@@ -2209,6 +2211,9 @@ exports.logout = async (req, res) => {
     // ★★★ FCM Token clear karo logout pe ★★★
     driver.fcmToken = null;
     driver.refreshToken = null;
+
+    driver.isAvailable = false;
+
     await driver.save();
 
     await logDriverActivity(driver._id, 'LOGOUT', {
