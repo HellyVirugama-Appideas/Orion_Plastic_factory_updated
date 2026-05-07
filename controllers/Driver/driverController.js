@@ -2230,3 +2230,33 @@ exports.logout = async (req, res) => {
     return errorResponse(res, 'Logout failed', 500);
   }
 };
+
+// UPDATE DRIVER AVAILABILITY
+exports.updateAvailability = async (req, res) => {
+  try {
+    const driver = req.user;
+
+    const { isAvailable } = req.body;
+
+    if (typeof isAvailable !== 'boolean') {
+      return errorResponse(res, 'isAvailable must be true or false', 400);
+    }
+
+    driver.isAvailable = isAvailable;
+
+    await driver.save();
+
+    return successResponse(
+      res,
+      `Driver is now ${isAvailable ? 'online' : 'offline'}`,
+      {
+        isAvailable: driver.isAvailable
+      }
+    );
+
+  } catch (error) {
+    console.error('Update Availability Error:', error);
+
+    return errorResponse(res, 'Failed to update availability', 500);
+  }
+};

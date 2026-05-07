@@ -1,5 +1,5 @@
 const express = require("express");
-const { saveStep1, saveStep2, saveStep3, finalSignup, verifyOtpAndCreateDriver, createPin, login, verifyPin, updatePersonalDetails, updateRC, deleteAccount, logout, resendOtp, updateLicense, updateMulkia } = require("../../controllers/Driver/driverController");
+const { saveStep1, saveStep2, saveStep3, finalSignup, verifyOtpAndCreateDriver, createPin, login, verifyPin, updatePersonalDetails, updateRC, deleteAccount, logout, resendOtp, updateLicense, updateMulkia, updateAvailability } = require("../../controllers/Driver/driverController");
 const { uploadDriverDocuments, handleUploadError } = require("../../middleware/uploadMiddleware");
 const { authenticatePendingDriver } = require("../../middleware/authPendingDriver");
 const { sendPinResetOtp, verifyPinResetOtp, setNewPin, confirmNewPin, resendPinResetOtp } = require("../../controllers/Driver/forgotPinController");
@@ -48,5 +48,12 @@ router.post("/logout", authenticateDriver, isDriver, logout)
 
 router.get('/notification', authenticateDriver, isDriver, getNotifications);
 router.patch("/notification/read", authenticateDriver, isDriver, markNotificationsRead )
+
+router.put(
+  '/update-availability',
+  authenticateDriver,
+  isDriver,
+  updateAvailability
+);
 
 module.exports = router
