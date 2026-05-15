@@ -189,16 +189,17 @@ exports.renderCreateDeliveryFromOrder = async (req, res) => {
     // Get available drivers
     const drivers = await Driver.find({
       isActive: true,
-      isAvailable: true,
+      // isAvailable: true,
       profileStatus: 'approved'
     })
+   
       .select('name phone vehicleNumber profileImage isAvailable')
       .lean();
 
     res.render('delivery_create', {
       title: `Create Delivery - ${order.orderNumber}`,
       user: req.user,
-      order,  
+      order,
       drivers,
       url: req.originalUrl,
       messages: req.flash()
@@ -447,9 +448,9 @@ exports.createDeliveryFromOrder = async (req, res) => {
       return res.redirect(`/admin/orders/${orderId}/create-delivery`);
     }
 
-    if (!driver.isAvailable) {
-      req.flash('warning', 'Note: Driver is marked as unavailable, but multiple assignments allowed');
-    }
+    // if (!driver.isAvailable) {
+    //   req.flash('warning', 'Note: Driver is marked as unavailable, but multiple assignments allowed');
+    // }
 
     // Generate tracking number
     const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
