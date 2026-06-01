@@ -311,7 +311,7 @@
                                     <i class="material-icons tiny">location_on</i> Pickup (Start)
                                 </h6>
                                 <p><strong><%= order.pickupLocation?.name || '' %></strong></p>
-                                <p><%= order.pickupLocation?.address || 'N/A' %></p>
+                                <p style="overflow-wrap: break-word;"><%= order.pickupLocation?.address || 'N/A' %></p>
                                 <p class="grey-text" style="font-size:0.85rem;">
                                     Contact: <%= order.pickupLocation?.contactPerson || '—' %>
                                     <% if (order.pickupLocation?.contactPhone) { %>

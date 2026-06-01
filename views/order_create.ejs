@@ -3,1083 +3,1186 @@
 
 <head>
     <%- include('_layouts/head') %>
-    <title>Create New Order | <%= title %></title>
+        <title>Create New Order | <%= title %>
+        </title>
 
-    <style>
-        .btn-gradient { background: linear-gradient(45deg, #667eea, #764ba2) !important; }
+        <style>
+            .btn-gradient {
+                background: linear-gradient(45deg, #667eea, #764ba2) !important;
+            }
 
-        .item-card {
-            background: #fafafa;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 16px;
-            position: relative;
-        }
-        .remove-item-btn { position: absolute; top: 12px; right: 12px; }
+            .item-card {
+                background: #fafafa;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                padding: 20px;
+                margin-bottom: 16px;
+                position: relative;
+            }
 
-        .pickup-loc-item {
-            background: #f5f5f5;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 10px 14px;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-        }
-        .pickup-loc-item.is-default { border-color: #a5d6a7; background: #e8f5e9; }
-        .badge-default {
-            background: #43a047; color: white;
-            font-size: 0.68rem; padding: 1px 8px;
-            border-radius: 10px; font-weight: 600;
-            white-space: nowrap;
-        }
+            .remove-item-btn {
+                position: absolute;
+                top: 12px;
+                right: 12px;
+            }
 
-        .pickup-preview {
-            display: none;
-            background: #e8f5e9;
-            border: 1px solid #a5d6a7;
-            border-radius: 8px;
-            padding: 12px 16px;
-            margin-top: 8px;
-        }
-        .pickup-preview.show { display: block; }
-        .pickup-preview p { margin: 3px 0; font-size: 0.87rem; color: #2e7d32; }
+            .pickup-loc-item {
+                background: #f5f5f5;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 10px 14px;
+                margin-bottom: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+            }
 
-        .modal { max-height: 92vh !important; overflow-y: auto; }
-        .section-divider { border: none; border-top: 2px solid #ede7f6; margin: 12px 0 18px; }
-        
-        #addNewPickupForm { display: none; }
-        #addNewPickupForm.show { display: block; }
+            .pickup-loc-item.is-default {
+                border-color: #a5d6a7;
+                background: #e8f5e9;
+            }
 
-        /* ===== MAPS LINK PASTE WIDGET ===== */
-        .maps-link-box {
-            background: #f3f0ff;
-            border: 1px dashed #9c7ee8;
-            border-radius: 8px;
-            padding: 10px 14px;
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .maps-link-box input {
-            flex: 1;
-            border: none;
-            background: transparent;
-            font-size: 0.85rem;
-            outline: none;
-            color: #424242;
-            height: 32px;
-            box-shadow: none !important;
-            margin: 0 !important;
-        }
-        .maps-link-box .parse-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 4px 12px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-        .maps-link-box .parse-btn:hover { background: #5569d4; }
-        .maps-link-spinner { display: none; }
-        .maps-link-status {
-            font-size: 0.78rem;
-            margin-top: 4px;
-            padding: 0 2px;
-        }
-        .maps-link-status.success { color: #2e7d32; }
-        .maps-link-status.error   { color: #c62828; }
+            .badge-default {
+                background: #43a047;
+                color: white;
+                font-size: 0.68rem;
+                padding: 1px 8px;
+                border-radius: 10px;
+                font-weight: 600;
+                white-space: nowrap;
+            }
 
-        /* Delivery address fields wrapper — highlight when auto-filled */
-        .autofill-highlight input,
-        .autofill-highlight textarea {
-            border-bottom: 2px solid #667eea !important;
-            transition: border-color 0.3s;
-        }
-    </style>
+            .pickup-preview {
+                display: none;
+                background: #e8f5e9;
+                border: 1px solid #a5d6a7;
+                border-radius: 8px;
+                padding: 12px 16px;
+                margin-top: 8px;
+                overflow-wrap: break-word;
+            }
+
+            .pickup-preview.show {
+                display: block;
+            }
+
+            .pickup-preview p {
+                margin: 3px 0;
+                font-size: 0.87rem;
+                color: #2e7d32;
+            }
+
+            .modal {
+                max-height: 92vh !important;
+                overflow-y: auto;
+            }
+
+            .section-divider {
+                border: none;
+                border-top: 2px solid #ede7f6;
+                margin: 12px 0 18px;
+            }
+
+            #addNewPickupForm {
+                display: none;
+            }
+
+            #addNewPickupForm.show {
+                display: block;
+            }
+
+            /* ===== MAPS LINK PASTE WIDGET ===== */
+            .maps-link-box {
+                background: #f3f0ff;
+                border: 1px dashed #9c7ee8;
+                border-radius: 8px;
+                padding: 10px 14px;
+                margin-top: 10px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .maps-link-box input {
+                flex: 1;
+                border: none;
+                background: transparent;
+                font-size: 0.85rem;
+                outline: none;
+                color: #424242;
+                height: 32px;
+                box-shadow: none !important;
+                margin: 0 !important;
+            }
+
+            .maps-link-box .parse-btn {
+                background: #667eea;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-size: 0.8rem;
+                cursor: pointer;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            .maps-link-box .parse-btn:hover {
+                background: #5569d4;
+            }
+
+            .maps-link-spinner {
+                display: none;
+            }
+
+            .maps-link-status {
+                font-size: 0.78rem;
+                margin-top: 4px;
+                padding: 0 2px;
+            }
+
+            .maps-link-status.success {
+                color: #2e7d32;
+            }
+
+            .maps-link-status.error {
+                color: #c62828;
+            }
+
+            /* Delivery address fields wrapper — highlight when auto-filled */
+            .autofill-highlight input,
+            .autofill-highlight textarea {
+                border-bottom: 2px solid #667eea !important;
+                transition: border-color 0.3s;
+            }
+        </style>
 </head>
 
-<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
-      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+<body
+    class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+    data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
 
     <%- include('_layouts/sidenavbar') %>
 
-    <!-- Hidden: Google Maps API key for front-end geocoding -->
-    <script>
-        const GMAPS_KEY = '<%= process.env.GOOGLE_MAPS_API_KEY || "" %>';
-    </script>
+        <!-- Hidden: Google Maps API key for front-end geocoding -->
+        <script>
+            const GMAPS_KEY = '<%= process.env.GOOGLE_MAPS_API_KEY || "" %>';
+        </script>
 
-    <div id="main">
-        <div class="row">
+        <div id="main">
+            <div class="row">
 
-            <div id="breadcrumbs-wrapper" style="background-color: white;">
-                <div class="container">
-                    <div class="row valign-wrapper">
-                        <div class="col s12 m6 l6">
-                            <h5 class="breadcrumbs-title mb-0"><span>Create New Order</span></h5>
-                        </div>
-                        <div class="col s12 m6 l6 right-align-md">
-                            <a href="/admin/orders"
-                               class="btn gradient-45deg-purple-deep-orange waves-effect waves-light pull-right">
-                                Back to Orders
-                            </a>
+                <div id="breadcrumbs-wrapper" style="background-color: white;">
+                    <div class="container">
+                        <div class="row valign-wrapper">
+                            <div class="col s12 m6 l6">
+                                <h5 class="breadcrumbs-title mb-0"><span>Create New Order</span></h5>
+                            </div>
+                            <div class="col s12 m6 l6 right-align-md">
+                                <a href="/admin/orders"
+                                    class="btn gradient-45deg-purple-deep-orange waves-effect waves-light pull-right">
+                                    Back to Orders
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <%- include('messages', { messages: messages }) %>
+                <%- include('messages', { messages: messages }) %>
 
-            <div class="col s12">
-                <div class="container">
-                    <div class="card-panel" style="padding:0; border-radius:8px; overflow:hidden;">
-                        <div class="card-content" style="padding:30px;">
-                            <form id="createOrderForm" method="POST" action="/admin/orders/create">
-                                <div class="row">
+                    <div class="col s12">
+                        <div class="container">
+                            <div class="card-panel" style="padding:0; border-radius:8px; overflow:hidden;">
+                                <div class="card-content" style="padding:30px;">
+                                    <form id="createOrderForm" method="POST" action="/admin/orders/create">
+                                        <div class="row">
 
-                                    <!-- ===== CUSTOMER ===== -->
-                                    <div class="col s12">
-                                        <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
-                                            <i class="material-icons left tiny" style="color:#667eea;">person</i>
-                                            Customer Information
-                                        </h5>
-                                    </div>
-
-                                    <div class="input-field col s12 m8 l6">
-                                        <select name="customerId" id="customerId" required>
-                                            <option value="" disabled selected>Select Customer</option>
-                                            <% customers.forEach(c => { %>
-                                                <option value="<%= c._id %>">
-                                                    <%= c.companyName || c.name %> — <%= c.phone %>
-                                                </option>
-                                            <% }) %>
-                                        </select>
-                                        <label>Customer <span style="color:red">*</span></label>
-                                    </div>
-
-                                    <!-- ===== PICKUP LOCATION ===== -->
-                                    <div class="col s12" style="margin-top:20px;">
-                                        <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
-                                            <i class="material-icons left tiny" style="color:#667eea;">store</i>
-                                            Pickup Location
-                                        </h5>
-                                    </div>
-
-                                    <div class="col s12 m8 l6">
-                                        <div style="display:flex; align-items:center; gap:10px;">
-                                            <div class="input-field" style="flex:1; margin:0;">
-                                                <select name="pickupLocationId" id="pickupLocationId" required>
-                                                    <option value="" disabled selected>-- Select Pickup Location --</option>
-                                                    <% if (pickupLocations && pickupLocations.length > 0) { %>
-                                                        <% pickupLocations.forEach(loc => { %>
-                                                            <option value="<%= loc._id %>"
-                                                                    data-name="<%= loc.name %>"
-                                                                    data-address="<%= loc.address %>"
-                                                                    data-contact-person="<%= loc.contactPerson || '' %>"
-                                                                    data-contact-phone="<%= loc.contactPhone || '' %>"
-                                                                    data-default="<%= loc.isDefault ? '1' : '0' %>">
-                                                                <%= loc.name %><% if(loc.isDefault){ %> (Default)<% } %>
-                                                            </option>
-                                                        <% }) %>
-                                                    <% } %>
-                                                </select>
-                                                <label>Pickup Location <span style="color:red">*</span></label>
+                                            <!-- ===== CUSTOMER ===== -->
+                                            <div class="col s12">
+                                                <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
+                                                    <i class="material-icons left tiny"
+                                                        style="color:#667eea;">person</i>
+                                                    Customer Information
+                                                </h5>
                                             </div>
-                                            <a href="#pickupModal" class="modal-trigger btn blue darken-1 waves-effect waves-light"
-                                               style="margin-top:0; white-space:nowrap;">
-                                                <i class="material-icons left">edit_location</i> Manage
-                                            </a>
+
+                                            <div class="input-field col s12 m8 l6">
+                                                <select name="customerId" id="customerId" required>
+                                                    <option value="" disabled selected>Select Customer</option>
+                                                    <% customers.forEach(c=> { %>
+                                                        <option value="<%= c._id %>">
+                                                            <%= c.companyName || c.name %> — <%= c.phone %>
+                                                        </option>
+                                                        <% }) %>
+                                                </select>
+                                                <label>Customer <span style="color:red">*</span></label>
+                                            </div>
+
+                                            <!-- ===== PICKUP LOCATION ===== -->
+                                            <div class="col s12" style="margin-top:20px;">
+                                                <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
+                                                    <i class="material-icons left tiny" style="color:#667eea;">store</i>
+                                                    Pickup Location
+                                                </h5>
+                                            </div>
+
+                                            <div class="col s12 m8 l6">
+                                                <div style="display:flex; align-items:center; gap:10px;">
+                                                    <div class="input-field" style="flex:1; margin:0;">
+                                                        <select name="pickupLocationId" id="pickupLocationId" required>
+                                                            <option value="" disabled selected>-- Select Pickup Location
+                                                                --</option>
+                                                            <% if (pickupLocations && pickupLocations.length> 0) { %>
+                                                                <% pickupLocations.forEach(loc=> { %>
+                                                                    <option value="<%= loc._id %>"
+                                                                        data-name="<%= loc.name %>"
+                                                                        data-address="<%= loc.address %>"
+                                                                        data-contact-person="<%= loc.contactPerson || '' %>"
+                                                                        data-contact-phone="<%= loc.contactPhone || '' %>"
+                                                                        data-default="<%= loc.isDefault ? '1' : '0' %>">
+                                                                        <%= loc.name %>
+                                                                            <% if(loc.isDefault){ %> (Default)<% } %>
+                                                                    </option>
+                                                                    <% }) %>
+                                                                        <% } %>
+                                                        </select>
+                                                        <label>Pickup Location <span style="color:red">*</span></label>
+                                                    </div>
+                                                    <a href="#pickupModal"
+                                                        class="modal-trigger btn blue darken-1 waves-effect waves-light"
+                                                        style="margin-top:0; white-space:nowrap;">
+                                                        <i class="material-icons left">edit_location</i> Manage
+                                                    </a>
+                                                </div>
+
+                                                <!-- Preview card -->
+                                                <div class="pickup-preview" id="pickupPreview">
+                                                    <p><strong id="previewName"></strong></p>
+                                                    <p><i class="material-icons tiny">location_on</i> <span
+                                                            id="previewAddress"></span></p>
+                                                    <p id="previewContactRow" style="display:none;">
+                                                        <i class="material-icons tiny">person</i> <span
+                                                            id="previewContact"></span>
+                                                    </p>
+                                                    <p id="previewPhoneRow" style="display:none;">
+                                                        <i class="material-icons tiny">phone</i> <span
+                                                            id="previewPhone"></span>
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <!-- ===== ORDER ITEMS ===== -->
+                                            <div class="col s12" style="margin-top:24px;">
+                                                <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
+                                                    <i class="material-icons left tiny"
+                                                        style="color:#667eea;">inventory_2</i>
+                                                    Order Items
+                                                </h5>
+                                            </div>
+
+                                            <div class="col s12">
+                                                <div id="itemsContainer"></div>
+                                                <button type="button" onclick="addItem()"
+                                                    class="btn btn-gradient waves-effect waves-light mt-2">
+                                                    <i class="material-icons left">add_circle_outline</i> Add New Item
+                                                </button>
+                                            </div>
+
+                                            <!-- ===== DELIVERY INFORMATION ===== -->
+                                            <div class="col s12" style="margin-top:24px;">
+                                                <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
+                                                    <i class="material-icons left tiny"
+                                                        style="color:#667eea;">local_shipping</i>
+                                                    Delivery Information
+                                                </h5>
+                                            </div>
+
+                                            <!-- GOOGLE MAPS LINK PASTE (DELIVERY) -->
+                                            <div class="col s12 m8 l7" style="margin-bottom:8px;">
+                                                <div class="maps-link-box">
+                                                    <i class="material-icons"
+                                                        style="color:#667eea; font-size:20px;">location_on</i>
+                                                    <input type="text" id="deliveryMapsLink"
+                                                        placeholder="Paste Google Maps link to auto-fill delivery address…"
+                                                        onkeydown="if(event.key==='Enter'){event.preventDefault();parseDeliveryLink();}">
+                                                    <button type="button" class="parse-btn"
+                                                        onclick="parseDeliveryLink()">
+                                                        <i class="material-icons tiny">my_location</i> Fill
+                                                    </button>
+                                                </div>
+                                                <div class="maps-link-status" id="deliveryLinkStatus"></div>
+                                            </div>
+
+                                            <!-- Hidden lat/lng for delivery -->
+                                            <input type="hidden" name="deliveryLocation[coordinates][latitude]"
+                                                id="delLat">
+                                            <input type="hidden" name="deliveryLocation[coordinates][longitude]"
+                                                id="delLng">
+
+                                            <div id="deliveryFields">
+                                                <div class="input-field col s12 m6">
+                                                    <input id="contactPerson" name="deliveryLocation[contactPerson]"
+                                                        type="text" required>
+                                                    <label for="contactPerson">Contact Person <span
+                                                            style="color:red">*</span></label>
+                                                </div>
+                                                <div class="input-field col s12 m6">
+                                                    <input id="contactPhone" name="deliveryLocation[contactPhone]"
+                                                        type="tel" value="+971 " pattern="^\+971\s?5[0-9]{8}$"
+                                                        maxlength="14" required>
+                                                    <label for="contactPhone">Contact Phone (+971) <span
+                                                            style="color:red">*</span></label>
+                                                    <span class="helper-text"
+                                                        data-error="Enter valid UAE number (e.g. +971 5XXXXXXXX)"></span>
+                                                </div>
+                                                <div class="input-field col s12">
+                                                    <textarea id="delAddress" name="deliveryLocation[address]"
+                                                        class="materialize-textarea" required></textarea>
+                                                    <label for="delAddress">Full Delivery Address <span
+                                                            style="color:red">*</span></label>
+                                                </div>
+                                                <div class="input-field col s12 m4">
+                                                    <input id="city" name="deliveryLocation[city]" type="text" required>
+                                                    <label for="city">City <span style="color:red">*</span></label>
+                                                </div>
+                                                <div class="input-field col s12 m4">
+                                                    <input id="state" name="deliveryLocation[state]" type="text"
+                                                        required>
+                                                    <label for="state">State <span style="color:red">*</span></label>
+                                                </div>
+                                                <div class="input-field col s12 m4">
+                                                    <input id="pincode" name="deliveryLocation[pincode]" type="text"
+                                                        maxlength="12" required>
+                                                    <label for="pincode">Pincode / ZIP <span
+                                                            style="color:red">*</span></label>
+                                                </div>
+                                            </div>
+
+                                            <!-- ===== ORDER DETAILS ===== -->
+                                            <div class="col s12" style="margin-top:16px;">
+                                                <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
+                                                    <i class="material-icons left tiny" style="color:#667eea;">tune</i>
+                                                    Order Details
+                                                </h5>
+                                            </div>
+
+                                            <div class="input-field col s12 m6">
+                                                <select name="orderType">
+                                                    <option value="retail" selected>Retail</option>
+                                                    <option value="wholesale">Wholesale</option>
+                                                    <option value="bulk">Bulk</option>
+                                                    <option value="custom">Custom</option>
+                                                </select>
+                                                <label>Order Type</label>
+                                            </div>
+                                            <div class="input-field col s12 m6">
+                                                <select name="priority">
+                                                    <option value="low">Low</option>
+                                                    <option value="medium" selected>Medium</option>
+                                                    <option value="high">High</option>
+                                                    <option value="urgent">Urgent</option>
+                                                </select>
+                                                <label>Priority</label>
+                                            </div>
+
+                                            <!-- ===== SPECIAL INSTRUCTIONS ===== -->
+                                            <div class="col s12" style="margin-top:16px;">
+                                                <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
+                                                    <i class="material-icons left tiny" style="color:#667eea;">note</i>
+                                                    Special Instructions
+                                                </h5>
+                                            </div>
+                                            <div class="input-field col s12">
+                                                <textarea name="specialInstructions"
+                                                    class="materialize-textarea"></textarea>
+                                                <label>Special Instructions (Optional)</label>
+                                            </div>
+                                            <div class="input-field col s12">
+                                                <textarea name="packagingInstructions"
+                                                    class="materialize-textarea"></textarea>
+                                                <label>Packaging Instructions (Optional)</label>
+                                            </div>
+
+                                            <input type="hidden" name="items" id="itemsJSON">
+
+                                            <!-- Submit -->
+                                            <div class="col s12 right-align" style="margin-top:24px;">
+                                                <a href="/admin/orders" class="btn grey waves-effect waves-light"
+                                                    style="margin-right:10px;">Cancel</a>
+                                                <button type="submit" class="btn btn-gradient waves-effect waves-light">
+                                                    <i class="material-icons left">check_circle</i> Create Order
+                                                </button>
+                                            </div>
+
                                         </div>
-
-                                        <!-- Preview card -->
-                                        <div class="pickup-preview" id="pickupPreview">
-                                            <p><strong id="previewName"></strong></p>
-                                            <p><i class="material-icons tiny">location_on</i> <span id="previewAddress"></span></p>
-                                            <p id="previewContactRow" style="display:none;">
-                                                <i class="material-icons tiny">person</i> <span id="previewContact"></span>
-                                            </p>
-                                            <p id="previewPhoneRow" style="display:none;">
-                                                <i class="material-icons tiny">phone</i> <span id="previewPhone"></span>
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <!-- ===== ORDER ITEMS ===== -->
-                                    <div class="col s12" style="margin-top:24px;">
-                                        <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
-                                            <i class="material-icons left tiny" style="color:#667eea;">inventory_2</i>
-                                            Order Items
-                                        </h5>
-                                    </div>
-
-                                    <div class="col s12">
-                                        <div id="itemsContainer"></div>
-                                        <button type="button" onclick="addItem()"
-                                                class="btn btn-gradient waves-effect waves-light mt-2">
-                                            <i class="material-icons left">add_circle_outline</i> Add New Item
-                                        </button>
-                                    </div>
-
-                                    <!-- ===== DELIVERY INFORMATION ===== -->
-                                    <div class="col s12" style="margin-top:24px;">
-                                        <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
-                                            <i class="material-icons left tiny" style="color:#667eea;">local_shipping</i>
-                                            Delivery Information
-                                        </h5>
-                                    </div>
-
-                                    <!-- 🗺️ GOOGLE MAPS LINK PASTE (DELIVERY) -->
-                                    <div class="col s12 m8 l7" style="margin-bottom:8px;">
-                                        <div class="maps-link-box">
-                                            <i class="material-icons" style="color:#667eea; font-size:20px;">location_on</i>
-                                            <input type="text" id="deliveryMapsLink"
-                                                   placeholder="Paste Google Maps link to auto-fill delivery address…"
-                                                   onkeydown="if(event.key==='Enter'){event.preventDefault();parseDeliveryLink();}">
-                                            <button type="button" class="parse-btn" onclick="parseDeliveryLink()">
-                                                <i class="material-icons tiny">my_location</i> Fill
-                                            </button>
-                                        </div>
-                                        <div class="maps-link-status" id="deliveryLinkStatus"></div>
-                                    </div>
-
-                                    <!-- Hidden lat/lng for delivery -->
-                                    <input type="hidden" name="deliveryLocation[coordinates][latitude]"  id="delLat">
-                                    <input type="hidden" name="deliveryLocation[coordinates][longitude]" id="delLng">
-
-                                    <div id="deliveryFields">
-                                        <div class="input-field col s12 m6">
-                                            <input id="contactPerson" name="deliveryLocation[contactPerson]" type="text" required>
-                                            <label for="contactPerson">Contact Person <span style="color:red">*</span></label>
-                                        </div>
-                                        <div class="input-field col s12 m6">
-                                            <input 
-                                                id="contactPhone" 
-                                                name="deliveryLocation[contactPhone]"
-                                                type="tel" 
-                                                value="+971 "
-                                                pattern="^\+971\s?5[0-9]{8}$"
-                                                maxlength="14"
-                                                required
-                                            >
-                                            <label for="contactPhone">Contact Phone (+971) <span style="color:red">*</span></label>
-                                            <span class="helper-text" data-error="Enter valid UAE number (e.g. +971 5XXXXXXXX)"></span>
-                                        </div>
-                                        <div class="input-field col s12">
-                                            <textarea id="delAddress" name="deliveryLocation[address]" class="materialize-textarea" required></textarea>
-                                            <label for="delAddress">Full Delivery Address <span style="color:red">*</span></label>
-                                        </div>
-                                        <div class="input-field col s12 m4">
-                                            <input id="city" name="deliveryLocation[city]" type="text" required>
-                                            <label for="city">City <span style="color:red">*</span></label>
-                                        </div>
-                                        <div class="input-field col s12 m4">
-                                            <input id="state" name="deliveryLocation[state]" type="text" required>
-                                            <label for="state">State <span style="color:red">*</span></label>
-                                        </div>
-                                        <div class="input-field col s12 m4">
-                                            <input id="pincode" name="deliveryLocation[pincode]" type="text" maxlength="12" required>
-                                            <label for="pincode">Pincode / ZIP <span style="color:red">*</span></label>
-                                        </div>
-                                    </div>
-
-                                    <!-- ===== ORDER DETAILS ===== -->
-                                    <div class="col s12" style="margin-top:16px;">
-                                        <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
-                                            <i class="material-icons left tiny" style="color:#667eea;">tune</i>
-                                            Order Details
-                                        </h5>
-                                    </div>
-
-                                    <div class="input-field col s12 m6">
-                                        <select name="orderType">
-                                            <option value="retail" selected>Retail</option>
-                                            <option value="wholesale">Wholesale</option>
-                                            <option value="bulk">Bulk</option>
-                                            <option value="custom">Custom</option>
-                                        </select>
-                                        <label>Order Type</label>
-                                    </div>
-                                    <div class="input-field col s12 m6">
-                                        <select name="priority">
-                                            <option value="low">Low</option>
-                                            <option value="medium" selected>Medium</option>
-                                            <option value="high">High</option>
-                                            <option value="urgent">Urgent</option>
-                                        </select>
-                                        <label>Priority</label>
-                                    </div>
-
-                                    <!-- ===== SPECIAL INSTRUCTIONS ===== -->
-                                    <div class="col s12" style="margin-top:16px;">
-                                        <h5 style="color:#424242; font-weight:500; margin-bottom:16px;">
-                                            <i class="material-icons left tiny" style="color:#667eea;">note</i>
-                                            Special Instructions
-                                        </h5>
-                                    </div>
-                                    <div class="input-field col s12">
-                                        <textarea name="specialInstructions" class="materialize-textarea"></textarea>
-                                        <label>Special Instructions (Optional)</label>
-                                    </div>
-                                    <div class="input-field col s12">
-                                        <textarea name="packagingInstructions" class="materialize-textarea"></textarea>
-                                        <label>Packaging Instructions (Optional)</label>
-                                    </div>
-
-                                    <input type="hidden" name="items" id="itemsJSON">
-
-                                    <!-- Submit -->
-                                    <div class="col s12 right-align" style="margin-top:24px;">
-                                        <a href="/admin/orders" class="btn grey waves-effect waves-light" style="margin-right:10px;">Cancel</a>
-                                        <button type="submit" class="btn btn-gradient waves-effect waves-light">
-                                            <i class="material-icons left">check_circle</i> Create Order
-                                        </button>
-                                    </div>
-
+                                    </form>
                                 </div>
-                            </form>
+                            </div>
                         </div>
                     </div>
-                </div>
             </div>
         </div>
-    </div>
 
-    <!-- ================================================================
+        <!-- ================================================================
          PICKUP LOCATION MODAL
     ================================================================ -->
-    <div id="pickupModal" class="modal" style="width:620px; max-width:95vw;">
-        <div class="modal-content">
-            <h5 style="font-weight:600; color:#424242; margin-bottom:4px;">
-                <i class="material-icons left" style="color:#667eea;">location_on</i>
-                Manage Pickup Locations
-            </h5>
-            <hr class="section-divider">
-
-            <div id="pickupLocList"></div>
-
-            <!-- 🗺️ GOOGLE MAPS LINK PASTE (inside modal — for new/edit forms) -->
-            <div class="maps-link-box" style="margin-bottom:12px;">
-                <i class="material-icons" style="color:#667eea; font-size:20px;">location_on</i>
-                <input type="text" id="modalMapsLink"
-                       placeholder="Paste Google Maps link to auto-fill below fields…"
-                       onkeydown="if(event.key==='Enter'){event.preventDefault();parseModalLink();}">
-                <button type="button" class="parse-btn" onclick="parseModalLink()">
-                    <i class="material-icons tiny">my_location</i> Fill
-                </button>
-            </div>
-            <div class="maps-link-status" id="modalLinkStatus"></div>
-
-            <button type="button" id="toggleAddBtn" onclick="toggleAddForm()"
-                    class="btn btn-gradient waves-effect waves-light" style="margin-bottom:16px;">
-                <i class="material-icons left">add</i> Add New Location
-            </button>
-
-            <!-- Add New Location Form -->
-            <div id="addNewPickupForm">
+        <div id="pickupModal" class="modal" style="width:620px; max-width:95vw;">
+            <div class="modal-content">
+                <h5 style="font-weight:600; color:#424242; margin-bottom:4px;">
+                    <i class="material-icons left" style="color:#667eea;">location_on</i>
+                    Manage Pickup Locations
+                </h5>
                 <hr class="section-divider">
-                <p style="font-weight:600; color:#424242; margin-bottom:12px;">New Pickup Location</p>
-                <div class="row" style="margin-bottom:0;">
-                    <div class="input-field col s12 m6">
-                        <input type="text" id="n_name">
-                        <label for="n_name">Location Name <span style="color:red">*</span></label>
-                    </div>
-                    <div class="input-field col s12 m6">
-                        <input type="text" id="n_contactPerson">
-                        <label for="n_contactPerson">Contact Person</label>
-                    </div>
-                    <div class="input-field col s12">
-                        <textarea id="n_address" class="materialize-textarea"></textarea>
-                        <label for="n_address">Full Address <span style="color:red">*</span></label>
-                    </div>
-                    <div class="input-field col s12 m4">
-                        <input type="text" id="n_city">
-                        <label for="n_city">City</label>
-                    </div>
-                    <div class="input-field col s12 m4">
-                        <input type="text" id="n_state">
-                        <label for="n_state">State</label>
-                    </div>
-                    <div class="input-field col s12 m4">
-                        <input type="text" id="n_pincode" maxlength="12">
-                        <label for="n_pincode">Pincode</label>
-                    </div>
-                    <div class="input-field col s12 m6">
-                        <input type="text" id="n_contactPhone">
-                        <label for="n_contactPhone">Contact Phone</label>
-                    </div>
-                    <div class="input-field col s12 m3">
-                        <input type="number" id="n_lat" step="any">
-                        <label for="n_lat">Latitude <span style="color:red">*</span></label>
-                    </div>
-                    <div class="input-field col s12 m3">
-                        <input type="number" id="n_lng" step="any">
-                        <label for="n_lng">Longitude <span style="color:red">*</span></label>
-                    </div>
-                    <div class="col s12" style="margin-bottom:12px;">
-                        <label>
-                            <input type="checkbox" id="n_isDefault" class="filled-in">
-                            <span>Set as Default</span>
-                        </label>
-                    </div>
-                    <div class="col s12">
-                        <button type="button" onclick="saveNewPickup()"
-                                class="btn btn-gradient waves-effect waves-light">
-                            <i class="material-icons left">save</i> Save Location
-                        </button>
-                        <button type="button" onclick="toggleAddForm()"
-                                class="btn grey waves-effect waves-light" style="margin-left:8px;">
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Edit form -->
-            <div id="editPickupForm" style="display:none;">
-                <hr class="section-divider">
-                <p style="font-weight:600; color:#424242; margin-bottom:12px;">Edit Location</p>
-                <input type="hidden" id="e_id">
-                <div class="row" style="margin-bottom:0;">
-                    <div class="input-field col s12 m6">
-                        <input type="text" id="e_name">
-                        <label for="e_name" class="active">Location Name <span style="color:red">*</span></label>
-                    </div>
-                    <div class="input-field col s12 m6">
-                        <input type="text" id="e_contactPerson">
-                        <label for="e_contactPerson" class="active">Contact Person</label>
-                    </div>
-                    <div class="input-field col s12">
-                        <textarea id="e_address" class="materialize-textarea"></textarea>
-                        <label for="e_address" class="active">Full Address <span style="color:red">*</span></label>
-                    </div>
-                    <div class="input-field col s12 m4">
-                        <input type="text" id="e_city">
-                        <label for="e_city" class="active">City</label>
-                    </div>
-                    <div class="input-field col s12 m4">
-                        <input type="text" id="e_state">
-                        <label for="e_state" class="active">State</label>
-                    </div>
-                    <div class="input-field col s12 m4">
-                        <input type="text" id="e_pincode" maxlength="12">
-                        <label for="e_pincode" class="active">Pincode</label>
-                    </div>
-                    <div class="input-field col s12 m6">
-                        <input type="text" id="e_contactPhone">
-                        <label for="e_contactPhone" class="active">Contact Phone</label>
-                    </div>
-                    <div class="input-field col s12 m3">
-                        <input type="number" id="e_lat" step="any">
-                        <label for="e_lat" class="active">Latitude <span style="color:red">*</span></label>
-                    </div>
-                    <div class="input-field col s12 m3">
-                        <input type="number" id="e_lng" step="any">
-                        <label for="e_lng" class="active">Longitude <span style="color:red">*</span></label>
-                    </div>
-                    <div class="col s12 m6" style="margin-bottom:12px;">
-                        <label>
-                            <input type="checkbox" id="e_isDefault" class="filled-in">
-                            <span>Set as Default</span>
-                        </label>
-                    </div>
-                    <div class="col s12 m6" style="margin-bottom:12px;">
-                        <label>
-                            <input type="checkbox" id="e_isActive" class="filled-in" checked>
-                            <span>Active</span>
-                        </label>
-                    </div>
-                    <div class="col s12">
-                        <button type="button" onclick="updatePickup()"
-                                class="btn btn-gradient waves-effect waves-light">
-                            <i class="material-icons left">save</i> Update
-                        </button>
-                        <button type="button" onclick="cancelEdit()"
-                                class="btn grey waves-effect waves-light" style="margin-left:8px;">
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="modal-close btn grey waves-effect waves-light">Close</button>
-        </div>
-    </div>
-
-    <%- include('_layouts/commonJs') %>
-
-    <script>
-        // ================================================================
-        // In-memory store
-        // ================================================================
-        let pickupLocations = <%- JSON.stringify(pickupLocations || []) %>;
-        let itemCounter = 0;
-
-        // ===== INIT =====
-        document.addEventListener('DOMContentLoaded', function () {
-            M.FormSelect.init(document.querySelectorAll('select'));
-            M.Modal.init(document.querySelectorAll('.modal'));
-            M.updateTextFields();
-            addItem();
-            renderPickupDropdown();
-            document.getElementById('pickupLocationId').addEventListener('change', updatePickupPreview);
-        });
-
-        // ================================================================
-        //  GOOGLE MAPS LINK PARSER
-        //  Supports:
-        //    1. maps.app.goo.gl short links  → first expand via no-cors trick,
-        //       then extract coords from redirect URL
-        //    2. google.com/maps?q=lat,lng
-        //    3. google.com/maps/@lat,lng,zoom
-        //    4. google.com/maps/place/name/@lat,lng,zoom
-        //    5. google.com/maps/search/query  → geocode query text
-        //    Falls back to Geocoding API for any plain address string too.
-        // ================================================================
-
-        // Extract lat/lng directly from a Google Maps full URL
-        function extractCoordsFromUrl(url) {
-            // @lat,lng,zoom pattern (most common in place & directions URLs)
-            let m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-            if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-
-            // ?q=lat,lng
-            m = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-            if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-
-            // !3d<lat>!4d<lng>  (embedded map urls)
-            m = url.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
-            if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-
-            return null;
-        }
-
-        // Extract a search query string from a Maps URL (for geocoding fallback)
-        function extractQueryFromUrl(url) {
-            let m = url.match(/\/maps\/(?:search|place)\/([^/@?]+)/);
-            if (m) return decodeURIComponent(m[1].replace(/\+/g, ' '));
-
-            m = url.match(/[?&]q=([^&]+)/);
-            if (m) return decodeURIComponent(m[1].replace(/\+/g, ' '));
-
-            return null;
-        }
-
-        // Reverse-geocode lat/lng → address components via Google Geocoding API
-        async function reverseGeocode(lat, lng) {
-            if (!GMAPS_KEY) throw new Error('Google Maps API key not configured');
-            const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GMAPS_KEY}`;
-            const res  = await fetch(url);
-            const data = await res.json();
-            if (data.status !== 'OK' || !data.results.length) throw new Error('Reverse geocode failed: ' + data.status);
-            return parseGeocodeResult(data.results[0], lat, lng);
-        }
-
-        // Forward-geocode address/query → lat/lng + address components
-        async function forwardGeocode(query) {
-            if (!GMAPS_KEY) throw new Error('Google Maps API key not configured');
-            const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${GMAPS_KEY}`;
-            const res  = await fetch(url);
-            const data = await res.json();
-            if (data.status !== 'OK' || !data.results.length) throw new Error('Geocode failed: ' + data.status);
-            const loc = data.results[0].geometry.location;
-            return parseGeocodeResult(data.results[0], loc.lat, loc.lng);
-        }
-
-        // Parse a Google Geocoding result into { address, city, state, pincode, lat, lng }
-        function parseGeocodeResult(result, lat, lng) {
-            const components = result.address_components || [];
-            const get = (types) => {
-                const c = components.find(c => types.some(t => c.types.includes(t)));
-                return c ? c.long_name : '';
-            };
-
-            const streetNumber = get(['street_number']);
-            const route        = get(['route']);
-            const sublocality  = get(['sublocality', 'sublocality_level_1']);
-            const locality     = get(['locality']);
-            const adminArea2   = get(['administrative_area_level_2']);
-            const adminArea1   = get(['administrative_area_level_1']);
-            const country      = get(['country']);
-            const postal       = get(['postal_code']);
-
-            // Build a readable address from available parts
-            const addressParts = [streetNumber, route, sublocality, locality].filter(Boolean);
-            const address = addressParts.length
-                ? addressParts.join(', ')
-                : result.formatted_address;
-
-            const city  = locality || adminArea2 || '';
-            const state = adminArea1 || '';
-
-            return { address, city, state, pincode: postal, lat, lng, country };
-        }
-
-        // Master function: parse any Google Maps URL or plain address
-        async function resolveLocation(rawInput) {
-            const input = rawInput.trim();
-
-            // 1. Full Google Maps URL — try to extract coords directly
-            if (input.includes('google.com/maps') || input.includes('goo.gl') || input.includes('maps.app')) {
-                // Try direct coord extraction first (works for most long-form URLs)
-                const coords = extractCoordsFromUrl(input);
-                if (coords) {
-                    return await reverseGeocode(coords.lat, coords.lng);
-                }
-
-                // Try search query extraction + forward geocode
-                const query = extractQueryFromUrl(input);
-                if (query) {
-                    return await forwardGeocode(query);
-                }
-
-                // Short link (maps.app.goo.gl) — expand via HEAD fetch (same-origin workaround)
-                // Browser can't follow cross-origin redirects, so we route through a proxy endpoint
-                // if available, otherwise alert user to use the full shared URL.
-                if (input.includes('goo.gl') || input.includes('maps.app')) {
-                    throw new Error('Short link detected. Please tap "Share" → "Copy link" and use the FULL Google Maps URL (starts with https://www.google.com/maps/...)');
-                }
-
-                throw new Error('Could not extract location from this URL. Try sharing the full Maps link.');
-            }
-
-            // 2. Plain lat,lng string  e.g. "23.0225, 72.5714"
-            const latLngMatch = input.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
-            if (latLngMatch) {
-                return await reverseGeocode(parseFloat(latLngMatch[1]), parseFloat(latLngMatch[2]));
-            }
-
-            // 3. Treat as plain address / place name → forward geocode
-            return await forwardGeocode(input);
-        }
-
-        // ================================================================
-        //  DELIVERY ADDRESS AUTO-FILL
-        // ================================================================
-        async function parseDeliveryLink() {
-            const raw    = document.getElementById('deliveryMapsLink').value.trim();
-            const status = document.getElementById('deliveryLinkStatus');
-            if (!raw) { status.textContent = 'Please paste a Google Maps link or address.'; status.className = 'maps-link-status error'; return; }
-
-            status.textContent = '⏳ Fetching location…';
-            status.className   = 'maps-link-status';
-
-            try {
-                const loc = await resolveLocation(raw);
-
-                // Fill fields
-                setFieldValue('delAddress', loc.address);
-                setFieldValue('city',       loc.city);
-                setFieldValue('state',      loc.state);
-                setFieldValue('pincode',    loc.pincode);
-                document.getElementById('delLat').value = loc.lat;
-                document.getElementById('delLng').value = loc.lng;
-
-                M.updateTextFields();
-                M.textareaAutoResize(document.getElementById('delAddress'));
-
-                status.innerHTML = `✅ Location filled — <strong>${loc.address}</strong>${loc.city ? ', ' + loc.city : ''} (${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})`;
-                status.className = 'maps-link-status success';
-
-                // Highlight filled fields briefly
-                document.getElementById('deliveryFields').classList.add('autofill-highlight');
-                setTimeout(() => document.getElementById('deliveryFields').classList.remove('autofill-highlight'), 2500);
-
-            } catch (err) {
-                status.textContent = '❌ ' + err.message;
-                status.className   = 'maps-link-status error';
-            }
-        }
-
-        // Helper: set input/textarea value and trigger Materialize label float
-        function setFieldValue(id, value) {
-            const el = document.getElementById(id);
-            if (!el || value === undefined) return;
-            el.value = value || '';
-            el.dispatchEvent(new Event('input'));
-        }
-
-        // ================================================================
-        //  MODAL MAPS LINK — fills the currently-open Add/Edit form
-        // ================================================================
-        async function parseModalLink() {
-            const raw    = document.getElementById('modalMapsLink').value.trim();
-            const status = document.getElementById('modalLinkStatus');
-            if (!raw) { status.textContent = 'Please paste a Google Maps link or address.'; status.className = 'maps-link-status error'; return; }
-
-            status.textContent = '⏳ Fetching location…';
-            status.className   = 'maps-link-status';
-
-            try {
-                const loc = await resolveLocation(raw);
-
-                // Detect which form is open (edit takes priority)
-                const editOpen = document.getElementById('editPickupForm').style.display !== 'none';
-                const prefix   = editOpen ? 'e_' : 'n_';
-
-                setFieldValue(prefix + 'address', loc.address);
-                setFieldValue(prefix + 'city',    loc.city);
-                setFieldValue(prefix + 'state',   loc.state);
-                setFieldValue(prefix + 'pincode', loc.pincode);
-                setFieldValue(prefix + 'lat',     loc.lat);
-                setFieldValue(prefix + 'lng',     loc.lng);
-                M.updateTextFields();
-
-                status.innerHTML = `✅ <strong>${loc.address}</strong>${loc.city ? ', ' + loc.city : ''} (${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})`;
-                status.className = 'maps-link-status success';
-
-            } catch (err) {
-                status.textContent = '❌ ' + err.message;
-                status.className   = 'maps-link-status error';
-            }
-        }
-
-        // ================================================================
-        // PICKUP DROPDOWN RENDER
-        // ================================================================
-        function renderPickupDropdown(selectId) {
-            const sel  = document.getElementById('pickupLocationId');
-            const prev = sel.value;
-            sel.innerHTML = '<option value="" disabled>-- Select Pickup Location --</option>';
-            pickupLocations.forEach(loc => {
-                const opt = document.createElement('option');
-                opt.value = loc._id;
-                opt.dataset.name          = loc.name;
-                opt.dataset.address       = loc.address;
-                opt.dataset.contactPerson = loc.contactPerson || '';
-                opt.dataset.contactPhone  = loc.contactPhone  || '';
-                opt.dataset.default       = loc.isDefault ? '1' : '0';
-                opt.textContent           = loc.name + (loc.isDefault ? ' (Default)' : '');
-                sel.appendChild(opt);
-            });
-
-            if (selectId)      sel.value = selectId;
-            else if (prev)     sel.value = prev;
-            else {
-                const def = pickupLocations.find(l => l.isDefault);
-                if (def) sel.value = def._id;
-            }
-
-            M.FormSelect.init(sel);
-            updatePickupPreview();
-        }
-
-        function updatePickupPreview() {
-            const sel = document.getElementById('pickupLocationId');
-            const opt = sel.options[sel.selectedIndex];
-            if (!opt || !opt.value) return;
-
-            document.getElementById('previewName').textContent    = opt.dataset.name    || '';
-            document.getElementById('previewAddress').textContent = opt.dataset.address || '';
-
-            const cr = document.getElementById('previewContactRow');
-            const pr = document.getElementById('previewPhoneRow');
-            if (opt.dataset.contactPerson) {
-                document.getElementById('previewContact').textContent = opt.dataset.contactPerson;
-                cr.style.display = 'block';
-            } else { cr.style.display = 'none'; }
-            if (opt.dataset.contactPhone) {
-                document.getElementById('previewPhone').textContent = opt.dataset.contactPhone;
-                pr.style.display = 'block';
-            } else { pr.style.display = 'none'; }
-
-            document.getElementById('pickupPreview').classList.add('show');
-        }
-
-        // ================================================================
-        // MODAL LIST RENDER
-        // ================================================================
-        function renderPickupList() {
-            const el = document.getElementById('pickupLocList');
-            if (pickupLocations.length === 0) {
-                el.innerHTML = '<p style="color:#999; margin-bottom:12px;">No locations yet. Add one below.</p>';
-                return;
-            }
-            el.innerHTML = pickupLocations.map(loc => `
-                <div class="pickup-loc-item ${loc.isDefault ? 'is-default' : ''}">
-                    <div style="flex:1; min-width:0;">
-                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                            <strong style="font-size:0.92rem;">${loc.name}</strong>
-                            ${loc.isDefault ? '<span class="badge-default">Default</span>' : ''}
-                            ${!loc.isActive ? '<span style="color:#999;font-size:0.75rem;">(Inactive)</span>' : ''}
-                        </div>
-                        <div style="color:#666; font-size:0.82rem; margin-top:2px;">
-                            ${loc.address}${loc.city ? ', ' + loc.city : ''}
-                        </div>
-                        ${loc.contactPhone ? `<div style="color:#888; font-size:0.8rem;">${loc.contactPhone}</div>` : ''}
-                    </div>
-                    <div style="display:flex; gap:6px; flex-shrink:0;">
-                        <button type="button" class="btn-small btn-gradient waves-effect"
-                                onclick="openEdit('${loc._id}')">
-                            <i class="material-icons tiny">edit</i>
-                        </button>
-                        <button type="button" class="btn-small red darken-1 waves-effect"
-                                onclick="deletePickup('${loc._id}', '${loc.name.replace(/'/g, "\\'")}')">
-                            <i class="material-icons tiny">delete</i>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        document.querySelector('a[href="#pickupModal"]').addEventListener('click', function() {
-            setTimeout(renderPickupList, 100);
-        });
-
-        // ================================================================
-        // TOGGLE ADD FORM
-        // ================================================================
-        function toggleAddForm() {
-            const f = document.getElementById('addNewPickupForm');
-            f.classList.toggle('show');
-            cancelEdit();
-            if (f.classList.contains('show')) {
-                ['n_name','n_contactPerson','n_address','n_city','n_state','n_pincode','n_contactPhone','n_lat','n_lng'].forEach(id => {
-                    document.getElementById(id).value = '';
-                });
-                document.getElementById('n_isDefault').checked = false;
-                document.getElementById('modalMapsLink').value = '';
-                document.getElementById('modalLinkStatus').textContent = '';
-                M.updateTextFields();
-            }
-        }
-
-        // ================================================================
-        // SAVE NEW PICKUP (AJAX)
-        // ================================================================
-        async function saveNewPickup() {
-            const name    = document.getElementById('n_name').value.trim();
-            const address = document.getElementById('n_address').value.trim();
-            const lat     = document.getElementById('n_lat').value;
-            const lng     = document.getElementById('n_lng').value;
-
-            if (!name || !address || !lat || !lng) {
-                M.toast({ html: 'Name, Address, Latitude & Longitude required!', classes: 'red rounded' });
-                return;
-            }
-
-            const body = {
-                name, address,
-                city:          document.getElementById('n_city').value.trim(),
-                state:         document.getElementById('n_state').value.trim(),
-                pincode:       document.getElementById('n_pincode').value.trim(),
-                contactPerson: document.getElementById('n_contactPerson').value.trim(),
-                contactPhone:  document.getElementById('n_contactPhone').value.trim(),
-                latitude:      parseFloat(lat),
-                longitude:     parseFloat(lng),
-                isDefault:     document.getElementById('n_isDefault').checked
-            };
-
-            try {
-                const res  = await fetch('/admin/orders/pickup-locations/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                const data = await res.json();
-                if (!data.success) throw new Error(data.message);
-
-                if (body.isDefault) pickupLocations.forEach(l => l.isDefault = false);
-                pickupLocations.push(data.location);
-
-                M.toast({ html: 'Location added!', classes: 'green rounded' });
-                toggleAddForm();
-                renderPickupList();
-                renderPickupDropdown(data.location._id);
-
-            } catch (err) {
-                M.toast({ html: err.message || 'Failed to save', classes: 'red rounded' });
-            }
-        }
-
-        // ================================================================
-        // OPEN EDIT
-        // ================================================================
-        function openEdit(id) {
-            const loc = pickupLocations.find(l => l._id === id);
-            if (!loc) return;
-
-            cancelAddForm();
-            document.getElementById('e_id').value             = loc._id;
-            document.getElementById('e_name').value           = loc.name;
-            document.getElementById('e_address').value        = loc.address;
-            document.getElementById('e_city').value           = loc.city    || '';
-            document.getElementById('e_state').value          = loc.state   || '';
-            document.getElementById('e_pincode').value        = loc.pincode || '';
-            document.getElementById('e_contactPerson').value  = loc.contactPerson || '';
-            document.getElementById('e_contactPhone').value   = loc.contactPhone  || '';
-            document.getElementById('e_lat').value            = loc.coordinates?.latitude  || '';
-            document.getElementById('e_lng').value            = loc.coordinates?.longitude || '';
-            document.getElementById('e_isDefault').checked    = !!loc.isDefault;
-            document.getElementById('e_isActive').checked     = loc.isActive !== false;
-            document.getElementById('modalMapsLink').value    = '';
-            document.getElementById('modalLinkStatus').textContent = '';
-
-            document.getElementById('editPickupForm').style.display = 'block';
-            M.updateTextFields();
-        }
-
-        function cancelEdit()    { document.getElementById('editPickupForm').style.display = 'none'; }
-        function cancelAddForm() { document.getElementById('addNewPickupForm').classList.remove('show'); }
-
-        // ================================================================
-        // UPDATE PICKUP (AJAX)
-        // ================================================================
-        async function updatePickup() {
-            const id      = document.getElementById('e_id').value;
-            const name    = document.getElementById('e_name').value.trim();
-            const address = document.getElementById('e_address').value.trim();
-            const lat     = document.getElementById('e_lat').value;
-            const lng     = document.getElementById('e_lng').value;
-
-            if (!name || !address || !lat || !lng) {
-                M.toast({ html: 'Name, Address, Latitude & Longitude required!', classes: 'red rounded' });
-                return;
-            }
-
-            const body = {
-                name, address,
-                city:          document.getElementById('e_city').value.trim(),
-                state:         document.getElementById('e_state').value.trim(),
-                pincode:       document.getElementById('e_pincode').value.trim(),
-                contactPerson: document.getElementById('e_contactPerson').value.trim(),
-                contactPhone:  document.getElementById('e_contactPhone').value.trim(),
-                latitude:      parseFloat(lat),
-                longitude:     parseFloat(lng),
-                isDefault:     document.getElementById('e_isDefault').checked,
-                isActive:      document.getElementById('e_isActive').checked
-            };
-
-            try {
-                const res  = await fetch(`/admin/orders/pickup-locations/${id}/update`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                const data = await res.json();
-                if (!data.success) throw new Error(data.message);
-
-                if (body.isDefault) pickupLocations.forEach(l => l.isDefault = false);
-                const idx = pickupLocations.findIndex(l => l._id === id);
-                if (idx > -1) pickupLocations[idx] = data.location;
-
-                M.toast({ html: 'Location updated!', classes: 'green rounded' });
-                cancelEdit();
-                renderPickupList();
-                renderPickupDropdown();
-
-            } catch (err) {
-                M.toast({ html: err.message || 'Failed to update', classes: 'red rounded' });
-            }
-        }
-
-        // ================================================================
-        // DELETE PICKUP (AJAX)
-        // ================================================================
-        async function deletePickup(id, name) {
-            if (!confirm(`Delete "${name}"?`)) return;
-            try {
-                const res  = await fetch(`/admin/orders/pickup-locations/${id}/delete`, { method: 'DELETE' });
-                const data = await res.json();
-                if (!data.success) throw new Error(data.message);
-
-                pickupLocations = pickupLocations.filter(l => l._id !== id);
-                M.toast({ html: 'Location deleted!', classes: 'green rounded' });
-                renderPickupList();
-                renderPickupDropdown();
-
-            } catch (err) {
-                M.toast({ html: err.message || 'Failed to delete', classes: 'red rounded' });
-            }
-        }
-
-        // ================================================================
-        // ORDER ITEMS
-        // ================================================================
-        function addItem() {
-            itemCounter++;
-            const id   = itemCounter;
-            const html = `
-                <div class="item-card" id="item-${id}">
-                    <button type="button" class="btn-small red remove-item-btn waves-effect"
-                            onclick="removeItem('item-${id}')">
-                        <i class="material-icons">close</i>
+                <div id="pickupLocList"></div>
+
+                <!-- GOOGLE MAPS LINK PASTE (inside modal) -->
+                <div class="maps-link-box" style="margin-bottom:12px;">
+                    <i class="material-icons" style="color:#667eea; font-size:20px;">location_on</i>
+                    <input type="text" id="modalMapsLink"
+                        placeholder="Paste Google Maps link to auto-fill below fields…"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();parseModalLink();}">
+                    <button type="button" class="parse-btn" onclick="parseModalLink()">
+                        <i class="material-icons tiny">my_location</i> Fill
                     </button>
-                    <div class="row">
+                </div>
+                <div class="maps-link-status" id="modalLinkStatus"></div>
+
+                <button type="button" id="toggleAddBtn" onclick="toggleAddForm()"
+                    class="btn btn-gradient waves-effect waves-light" style="margin-bottom:16px;">
+                    <i class="material-icons left">add</i> Add New Location
+                </button>
+
+                <!-- Add New Location Form -->
+                <div id="addNewPickupForm">
+                    <hr class="section-divider">
+                    <p style="font-weight:600; color:#424242; margin-bottom:12px;">New Pickup Location</p>
+                    <div class="row" style="margin-bottom:0;">
                         <div class="input-field col s12 m6">
-                            <input id="productName-${id}" type="text" required>
-                            <label for="productName-${id}">Product Name <span style="color:red">*</span></label>
+                            <input type="text" id="n_name">
+                            <label for="n_name">Location Name <span style="color:red">*</span></label>
                         </div>
                         <div class="input-field col s12 m6">
-                            <input id="productCode-${id}" type="text">
-                            <label for="productCode-${id}">Product Code (Optional)</label>
+                            <input type="text" id="n_contactPerson">
+                            <label for="n_contactPerson">Contact Person</label>
+                        </div>
+                        <div class="input-field col s12">
+                            <textarea id="n_address" class="materialize-textarea"></textarea>
+                            <label for="n_address">Full Address <span style="color:red">*</span></label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                            <input type="text" id="n_city">
+                            <label for="n_city">City</label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                            <input type="text" id="n_state">
+                            <label for="n_state">State</label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                            <input type="text" id="n_pincode" maxlength="12">
+                            <label for="n_pincode">Pincode</label>
+                        </div>
+                        <div class="input-field col s12 m6">
+                            <input type="text" id="n_contactPhone">
+                            <label for="n_contactPhone">Contact Phone</label>
+                        </div>
+                        <div class="input-field col s12 m3">
+                            <input type="number" id="n_lat" step="any">
+                            <label for="n_lat">Latitude <span style="color:red">*</span></label>
+                        </div>
+                        <div class="input-field col s12 m3">
+                            <input type="number" id="n_lng" step="any">
+                            <label for="n_lng">Longitude <span style="color:red">*</span></label>
+                        </div>
+                        <div class="col s12" style="margin-bottom:12px;">
+                            <label>
+                                <input type="checkbox" id="n_isDefault" class="filled-in">
+                                <span>Set as Default</span>
+                            </label>
+                        </div>
+                        <div class="col s12">
+                            <button type="button" onclick="saveNewPickup()"
+                                class="btn btn-gradient waves-effect waves-light">
+                                <i class="material-icons left">save</i> Save Location
+                            </button>
+                            <button type="button" onclick="toggleAddForm()" class="btn grey waves-effect waves-light"
+                                style="margin-left:8px;">
+                                Cancel
+                            </button>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="input-field col s12 m4">
-                            <select id="category-${id}">
-                                <option value="containers">Containers</option>
-                                <option value="bottles">Bottles</option>
-                                <option value="bags">Bags</option>
-                                <option value="sheets">Sheets</option>
-                                <option value="custom">Custom</option>
-                                <option value="other" selected>Other</option>
-                            </select>
-                            <label>Category</label>
+                </div>
+
+                <!-- Edit form -->
+                <div id="editPickupForm" style="display:none;">
+                    <hr class="section-divider">
+                    <p style="font-weight:600; color:#424242; margin-bottom:12px;">Edit Location</p>
+                    <input type="hidden" id="e_id">
+                    <div class="row" style="margin-bottom:0;">
+                        <div class="input-field col s12 m6">
+                            <input type="text" id="e_name">
+                            <label for="e_name" class="active">Location Name <span style="color:red">*</span></label>
+                        </div>
+                        <div class="input-field col s12 m6">
+                            <input type="text" id="e_contactPerson">
+                            <label for="e_contactPerson" class="active">Contact Person</label>
+                        </div>
+                        <div class="input-field col s12">
+                            <textarea id="e_address" class="materialize-textarea"></textarea>
+                            <label for="e_address" class="active">Full Address <span style="color:red">*</span></label>
                         </div>
                         <div class="input-field col s12 m4">
-                            <input id="quantity-${id}" type="number" min="1" value="1" required>
-                            <label for="quantity-${id}">Quantity <span style="color:red">*</span></label>
+                            <input type="text" id="e_city">
+                            <label for="e_city" class="active">City</label>
                         </div>
                         <div class="input-field col s12 m4">
-                            <input id="description-${id}" type="text">
-                            <label for="description-${id}">Description (Optional)</label>
+                            <input type="text" id="e_state">
+                            <label for="e_state" class="active">State</label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                            <input type="text" id="e_pincode" maxlength="12">
+                            <label for="e_pincode" class="active">Pincode</label>
+                        </div>
+                        <div class="input-field col s12 m6">
+                            <input type="text" id="e_contactPhone">
+                            <label for="e_contactPhone" class="active">Contact Phone</label>
+                        </div>
+                        <div class="input-field col s12 m3">
+                            <input type="number" id="e_lat" step="any">
+                            <label for="e_lat" class="active">Latitude <span style="color:red">*</span></label>
+                        </div>
+                        <div class="input-field col s12 m3">
+                            <input type="number" id="e_lng" step="any">
+                            <label for="e_lng" class="active">Longitude <span style="color:red">*</span></label>
+                        </div>
+                        <div class="col s12 m6" style="margin-bottom:12px;">
+                            <label>
+                                <input type="checkbox" id="e_isDefault" class="filled-in">
+                                <span>Set as Default</span>
+                            </label>
+                        </div>
+                        <div class="col s12 m6" style="margin-bottom:12px;">
+                            <label>
+                                <input type="checkbox" id="e_isActive" class="filled-in" checked>
+                                <span>Active</span>
+                            </label>
+                        </div>
+                        <div class="col s12">
+                            <button type="button" onclick="updatePickup()"
+                                class="btn btn-gradient waves-effect waves-light">
+                                <i class="material-icons left">save</i> Update
+                            </button>
+                            <button type="button" onclick="cancelEdit()" class="btn grey waves-effect waves-light"
+                                style="margin-left:8px;">
+                                Cancel
+                            </button>
                         </div>
                     </div>
-                </div>`;
-            document.getElementById('itemsContainer').insertAdjacentHTML('beforeend', html);
-            M.updateTextFields();
-            M.FormSelect.init(document.querySelectorAll(`#item-${id} select`));
-        }
+                </div>
 
-        function removeItem(itemId) {
-            const el = document.getElementById(itemId);
-            if (el) el.remove();
-        }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="modal-close btn grey waves-effect waves-light">Close</button>
+            </div>
+        </div>
 
-        // ================================================================
-        // FORM SUBMIT
-        // ================================================================
-        document.getElementById('createOrderForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-            const items = [];
-            document.querySelectorAll('.item-card').forEach(card => {
-                const id   = card.id.split('-')[1];
-                const name = document.getElementById(`productName-${id}`)?.value?.trim();
-                if (!name) return;
-                items.push({
-                    productName:  name,
-                    productCode:  document.getElementById(`productCode-${id}`)?.value?.trim() || '',
-                    category:     document.getElementById(`category-${id}`)?.value || 'other',
-                    quantity:     parseInt(document.getElementById(`quantity-${id}`)?.value) || 1,
-                    description:  document.getElementById(`description-${id}`)?.value?.trim() || ''
+        <%- include('_layouts/commonJs') %>
+
+            <script>
+                // ================================================================
+                // In-memory store
+                // ================================================================
+                let pickupLocations = <%- JSON.stringify(pickupLocations || []) %>;
+                let itemCounter = 0;
+
+                // ===== INIT =====
+                document.addEventListener('DOMContentLoaded', function () {
+                    M.FormSelect.init(document.querySelectorAll('select'));
+                    M.Modal.init(document.querySelectorAll('.modal'));
+                    M.updateTextFields();
+                    addItem();
+                    renderPickupDropdown();
+                    document.getElementById('pickupLocationId').addEventListener('change', updatePickupPreview);
                 });
-            });
-            if (items.length === 0) {
-                M.toast({ html: 'Please add at least one item', classes: 'red rounded' });
-                return;
-            }
-            document.getElementById('itemsJSON').value = JSON.stringify(items);
-            this.submit();
-        });
-    </script>
+
+                // ================================================================
+                //  GOOGLE MAPS LINK PARSER  — FULLY UPDATED
+                //  Fixes:
+                //    1. !3d/!4d checked FIRST (actual pin, not viewport center)
+                //    2. Place name extracted from URL and prepended to address
+                //    3. formatted_address used for cleaner base address
+                //    4. resolveLocation passes placeName through to reverseGeocode
+                // ================================================================
+
+                // --- Step 1: Extract coordinates ---
+                function extractCoordsFromUrl(url) {
+                    // !3d/!4d = actual place pin — ALWAYS check first
+                    let m = url.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
+                    if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+                    // @lat,lng,zoom = viewport center — fallback only
+                    m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                    if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+                    // ?q=lat,lng
+                    m = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                    if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+                    return null;
+                }
+
+                // --- Step 2: Extract place name from URL path ---
+                function extractPlaceNameFromUrl(url) {
+                    const m = url.match(/\/maps\/place\/([^/@?]+)/);
+                    if (!m) return null;
+                    const raw = decodeURIComponent(m[1].replace(/\+/g, ' ')).trim();
+                    if (!raw || raw.length < 2) return null;
+                    return raw;
+                }
+
+                // --- Step 3: Extract search query (for geocode fallback) ---
+                function extractQueryFromUrl(url) {
+                    let m = url.match(/\/maps\/(?:search|place)\/([^/@?]+)/);
+                    if (m) return decodeURIComponent(m[1].replace(/\+/g, ' '));
+                    m = url.match(/[?&]q=([^&]+)/);
+                    if (m) return decodeURIComponent(m[1].replace(/\+/g, ' '));
+                    return null;
+                }
+
+                // --- Step 4: Parse geocode API result ---
+                // placeName = extracted from URL, prepended to address
+                function parseGeocodeResult(result, lat, lng, placeName) {
+                    const components = result.address_components || [];
+                    const get = (types) => {
+                        const c = components.find(c => types.some(t => c.types.includes(t)));
+                        return c ? c.long_name : '';
+                    };
+
+                    const locality    = get(['locality']);
+                    const adminArea2  = get(['administrative_area_level_2']);
+                    const adminArea1  = get(['administrative_area_level_1']);
+                    const postal      = get(['postal_code']);
+
+                    // Use formatted_address but strip country + state+pin suffix
+                    // formatted_address example: "Shalby Hospital, Naroda Rd, Nikol, Ahmedabad, Gujarat 382350, India"
+                    let baseAddress = '';
+                    if (result.formatted_address) {
+                        const parts = result.formatted_address.split(',').map(p => p.trim()).filter(Boolean);
+                        // Drop last 2 parts (usually "State PIN" and "Country")
+                        const useful = parts.slice(0, Math.max(parts.length - 2, 2));
+                        baseAddress = useful.join(', ');
+                    }
+
+                    // Prepend place name if it isn't already in the address
+                    let address = baseAddress;
+                    if (placeName && placeName.trim()) {
+                        const p = placeName.trim();
+                        if (!baseAddress.toLowerCase().includes(p.toLowerCase())) {
+                            address = p + ', ' + baseAddress;
+                        }
+                    }
+
+                    const city  = locality || adminArea2 || '';
+                    const state = adminArea1 || '';
+
+                    return { address, city, state, pincode: postal, lat, lng };
+                }
+
+                // --- Step 5: Reverse geocode (lat/lng → address) ---
+                async function reverseGeocode(lat, lng, placeName) {
+                    if (!GMAPS_KEY) throw new Error('Google Maps API key not configured');
+                    const url  = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GMAPS_KEY}`;
+                    const res  = await fetch(url);
+                    const data = await res.json();
+                    if (data.status !== 'OK' || !data.results.length)
+                        throw new Error('Reverse geocode failed: ' + data.status);
+                    return parseGeocodeResult(data.results[0], lat, lng, placeName || null);
+                }
+
+                // --- Step 6: Forward geocode (address string → lat/lng + address) ---
+                async function forwardGeocode(query) {
+                    if (!GMAPS_KEY) throw new Error('Google Maps API key not configured');
+                    const url  = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${GMAPS_KEY}`;
+                    const res  = await fetch(url);
+                    const data = await res.json();
+                    if (data.status !== 'OK' || !data.results.length)
+                        throw new Error('Geocode failed: ' + data.status);
+                    const loc = data.results[0].geometry.location;
+                    // Use query as place name so it appears in address
+                    return parseGeocodeResult(data.results[0], loc.lat, loc.lng, query);
+                }
+
+                // --- Step 7: Master resolver — handles any input type ---
+                async function resolveLocation(rawInput) {
+                    const input = rawInput.trim();
+
+                    // Google Maps URL (full link)
+                    if (input.includes('google.com/maps') || input.includes('goo.gl') || input.includes('maps.app')) {
+
+                        const coords    = extractCoordsFromUrl(input);
+                        const placeName = extractPlaceNameFromUrl(input); // e.g. "Shalby Hospital"
+
+                        if (coords) {
+                            // Pass placeName so it gets prepended to address
+                            return await reverseGeocode(coords.lat, coords.lng, placeName);
+                        }
+
+                        // No coords — try geocoding the place name / query from URL
+                        const query = extractQueryFromUrl(input);
+                        if (query) {
+                            return await forwardGeocode(query);
+                        }
+
+                        // Short links can't be expanded in browser
+                        if (input.includes('goo.gl') || input.includes('maps.app')) {
+                            throw new Error('Short link detected. Please tap "Share" → "Copy link" and use the FULL Google Maps URL (starts with https://www.google.com/maps/...)');
+                        }
+
+                        throw new Error('Could not extract location from this URL. Try sharing the full Maps link.');
+                    }
+
+                    // Plain "lat, lng" string
+                    const latLngMatch = input.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+                    if (latLngMatch) {
+                        return await reverseGeocode(parseFloat(latLngMatch[1]), parseFloat(latLngMatch[2]), null);
+                    }
+
+                    // Plain address / place name text
+                    return await forwardGeocode(input);
+                }
+
+                // ================================================================
+                //  DELIVERY ADDRESS AUTO-FILL
+                // ================================================================
+                async function parseDeliveryLink() {
+                    const raw    = document.getElementById('deliveryMapsLink').value.trim();
+                    const status = document.getElementById('deliveryLinkStatus');
+
+                    if (!raw) {
+                        status.textContent = 'Please paste a Google Maps link or address.';
+                        status.className   = 'maps-link-status error';
+                        return;
+                    }
+
+                    status.textContent = '⏳ Fetching location…';
+                    status.className   = 'maps-link-status';
+
+                    try {
+                        const loc = await resolveLocation(raw);
+
+                        setFieldValue('delAddress', loc.address);
+                        setFieldValue('city',       loc.city);
+                        setFieldValue('state',      loc.state);
+                        setFieldValue('pincode',    loc.pincode);
+                        document.getElementById('delLat').value = loc.lat;
+                        document.getElementById('delLng').value = loc.lng;
+
+                        M.updateTextFields();
+                        M.textareaAutoResize(document.getElementById('delAddress'));
+
+                        status.innerHTML = `✅ Location filled — <strong>${loc.address}</strong>${loc.city ? ', ' + loc.city : ''} (${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})`;
+                        status.className = 'maps-link-status success';
+
+                        // Briefly highlight filled fields
+                        document.getElementById('deliveryFields').classList.add('autofill-highlight');
+                        setTimeout(() => document.getElementById('deliveryFields').classList.remove('autofill-highlight'), 2500);
+
+                    } catch (err) {
+                        status.textContent = '❌ ' + err.message;
+                        status.className   = 'maps-link-status error';
+                    }
+                }
+
+                // Helper: set input/textarea value + trigger Materialize label float
+                function setFieldValue(id, value) {
+                    const el = document.getElementById(id);
+                    if (!el || value === undefined) return;
+                    el.value = value || '';
+                    el.dispatchEvent(new Event('input'));
+                }
+
+                // ================================================================
+                //  MODAL MAPS LINK — fills the open Add/Edit form
+                // ================================================================
+                async function parseModalLink() {
+                    const raw    = document.getElementById('modalMapsLink').value.trim();
+                    const status = document.getElementById('modalLinkStatus');
+
+                    if (!raw) {
+                        status.textContent = 'Please paste a Google Maps link or address.';
+                        status.className   = 'maps-link-status error';
+                        return;
+                    }
+
+                    status.textContent = '⏳ Fetching location…';
+                    status.className   = 'maps-link-status';
+
+                    try {
+                        const loc = await resolveLocation(raw);
+
+                        // Detect which form is open (edit takes priority over add)
+                        const editOpen = document.getElementById('editPickupForm').style.display !== 'none';
+                        const prefix   = editOpen ? 'e_' : 'n_';
+
+                        setFieldValue(prefix + 'address', loc.address);
+                        setFieldValue(prefix + 'city',    loc.city);
+                        setFieldValue(prefix + 'state',   loc.state);
+                        setFieldValue(prefix + 'pincode', loc.pincode);
+                        setFieldValue(prefix + 'lat',     loc.lat);
+                        setFieldValue(prefix + 'lng',     loc.lng);
+                        M.updateTextFields();
+
+                        status.innerHTML = `✅ <strong>${loc.address}</strong>${loc.city ? ', ' + loc.city : ''} (${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})`;
+                        status.className = 'maps-link-status success';
+
+                    } catch (err) {
+                        status.textContent = '❌ ' + err.message;
+                        status.className   = 'maps-link-status error';
+                    }
+                }
+
+                // ================================================================
+                // PICKUP DROPDOWN RENDER
+                // ================================================================
+                function renderPickupDropdown(selectId) {
+                    const sel  = document.getElementById('pickupLocationId');
+                    const prev = sel.value;
+                    sel.innerHTML = '<option value="" disabled>-- Select Pickup Location --</option>';
+                    pickupLocations.forEach(loc => {
+                        const opt = document.createElement('option');
+                        opt.value = loc._id;
+                        opt.dataset.name          = loc.name;
+                        opt.dataset.address       = loc.address;
+                        opt.dataset.contactPerson = loc.contactPerson || '';
+                        opt.dataset.contactPhone  = loc.contactPhone  || '';
+                        opt.dataset.default       = loc.isDefault ? '1' : '0';
+                        opt.textContent           = loc.name + (loc.isDefault ? ' (Default)' : '');
+                        sel.appendChild(opt);
+                    });
+
+                    if (selectId)      sel.value = selectId;
+                    else if (prev)     sel.value = prev;
+                    else {
+                        const def = pickupLocations.find(l => l.isDefault);
+                        if (def) sel.value = def._id;
+                    }
+
+                    M.FormSelect.init(sel);
+                    updatePickupPreview();
+                }
+
+                function updatePickupPreview() {
+                    const sel = document.getElementById('pickupLocationId');
+                    const opt = sel.options[sel.selectedIndex];
+                    if (!opt || !opt.value) return;
+
+                    document.getElementById('previewName').textContent    = opt.dataset.name    || '';
+                    document.getElementById('previewAddress').textContent = opt.dataset.address || '';
+
+                    const cr = document.getElementById('previewContactRow');
+                    const pr = document.getElementById('previewPhoneRow');
+
+                    if (opt.dataset.contactPerson) {
+                        document.getElementById('previewContact').textContent = opt.dataset.contactPerson;
+                        cr.style.display = 'block';
+                    } else { cr.style.display = 'none'; }
+
+                    if (opt.dataset.contactPhone) {
+                        document.getElementById('previewPhone').textContent = opt.dataset.contactPhone;
+                        pr.style.display = 'block';
+                    } else { pr.style.display = 'none'; }
+
+                    document.getElementById('pickupPreview').classList.add('show');
+                }
+
+                // ================================================================
+                // MODAL LIST RENDER
+                // ================================================================
+                function renderPickupList() {
+                    const el = document.getElementById('pickupLocList');
+                    if (pickupLocations.length === 0) {
+                        el.innerHTML = '<p style="color:#999; margin-bottom:12px;">No locations yet. Add one below.</p>';
+                        return;
+                    }
+                    el.innerHTML = pickupLocations.map(loc => `
+                        <div class="pickup-loc-item ${loc.isDefault ? 'is-default' : ''}">
+                            <div style="flex:1; min-width:0;">
+                                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                    <strong style="font-size:0.92rem;">${loc.name}</strong>
+                                    ${loc.isDefault ? '<span class="badge-default">Default</span>' : ''}
+                                    ${!loc.isActive ? '<span style="color:#999;font-size:0.75rem;">(Inactive)</span>' : ''}
+                                </div>
+                                <div style="color:#666; font-size:0.82rem; margin-top:2px; overflow-wrap: break-word">
+                                    ${loc.address}${loc.city ? ', ' + loc.city : ''}
+                                </div>
+                                ${loc.contactPhone ? `<div style="color:#888; font-size:0.8rem;">${loc.contactPhone}</div>` : ''}
+                            </div>
+                            <div style="display:flex; gap:6px; flex-shrink:0;">
+                                <button type="button" class="btn-small btn-gradient waves-effect"
+                                        onclick="openEdit('${loc._id}')">
+                                    <i class="material-icons tiny">edit</i>
+                                </button>
+                                <button type="button" class="btn-small red darken-1 waves-effect"
+                                        onclick="deletePickup('${loc._id}', '${loc.name.replace(/'/g, "\\'")}')">
+                                    <i class="material-icons tiny">delete</i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                document.querySelector('a[href="#pickupModal"]').addEventListener('click', function () {
+                    setTimeout(renderPickupList, 100);
+                });
+
+                // ================================================================
+                // TOGGLE ADD FORM
+                // ================================================================
+                function toggleAddForm() {
+                    const f = document.getElementById('addNewPickupForm');
+                    f.classList.toggle('show');
+                    cancelEdit();
+                    if (f.classList.contains('show')) {
+                        ['n_name','n_contactPerson','n_address','n_city','n_state','n_pincode','n_contactPhone','n_lat','n_lng'].forEach(id => {
+                            document.getElementById(id).value = '';
+                        });
+                        document.getElementById('n_isDefault').checked = false;
+                        document.getElementById('modalMapsLink').value  = '';
+                        document.getElementById('modalLinkStatus').textContent = '';
+                        M.updateTextFields();
+                    }
+                }
+
+                // ================================================================
+                // SAVE NEW PICKUP (AJAX)
+                // ================================================================
+                async function saveNewPickup() {
+                    const name    = document.getElementById('n_name').value.trim();
+                    const address = document.getElementById('n_address').value.trim();
+                    const lat     = document.getElementById('n_lat').value;
+                    const lng     = document.getElementById('n_lng').value;
+
+                    if (!name || !address || !lat || !lng) {
+                        M.toast({ html: 'Name, Address, Latitude & Longitude required!', classes: 'red rounded' });
+                        return;
+                    }
+
+                    const body = {
+                        name, address,
+                        city:          document.getElementById('n_city').value.trim(),
+                        state:         document.getElementById('n_state').value.trim(),
+                        pincode:       document.getElementById('n_pincode').value.trim(),
+                        contactPerson: document.getElementById('n_contactPerson').value.trim(),
+                        contactPhone:  document.getElementById('n_contactPhone').value.trim(),
+                        latitude:      parseFloat(lat),
+                        longitude:     parseFloat(lng),
+                        isDefault:     document.getElementById('n_isDefault').checked
+                    };
+
+                    try {
+                        const res  = await fetch('/admin/orders/pickup-locations/create', {
+                            method:  'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body:    JSON.stringify(body)
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.message);
+
+                        if (body.isDefault) pickupLocations.forEach(l => l.isDefault = false);
+                        pickupLocations.push(data.location);
+
+                        M.toast({ html: 'Location added!', classes: 'green rounded' });
+                        toggleAddForm();
+                        renderPickupList();
+                        renderPickupDropdown(data.location._id);
+
+                    } catch (err) {
+                        M.toast({ html: err.message || 'Failed to save', classes: 'red rounded' });
+                    }
+                }
+
+                // ================================================================
+                // OPEN EDIT
+                // ================================================================
+                function openEdit(id) {
+                    const loc = pickupLocations.find(l => l._id === id);
+                    if (!loc) return;
+
+                    cancelAddForm();
+                    document.getElementById('e_id').value            = loc._id;
+                    document.getElementById('e_name').value          = loc.name;
+                    document.getElementById('e_address').value       = loc.address;
+                    document.getElementById('e_city').value          = loc.city    || '';
+                    document.getElementById('e_state').value         = loc.state   || '';
+                    document.getElementById('e_pincode').value       = loc.pincode || '';
+                    document.getElementById('e_contactPerson').value = loc.contactPerson || '';
+                    document.getElementById('e_contactPhone').value  = loc.contactPhone  || '';
+                    document.getElementById('e_lat').value           = loc.coordinates?.latitude  || '';
+                    document.getElementById('e_lng').value           = loc.coordinates?.longitude || '';
+                    document.getElementById('e_isDefault').checked   = !!loc.isDefault;
+                    document.getElementById('e_isActive').checked    = loc.isActive !== false;
+                    document.getElementById('modalMapsLink').value   = '';
+                    document.getElementById('modalLinkStatus').textContent = '';
+
+                    document.getElementById('editPickupForm').style.display = 'block';
+                    M.updateTextFields();
+                }
+
+                function cancelEdit()    { document.getElementById('editPickupForm').style.display = 'none'; }
+                function cancelAddForm() { document.getElementById('addNewPickupForm').classList.remove('show'); }
+
+                // ================================================================
+                // UPDATE PICKUP (AJAX)
+                // ================================================================
+                async function updatePickup() {
+                    const id      = document.getElementById('e_id').value;
+                    const name    = document.getElementById('e_name').value.trim();
+                    const address = document.getElementById('e_address').value.trim();
+                    const lat     = document.getElementById('e_lat').value;
+                    const lng     = document.getElementById('e_lng').value;
+
+                    if (!name || !address || !lat || !lng) {
+                        M.toast({ html: 'Name, Address, Latitude & Longitude required!', classes: 'red rounded' });
+                        return;
+                    }
+
+                    const body = {
+                        name, address,
+                        city:          document.getElementById('e_city').value.trim(),
+                        state:         document.getElementById('e_state').value.trim(),
+                        pincode:       document.getElementById('e_pincode').value.trim(),
+                        contactPerson: document.getElementById('e_contactPerson').value.trim(),
+                        contactPhone:  document.getElementById('e_contactPhone').value.trim(),
+                        latitude:      parseFloat(lat),
+                        longitude:     parseFloat(lng),
+                        isDefault:     document.getElementById('e_isDefault').checked,
+                        isActive:      document.getElementById('e_isActive').checked
+                    };
+
+                    try {
+                        const res  = await fetch(`/admin/orders/pickup-locations/${id}/update`, {
+                            method:  'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body:    JSON.stringify(body)
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.message);
+
+                        if (body.isDefault) pickupLocations.forEach(l => l.isDefault = false);
+                        const idx = pickupLocations.findIndex(l => l._id === id);
+                        if (idx > -1) pickupLocations[idx] = data.location;
+
+                        M.toast({ html: 'Location updated!', classes: 'green rounded' });
+                        cancelEdit();
+                        renderPickupList();
+                        renderPickupDropdown();
+
+                    } catch (err) {
+                        M.toast({ html: err.message || 'Failed to update', classes: 'red rounded' });
+                    }
+                }
+
+                // ================================================================
+                // DELETE PICKUP (AJAX)
+                // ================================================================
+                async function deletePickup(id, name) {
+                    if (!confirm(`Delete "${name}"?`)) return;
+                    try {
+                        const res  = await fetch(`/admin/orders/pickup-locations/${id}/delete`, { method: 'DELETE' });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.message);
+
+                        pickupLocations = pickupLocations.filter(l => l._id !== id);
+                        M.toast({ html: 'Location deleted!', classes: 'green rounded' });
+                        renderPickupList();
+                        renderPickupDropdown();
+
+                    } catch (err) {
+                        M.toast({ html: err.message || 'Failed to delete', classes: 'red rounded' });
+                    }
+                }
+
+                // ================================================================
+                // ORDER ITEMS
+                // ================================================================
+                function addItem() {
+                    itemCounter++;
+                    const id   = itemCounter;
+                    const html = `
+                        <div class="item-card" id="item-${id}">
+                            <button type="button" class="btn-small red remove-item-btn waves-effect"
+                                    onclick="removeItem('item-${id}')">
+                                <i class="material-icons">close</i>
+                            </button>
+                            <div class="row">
+                                <div class="input-field col s12 m6">
+                                    <input id="productName-${id}" type="text" required>
+                                    <label for="productName-${id}">Product Name <span style="color:red">*</span></label>
+                                </div>
+                                <div class="input-field col s12 m6">
+                                    <input id="productCode-${id}" type="text">
+                                    <label for="productCode-${id}">Product Code (Optional)</label>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="input-field col s12 m4">
+                                    <select id="category-${id}">
+                                        <option value="containers">Containers</option>
+                                        <option value="bottles">Bottles</option>
+                                        <option value="bags">Bags</option>
+                                        <option value="sheets">Sheets</option>
+                                        <option value="custom">Custom</option>
+                                        <option value="other" selected>Other</option>
+                                    </select>
+                                    <label>Category</label>
+                                </div>
+                                <div class="input-field col s12 m4">
+                                    <input id="quantity-${id}" type="number" min="1" value="1" required>
+                                    <label for="quantity-${id}">Quantity <span style="color:red">*</span></label>
+                                </div>
+                                <div class="input-field col s12 m4">
+                                    <input id="description-${id}" type="text">
+                                    <label for="description-${id}">Description (Optional)</label>
+                                </div>
+                            </div>
+                        </div>`;
+                    document.getElementById('itemsContainer').insertAdjacentHTML('beforeend', html);
+                    M.updateTextFields();
+                    M.FormSelect.init(document.querySelectorAll(`#item-${id} select`));
+                }
+
+                function removeItem(itemId) {
+                    const el = document.getElementById(itemId);
+                    if (el) el.remove();
+                }
+
+                // ================================================================
+                // FORM SUBMIT
+                // ================================================================
+                document.getElementById('createOrderForm').addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    const items = [];
+                    document.querySelectorAll('.item-card').forEach(card => {
+                        const id   = card.id.split('-')[1];
+                        const name = document.getElementById(`productName-${id}`)?.value?.trim();
+                        if (!name) return;
+                        items.push({
+                            productName:  name,
+                            productCode:  document.getElementById(`productCode-${id}`)?.value?.trim() || '',
+                            category:     document.getElementById(`category-${id}`)?.value || 'other',
+                            quantity:     parseInt(document.getElementById(`quantity-${id}`)?.value) || 1,
+                            description:  document.getElementById(`description-${id}`)?.value?.trim() || ''
+                        });
+                    });
+                    if (items.length === 0) {
+                        M.toast({ html: 'Please add at least one item', classes: 'red rounded' });
+                        return;
+                    }
+                    document.getElementById('itemsJSON').value = JSON.stringify(items);
+                    this.submit();
+                });
+            </script>
 </body>
+
 </html>
