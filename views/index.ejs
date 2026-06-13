@@ -5,122 +5,52 @@
   <title>Dashboard | <%= title %></title>
   <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/dashboard.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
-  <style>
-    #driversMap {
-      height: 500px;
-      width: 100%;
-      border-radius: 12px;
-      overflow: hidden;
-    }
 
-    .map-card {
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.12);
-    }
+  <style>
+    #driversMap { height: 500px; width: 100%; border-radius: 12px; overflow: hidden; }
+    .map-card { border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
 
     .live-badge {
-      position: absolute;
-      top: 20px;
-      left: 20px;
+      position: absolute; top: 20px; left: 20px;
       background: linear-gradient(135deg, #4CAF50, #45a049);
-      color: white;
-      padding: 10px 20px;
-      border-radius: 25px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 600;
-      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+      color: white; padding: 10px 20px; border-radius: 25px;
+      display: flex; align-items: center; gap: 10px; font-weight: 600;
+      box-shadow: 0 4px 12px rgba(76,175,80,0.4);
     }
-
     .live-pulse-dot {
-      width: 10px;
-      height: 10px;
-      background: white;
-      border-radius: 50%;
-      animation: pulse 2s infinite;
+      width: 10px; height: 10px; background: white;
+      border-radius: 50%; animation: pulseDot 2s infinite;
     }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.6; transform: scale(0.8); }
-    }
+    @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(.8)} }
 
     .map-controls {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      display: flex;
-      gap: 10px;
+      position: absolute; top: 20px; right: 20px;
+      background: white; padding: 10px; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2); display: flex; gap: 10px;
     }
-
     .map-control-btn {
-      background: white;
-      border: 1px solid #ddd;
-      padding: 8px 15px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 12px;
+      background: white; border: 1px solid #ddd; padding: 8px 15px;
+      border-radius: 6px; cursor: pointer; transition: all .2s; font-size: 12px;
     }
+    .map-control-btn:hover { background: #f5f5f5; border-color: #2196F3; }
+    .map-control-btn.active { background: #2196F3; color: white; border-color: #2196F3; }
 
-    .map-control-btn:hover {
-      background: #f5f5f5;
-      border-color: #2196F3;
-    }
-
-    .map-control-btn.active {
-      background: #2196F3;
-      color: white;
-    }
-
-    .driver-legend {
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 15px;
-    }
-
-    .legend-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-right: 20px;
-      padding: 5px 12px;
-      background: #f5f5f5;
-      border-radius: 20px;
-    }
-
-    .legend-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      border: 2px solid white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-
+    .driver-legend { background: white; padding: 15px; border-radius: 8px; margin-top: 15px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 8px; margin-right: 20px; padding: 5px 12px; background: #f5f5f5; border-radius: 20px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,.2); }
     .legend-dot.available { background: #4CAF50; }
     .legend-dot.in-transit { background: #FF9800; }
     .legend-dot.offline { background: #9E9E9E; }
 
-    .driver-marker {
-      background: white;
-      border-radius: 50%;
-      padding: 3px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-      animation: markerPulse 2s infinite;
+    /* Socket status indicator */
+    .socket-status {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 20px; font-size: 12px;
+      background: #f5f5f5; margin-left: 10px;
     }
-
-    @keyframes markerPulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-    }
+    .socket-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .socket-dot.connected { background: #4CAF50; animation: pulseDot 1.5s infinite; }
+    .socket-dot.disconnected { background: #f44336; }
   </style>
 </head>
 
@@ -141,119 +71,97 @@
 
               <!-- Stats Cards -->
               <div class="row mt-2">
-                <div class="col m3 s12" style="padding: 10px;">
-                  <a href="/admin/deliveries?status=delivered&date=today" style="text-decoration: none;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, #00C853, #009624); border-radius: 16px; padding: 24px 20px;">
-                      <h4 class="counter white-text" style="font-size: 42px; font-weight: 800; margin: 0;" data-target="<%= stats.todayDeliveries || 0 %>">0</h4>
-                      <span class="white-text" style="font-size: 18px;">Today's Deliveries</span>
+                <div class="col m3 s12" style="padding:10px;">
+                  <a href="/admin/deliveries?status=delivered&date=today" style="text-decoration:none;">
+                    <div style="background:linear-gradient(135deg,#00C853,#009624);border-radius:16px;padding:24px 20px;">
+                      <h4 class="counter white-text" style="font-size:42px;font-weight:800;margin:0;" data-target="<%= stats.todayDeliveries||0 %>">0</h4>
+                      <span class="white-text" style="font-size:18px;">Today's Deliveries</span>
                     </div>
                   </a>
                 </div>
-
-                <div class="col m3 s12" style="padding: 10px;">
-                  <a href="/admin/drivers?status=available" style="text-decoration: none;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, #3F51B5, #303F9F); border-radius: 16px; padding: 24px 20px;">
-                      <h4 class="counter white-text" style="font-size: 42px; font-weight: 800; margin: 0;" data-target="<%= stats.availableDrivers || 0 %>">0</h4>
-                      <span class="white-text" style="font-size: 18px;">Available Drivers</span>
+                <div class="col m3 s12" style="padding:10px;">
+                  <a href="/admin/drivers?status=available" style="text-decoration:none;">
+                    <div style="background:linear-gradient(135deg,#3F51B5,#303F9F);border-radius:16px;padding:24px 20px;">
+                      <h4 class="counter white-text" style="font-size:42px;font-weight:800;margin:0;" data-target="<%= stats.availableDrivers||0 %>">0</h4>
+                      <span class="white-text" style="font-size:18px;">Available Drivers</span>
                     </div>
                   </a>
                 </div>
-
-                <div class="col m3 s12" style="padding: 10px;">
-                  <a href="/admin/vehicles?status=available" style="text-decoration: none;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, #FF6D00, #EF6C00); border-radius: 16px; padding: 24px 20px;">
-                      <h4 class="counter white-text" style="font-size: 42px; font-weight: 800; margin: 0;" data-target="<%= stats.availableVehicles || 0 %>">0</h4>
-                      <span class="white-text" style="font-size: 18px;">Available Vehicles</span>
+                <div class="col m3 s12" style="padding:10px;">
+                  <a href="/admin/vehicles?status=available" style="text-decoration:none;">
+                    <div style="background:linear-gradient(135deg,#FF6D00,#EF6C00);border-radius:16px;padding:24px 20px;">
+                      <h4 class="counter white-text" style="font-size:42px;font-weight:800;margin:0;" data-target="<%= stats.availableVehicles||0 %>">0</h4>
+                      <span class="white-text" style="font-size:18px;">Available Vehicles</span>
                     </div>
                   </a>
                 </div>
-
-                <div class="col m3 s12" style="padding: 10px;">
-                  <a href="/admin/orders" style="text-decoration: none;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, #1A9CFF, #1976D2); border-radius: 16px; padding: 24px 20px;">
-                      <h4 class="counter white-text" style="font-size: 42px; font-weight: 800; margin: 0;" data-target="<%= stats.totalOrders || 0 %>">0</h4>
-                      <span class="white-text" style="font-size: 18px;">Total Orders</span>
+                <div class="col m3 s12" style="padding:10px;">
+                  <a href="/admin/orders" style="text-decoration:none;">
+                    <div style="background:linear-gradient(135deg,#1A9CFF,#1976D2);border-radius:16px;padding:24px 20px;">
+                      <h4 class="counter white-text" style="font-size:42px;font-weight:800;margin:0;" data-target="<%= stats.totalOrders||0 %>">0</h4>
+                      <span class="white-text" style="font-size:18px;">Total Orders</span>
                     </div>
                   </a>
                 </div>
               </div>
             </div>
 
-            <!-- Live Drivers Map Section -->
+            <!-- Live Drivers Map -->
             <div class="row mt-4">
               <div class="col s12">
                 <div class="card map-card z-depth-3">
-                  <div class="card-content" style="padding: 28px 32px;">
-                    <div class="row valign-wrapper" style="margin-bottom: 20px;">
+                  <div class="card-content" style="padding:28px 32px;">
+                    <div class="row valign-wrapper" style="margin-bottom:20px;">
                       <div class="col s12 m6">
-                        <h5 style="margin: 0; font-weight: 700; color: #212121;">
+                        <h5 style="margin:0;font-weight:700;color:#212121;">
                           <i class="material-icons left">location_on</i>
                           Live Driver Tracking
                         </h5>
-                        <p style="margin: 6px 0 0; color: #757575;">
-                          Real-time location of all active drivers
-                        </p>
+                        <p style="margin:6px 0 0;color:#757575;">Real-time location of all active drivers</p>
                       </div>
                       <div class="col s12 m6 right-align">
-                        <span id="activeDriversCount" class="badge blue white-text" style="padding: 8px 16px; border-radius: 20px; font-size: 14px;">
+                        <span id="activeDriversCount" class="badge blue white-text" style="padding:8px 16px;border-radius:20px;font-size:14px;">
                           0 Drivers Online
                         </span>
-                        <span id="lastUpdateTime" class="grey-text" style="margin-left: 15px; font-size: 12px;">
-                          Last updated: Never
+                        <span class="socket-status">
+                          <span class="socket-dot disconnected" id="socketDot"></span>
+                          <span id="socketStatusText">Connecting...</span>
                         </span>
+                        <span id="lastUpdateTime" class="grey-text" style="margin-left:10px;font-size:12px;">Never updated</span>
                       </div>
                     </div>
 
-                    <!-- Map Container -->
-                    <div style="position: relative;">
+                    <div style="position:relative;">
                       <div id="driversMap"></div>
-
                       <div class="live-badge">
                         <span class="live-pulse-dot"></span>
                         <span>LIVE TRACKING</span>
                       </div>
-
                       <div class="map-controls">
-                        <button class="map-control-btn active" id="showAllBtn" onclick="showAllDrivers()">
-                          <i class="material-icons tiny">visibility</i> All
-                        </button>
-                        <button class="map-control-btn" id="showInTransitBtn" onclick="filterDrivers('In_transit')">
-                          <i class="material-icons tiny">local_shipping</i> In Transit
-                        </button>
-                        <button class="map-control-btn" id="showAvailableBtn" onclick="filterDrivers('available')">
-                          <i class="material-icons tiny">check_circle</i> Available
-                        </button>
+                        <button class="map-control-btn active" id="showAllBtn" onclick="showAllDrivers()">All</button>
+                        <button class="map-control-btn" id="showInTransitBtn" onclick="filterDrivers('In_transit')">In Transit</button>
+                        <button class="map-control-btn" id="showAvailableBtn" onclick="filterDrivers('available')">Available</button>
                       </div>
                     </div>
 
-                    <!-- Driver Legend -->
                     <div class="driver-legend">
-                      <strong style="margin-right: 15px;">Driver Status:</strong>
-                      <div class="legend-item">
-                        <span class="legend-dot available"></span>
-                        <span>Available (<span id="availableCount">0</span>)</span>
-                      </div>
-                      <div class="legend-item">
-                        <span class="legend-dot in-transit"></span>
-                        <span>In Transit (<span id="inTransitCount">0</span>)</span>
-                      </div>
-                      <div class="legend-item">
-                        <span class="legend-dot offline"></span>
-                        <span>Offline (<span id="offlineCount">0</span>)</span>
-                      </div>
+                      <strong style="margin-right:15px;">Driver Status:</strong>
+                      <div class="legend-item"><span class="legend-dot available"></span><span>Available (<span id="availableCount">0</span>)</span></div>
+                      <div class="legend-item"><span class="legend-dot in-transit"></span><span>In Transit (<span id="inTransitCount">0</span>)</span></div>
+                      <div class="legend-item"><span class="legend-dot offline"></span><span>No Location (<span id="offlineCount">0</span>)</span></div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Performance Graph -->
+            <!-- Chart -->
             <div class="row mt-4">
               <div class="col s12">
-                <div class="card z-depth-3" style="border-radius: 16px; overflow: hidden;">
-                  <div class="card-content" style="padding: 28px 32px;">
-                    <h5 style="margin: 0 0 20px 0; font-weight: 700;">Weekly Performance Overview</h5>
-                    <div style="position: relative; height: 380px;">
+                <div class="card z-depth-3" style="border-radius:16px;overflow:hidden;">
+                  <div class="card-content" style="padding:28px 32px;">
+                    <h5 style="margin:0 0 20px;font-weight:700;">Weekly Performance Overview</h5>
+                    <div style="position:relative;height:380px;">
                       <canvas id="modernTrendChart"></canvas>
                     </div>
                   </div>
@@ -267,425 +175,383 @@
     </div>
   </div>
 
+  <!-- Socket.IO (server se serve hota hai automatically) -->
   <script src="/socket.io/socket.io.js"></script>
   <%- include('_layouts/commonJs') %>
 
-  <!-- Google Maps API -->
+  <!-- Google Maps -->
   <script>
-    const GOOGLE_MAPS_API_KEY = '<%= process.env.GOOGLE_MAPS_API_KEY || "" %>';
-    (function() {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initDriversMap`;
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    })();
+    // ✅ FIXED: googleMapsApiKey variable se lo, hardcoded nahi
+    const GOOGLE_MAPS_KEY = '<%= typeof googleMapsApiKey !== "undefined" ? googleMapsApiKey : "" %>';
+    if (GOOGLE_MAPS_KEY) {
+      const s = document.createElement('script');
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_KEY}&callback=initDriversMap`;
+      s.async = true; s.defer = true;
+      document.head.appendChild(s);
+    } else {
+      console.warn('Google Maps API key missing');
+      document.getElementById('driversMap').innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;font-size:14px;">Google Maps API key not configured</div>';
+    }
   </script>
 
-  <!-- ============================================================ -->
-  <!-- LIVE TRACKING + CHART + COUNTER - FIXED                      -->
-  <!-- ============================================================ -->
   <script>
-    // ─── GLOBALS ───────────────────────────────────────────────────
-    const SOCKET_URL = '<%= process.env.FRONTEND_URL || "http://localhost:8000" %>';
+    // ─── GLOBALS ──────────────────────────────────────────────────
+    // ✅ FIXED: window.location.origin use karo — hardcoded URL nahi
+    const SOCKET_URL = window.location.origin;
 
     let driversMap, socket, directionsService;
-    let driverMarkers    = {};
-    let driverData       = {};
-    let currentFilter    = 'all';
-    let routePolylines   = {};
-    let locationHistory  = {};
-    let animationFrames  = {};
+    let driverMarkers   = {};
+    let driverData      = {};
+    let currentFilter   = 'all';
+    let routePolylines  = {};
+    let animationFrames = {};
 
-    // ─── MAP INIT ──────────────────────────────────────────────────
+    // ─── MAP INIT ─────────────────────────────────────────────────
     function initDriversMap() {
-      const defaultCenter = { lat: 25.2048, lng: 55.2708 };
-
       driversMap = new google.maps.Map(document.getElementById('driversMap'), {
-        center: defaultCenter,
+        center: { lat: 25.2048, lng: 55.2708 },
         zoom: 12,
         mapTypeControl: true,
         streetViewControl: false,
         fullscreenControl: true,
-        styles: [
-          { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }
-        ]
+        styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }]
       });
 
-      // Directions Service — road-based route drawing
       directionsService = new google.maps.DirectionsService();
+      console.log('✅ Map initialized');
 
-      console.log('✅ Drivers Map Initialized');
-      initializeDriverSocket();
+      // Pehle DB se load karo, phir socket se live updates
       fetchAllDriverLocations();
+      initializeDriverSocket();
     }
 
-    // ─── SOCKET ────────────────────────────────────────────────────
+    // ─── SOCKET ───────────────────────────────────────────────────
     function initializeDriverSocket() {
       socket = io(SOCKET_URL, {
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionAttempts: 10
+        reconnectionDelay: 2000,
+        reconnectionAttempts: Infinity,
+        timeout: 20000
       });
 
       socket.on('connect', () => {
         console.log('✅ Socket connected:', socket.id);
+        setSocketStatus(true);
+        // Admin room join karo — server existing drivers list bhejega
         socket.emit('join-admin-room');
-        M.toast({ html: '🟢 Live tracking connected', classes: 'green' });
       });
 
-      socket.on('disconnect', () => {
-        console.log('❌ Socket disconnected');
-        M.toast({ html: '🔴 Live tracking disconnected', classes: 'red' });
+      socket.on('disconnect', (reason) => {
+        console.log('❌ Socket disconnected:', reason);
+        setSocketStatus(false);
       });
 
-      // Admin joins room — receive current active drivers list
+      socket.on('connect_error', (err) => {
+        console.error('Socket error:', err.message);
+        setSocketStatus(false);
+      });
+
+      socket.on('reconnect', () => {
+        setSocketStatus(true);
+        socket.emit('join-admin-room');
+      });
+
+      // Server existing active drivers bhejta hai join ke time
       socket.on('admin:drivers:list', (drivers) => {
         console.log('📋 Active drivers from socket:', drivers.length);
-        drivers.forEach(driver => {
-          if (driver.location?.latitude && driver.location?.longitude) {
+        drivers.forEach(d => {
+          if (d.location?.latitude && d.location?.longitude) {
             updateDriverMarker({
-              driverId: driver.driverId,
-              driverName: driver.driverName,
-              vehicleNumber: driver.vehicleNumber,
-              location: driver.location,
+              driverId: d.driverId,
+              driverName: d.driverName,
+              vehicleNumber: d.vehicleNumber,
+              location: d.location,
               status: 'In_transit'
             });
           }
         });
       });
 
-      // Real-time location update — smooth animate marker
+      // ✅ MAIN REAL-TIME EVENT — yeh har 5s pe aata hai driver se
       socket.on('driver:location:update', (data) => {
-        console.log('📍 Live location update:', data.driverId);
+        console.log('📍 Real-time update:', data.driverId, data.location?.latitude, data.location?.longitude);
 
-        if (driverMarkers[data.driverId]) {
-          // Save old position before animating
-          const oldLoc = driverData[data.driverId]?.location;
-          if (oldLoc) {
-            drawRoadRoute(data.driverId, oldLoc, data.location);
-          }
+        if (!data.location?.latitude || !data.location?.longitude) return;
+
+        const prevLoc = driverData[data.driverId]?.location;
+
+        if (driverMarkers[data.driverId] && prevLoc) {
+          // Smooth animate existing marker
           animateMarker(data.driverId, data.location);
+          // Road route draw karo
+          drawRoadRoute(data.driverId, prevLoc, data.location);
         } else {
+          // Naya marker banao
           updateDriverMarker(data);
         }
 
-        // Save location history (last 50)
-        if (!locationHistory[data.driverId]) locationHistory[data.driverId] = [];
-        locationHistory[data.driverId].push(data.location);
-        if (locationHistory[data.driverId].length > 50) locationHistory[data.driverId].shift();
-
-        // Update stored location
+        // Data update karo
         if (driverData[data.driverId]) {
           driverData[data.driverId].location = data.location;
+          driverData[data.driverId].status = data.status === 'In_transit' ? 'In Transit' : driverData[data.driverId].status;
         }
 
         updateLastUpdateTime();
+        updateDriverCounts();
       });
 
       socket.on('driver:online', (data) => {
         console.log('🟢 Driver online:', data.driverName);
-        M.toast({ html: `🟢 ${data.driverName} is online`, classes: 'green' });
-        fetchAllDriverLocations();
+        if (typeof M !== 'undefined') M.toast({ html: `🟢 ${data.driverName} is online`, classes: 'green' });
+        // Refresh to get latest location
+        setTimeout(() => fetchAllDriverLocations(), 1000);
       });
 
       socket.on('driver:offline', (data) => {
         console.log('🔴 Driver offline:', data.driverName);
-        M.toast({ html: `🔴 ${data.driverName} went offline`, classes: 'grey' });
+        if (typeof M !== 'undefined') M.toast({ html: `🔴 ${data.driverName} went offline`, classes: 'grey' });
         if (driverMarkers[data.driverId]) {
           driverMarkers[data.driverId].setIcon({
             url: 'http://maps.google.com/mapfiles/ms/icons/grey-dot.png',
             scaledSize: new google.maps.Size(40, 40)
           });
         }
-        if (driverData[data.driverId]) {
-          driverData[data.driverId].status = 'Offline';
-        }
+        if (driverData[data.driverId]) driverData[data.driverId].status = 'Offline';
         updateDriverCounts();
       });
 
       socket.on('driver:journey:started', (data) => {
-        updateDriverMarker(data);
-        M.toast({ html: `🚀 ${data.driverName} started journey`, classes: 'blue' });
+        if (typeof M !== 'undefined') M.toast({ html: `🚀 ${data.driverName || 'Driver'} started journey`, classes: 'blue' });
+        if (data.location?.latitude) updateDriverMarker({ ...data, status: 'In_transit' });
       });
 
       socket.on('driver:journey:ended', (data) => {
-        updateDriverMarker(data);
-        M.toast({ html: `✅ ${data.driverName} completed journey`, classes: 'green' });
+        if (typeof M !== 'undefined') M.toast({ html: `✅ ${data.driverName || 'Driver'} completed journey`, classes: 'green' });
+        if (driverMarkers[data.driverId]) {
+          driverMarkers[data.driverId].setIcon({
+            url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
+            scaledSize: new google.maps.Size(40, 40)
+          });
+        }
+        if (driverData[data.driverId]) driverData[data.driverId].status = 'Available';
+        updateDriverCounts();
       });
 
       socket.on('driver:status:change', (data) => {
         updateDriverStatus(data);
       });
-
-      socket.on('driver:delivery:completed', () => {
-        fetchAllDriverLocations();
-      });
     }
 
-    // ─── FETCH ALL DRIVERS ─────────────────────────────────────────
-async function fetchAllDriverLocations() {
-  try {
-    const response = await fetch('/admin/api/drivers/locations');
-    const result   = await response.json();
+    // ─── FETCH ALL DRIVERS (DB se initial load + periodic fallback) ──
+    async function fetchAllDriverLocations() {
+      try {
+        // ✅ FIXED URL — admin/api/drivers/locations
+        const response = await fetch('/admin/api/drivers/locations');
 
-    if (result.success && result.data) {
-      console.log(`📍 Fetched ${result.data.length} approved drivers`);
-
-      result.data.forEach(driver => {
-        const loc = driver.currentLocation;
-        const hasLocation = loc?.latitude && loc?.longitude;
-
-        if (hasLocation) {
-          // Driver ke paas location hai — marker banao
-          updateDriverMarker({
-            driverId     : driver._id,
-            driverName   : driver.name,
-            vehicleNumber: driver.vehicleNumber || 'N/A',
-            location     : loc,
-            isAvailable  : driver.isAvailable,
-            // Journey chal rahi hai toh In_transit, warna available/offline
-            status       : driver.currentJourney
-                             ? 'In_transit'
-                             : (driver.isAvailable ? 'available' : 'offline')
-          });
-        } else {
-          // Location nahi hai — sirf data save karo, marker mat banao
-          driverData[driver._id] = {
-            name         : driver.name,
-            vehicleNumber: driver.vehicleNumber || 'N/A',
-            // isAvailable true hai toh Available, warna Offline
-            status       : driver.isAvailable ? 'Available' : 'Offline',
-            location     : null
-          };
+        if (!response.ok) {
+          console.error('Driver locations fetch failed:', response.status, response.url);
+          return;
         }
-      });
 
-      updateDriverCounts();
-      fitMapToDrivers();
-      updateLastUpdateTime();
+        const result = await response.json();
+        if (!result.success || !result.data) return;
+
+        console.log(`📍 DB se ${result.data.length} drivers loaded`);
+
+        result.data.forEach(driver => {
+          const loc = driver.currentLocation;
+          if (loc?.latitude && loc?.longitude) {
+            updateDriverMarker({
+              driverId: driver._id,
+              driverName: driver.name,
+              vehicleNumber: driver.vehicleNumber || 'N/A',
+              location: loc,
+              isAvailable: driver.isAvailable,
+              status: driver.currentJourney ? 'In_transit' : (driver.isAvailable ? 'available' : 'offline')
+            });
+          } else {
+            // Location nahi hai — sirf count ke liye save karo
+            driverData[driver._id] = {
+              name: driver.name,
+              vehicleNumber: driver.vehicleNumber || 'N/A',
+              status: driver.isAvailable ? 'Available' : 'Offline',
+              location: null
+            };
+          }
+        });
+
+        updateDriverCounts();
+        fitMapToDrivers();
+        updateLastUpdateTime();
+      } catch (error) {
+        console.error('fetchAllDriverLocations error:', error);
+      }
     }
-  } catch (error) {
-    console.error('Failed to fetch driver locations:', error);
-    M.toast({ html: '❌ Failed to load drivers', classes: 'red' });
-  }
-}
-    // ─── UPDATE / CREATE MARKER ────────────────────────────────────
+
+    // ─── CREATE / UPDATE MARKER ───────────────────────────────────
     function updateDriverMarker(data) {
       const { driverId, driverName, vehicleNumber, location, isAvailable, status } = data;
 
-      // No location — save data only, no marker
       if (!location?.latitude || !location?.longitude) {
-        driverData[driverId] = {
-          name         : driverName,
-          vehicleNumber: vehicleNumber || 'N/A',
-          status       : isAvailable ? 'Available' : 'Offline',
-          location     : null
-        };
+        driverData[driverId] = { name: driverName, vehicleNumber: vehicleNumber || 'N/A', status: isAvailable ? 'Available' : 'Offline', location: null };
         updateDriverCounts();
         return;
       }
 
-      const position = { lat: location.latitude, lng: location.longitude };
+      const position = { lat: Number(location.latitude), lng: Number(location.longitude) };
 
-      let markerColor = 'grey';
-      let statusText  = 'Offline';
+      let markerColor = 'grey', statusText = 'Offline';
       if (status === 'In_transit' || status === 'In_progress' || status === 'Started') {
-        markerColor = 'orange';
-        statusText  = 'In Transit';
+        markerColor = 'orange'; statusText = 'In Transit';
       } else if (isAvailable || status === 'available') {
-        markerColor = 'green';
-        statusText  = 'Available';
+        markerColor = 'green'; statusText = 'Available';
       }
 
       if (driverMarkers[driverId]) {
         driverMarkers[driverId].setPosition(position);
         driverMarkers[driverId].setIcon({
-          url       : `http://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`,
+          url: `http://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`,
           scaledSize: new google.maps.Size(40, 40)
         });
+        // Info window update
+        if (driverMarkers[driverId]._iw) {
+          driverMarkers[driverId]._iw.setContent(
+            buildInfoWindowContent(driverName, vehicleNumber, statusText, location, markerColor)
+          );
+        }
       } else {
         const marker = new google.maps.Marker({
           position,
-          map      : driversMap,
-          title    : driverName || 'Driver',
-          icon     : {
-            url       : `http://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`,
-            scaledSize: new google.maps.Size(40, 40)
-          },
+          map: driversMap,
+          title: driverName || 'Driver',
+          icon: { url: `http://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`, scaledSize: new google.maps.Size(40, 40) },
           animation: google.maps.Animation.DROP
         });
 
-        const infoWindow = new google.maps.InfoWindow({
+        const iw = new google.maps.InfoWindow({
           content: buildInfoWindowContent(driverName, vehicleNumber, statusText, location, markerColor)
         });
-
         marker.addListener('click', () => {
-          Object.values(driverMarkers).forEach(m => { if (m._iw) m._iw.close(); });
-          infoWindow.open(driversMap, marker);
+          Object.values(driverMarkers).forEach(m => m._iw?.close());
+          iw.open(driversMap, marker);
         });
-
-        marker._iw          = infoWindow;
+        marker._iw = iw;
         driverMarkers[driverId] = marker;
       }
 
-      driverData[driverId] = {
-        name         : driverName,
-        vehicleNumber: vehicleNumber || 'N/A',
-        status       : statusText,
-        location
-      };
-
+      driverData[driverId] = { name: driverName, vehicleNumber: vehicleNumber || 'N/A', status: statusText, location };
       updateDriverCounts();
       applyCurrentFilter();
     }
 
-    // ─── SMOOTH MARKER ANIMATION ───────────────────────────────────
-    function animateMarker(driverId, newLocation) {
+    // ─── SMOOTH ANIMATION ─────────────────────────────────────────
+    function animateMarker(driverId, newLoc) {
       const marker = driverMarkers[driverId];
       if (!marker) return;
 
       const startPos = marker.getPosition();
-      const startLat = startPos.lat();
-      const startLng = startPos.lng();
-      const endLat   = newLocation.latitude;
-      const endLng   = newLocation.longitude;
-      const duration = 2000;
-      const startTime = Date.now();
+      const startLat = startPos.lat(), startLng = startPos.lng();
+      const endLat = Number(newLoc.latitude), endLng = Number(newLoc.longitude);
+      const duration = 2000, startTime = Date.now();
 
       if (animationFrames[driverId]) cancelAnimationFrame(animationFrames[driverId]);
 
       function step() {
-        const elapsed  = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        // Ease in-out
-        const eased = progress < 0.5
-          ? 2 * progress * progress
-          : -1 + (4 - 2 * progress) * progress;
-
-        marker.setPosition(new google.maps.LatLng(
-          startLat + (endLat - startLat) * eased,
-          startLng + (endLng - startLng) * eased
-        ));
-
-        if (progress < 1) {
-          animationFrames[driverId] = requestAnimationFrame(step);
-        }
+        const t = Math.min((Date.now() - startTime) / duration, 1);
+        const eased = t < .5 ? 2*t*t : -1+(4-2*t)*t;
+        marker.setPosition(new google.maps.LatLng(startLat + (endLat-startLat)*eased, startLng + (endLng-startLng)*eased));
+        if (t < 1) animationFrames[driverId] = requestAnimationFrame(step);
       }
-
       animationFrames[driverId] = requestAnimationFrame(step);
     }
 
-    // ─── ROAD ROUTE (actual road path) ────────────────────────────
-    function drawRoadRoute(driverId, fromLocation, toLocation) {
+    // ─── ROAD ROUTE ───────────────────────────────────────────────
+    function drawRoadRoute(driverId, fromLoc, toLoc) {
       if (!directionsService) return;
-
       directionsService.route({
-        origin     : new google.maps.LatLng(fromLocation.latitude, fromLocation.longitude),
-        destination: new google.maps.LatLng(toLocation.latitude, toLocation.longitude),
-        travelMode : google.maps.TravelMode.DRIVING
+        origin: new google.maps.LatLng(Number(fromLoc.latitude), Number(fromLoc.longitude)),
+        destination: new google.maps.LatLng(Number(toLoc.latitude), Number(toLoc.longitude)),
+        travelMode: google.maps.TravelMode.DRIVING
       }, (result, status) => {
         if (status !== 'OK') return;
-
         if (routePolylines[driverId]) routePolylines[driverId].setMap(null);
-
         routePolylines[driverId] = new google.maps.Polyline({
-          path        : result.routes[0].overview_path,
-          geodesic    : false,
-          strokeColor : '#2196F3',
-          strokeOpacity: 0.85,
-          strokeWeight: 4,
-          map         : driversMap,
-          icons       : [{
-            icon  : { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 3, strokeColor: '#1565C0' },
-            offset: '100%',
-            repeat: '80px'
-          }]
+          path: result.routes[0].overview_path,
+          strokeColor: '#2196F3', strokeOpacity: .85, strokeWeight: 4, map: driversMap,
+          icons: [{ icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 3, strokeColor: '#1565C0' }, offset: '100%', repeat: '80px' }]
         });
-
-        // Auto-clear after 5 min
-        setTimeout(() => {
-          if (routePolylines[driverId]) {
-            routePolylines[driverId].setMap(null);
-            delete routePolylines[driverId];
-          }
-        }, 300000);
+        setTimeout(() => { if (routePolylines[driverId]) { routePolylines[driverId].setMap(null); delete routePolylines[driverId]; } }, 300000);
       });
     }
 
-    // ─── INFO WINDOW HTML ──────────────────────────────────────────
-    function buildInfoWindowContent(driverName, vehicleNumber, statusText, location, markerColor) {
+    // ─── INFO WINDOW ──────────────────────────────────────────────
+    function buildInfoWindowContent(name, vehicle, status, loc, color) {
       const colorMap = { green: '#4CAF50', orange: '#FF9800', grey: '#9E9E9E' };
-      const color    = colorMap[markerColor] || '#9E9E9E';
-      return `
-        <div style="padding:14px;min-width:220px;font-family:sans-serif;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-            <div style="width:36px;height:36px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;">
-              <span style="color:white;font-weight:bold;font-size:16px;">${(driverName||'D').charAt(0)}</span>
-            </div>
-            <div>
-              <div style="font-weight:700;font-size:15px;color:#212121;">${driverName || 'Driver'}</div>
-              <div style="font-size:12px;color:#757575;">🚗 ${vehicleNumber || 'N/A'}</div>
-            </div>
+      const c = colorMap[color] || '#9E9E9E';
+      return `<div style="padding:14px;min-width:220px;font-family:sans-serif;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:${c};display:flex;align-items:center;justify-content:center;">
+            <span style="color:white;font-weight:bold;font-size:16px;">${(name||'D').charAt(0)}</span>
           </div>
-          <div style="background:#f5f5f5;border-radius:8px;padding:10px;">
-            <div style="margin-bottom:6px;"><span style="font-weight:600;color:${color};">● ${statusText}</span></div>
-            ${location?.address ? `<div style="font-size:11px;color:#666;margin-top:4px;">📍 ${location.address}</div>` : ''}
-            ${location?.speed   ? `<div style="font-size:11px;color:#666;margin-top:4px;">⚡ ${Math.round(location.speed)} km/h</div>` : ''}
-            <div style="font-size:11px;color:#999;margin-top:4px;">🕐 ${new Date(location?.lastUpdated || Date.now()).toLocaleTimeString()}</div>
+          <div>
+            <div style="font-weight:700;font-size:15px;color:#212121;">${name||'Driver'}</div>
+            <div style="font-size:12px;color:#757575;">🚗 ${vehicle||'N/A'}</div>
           </div>
-        </div>`;
+        </div>
+        <div style="background:#f5f5f5;border-radius:8px;padding:10px;">
+          <div style="margin-bottom:6px;"><span style="font-weight:600;color:${c};">● ${status}</span></div>
+          ${loc?.speed ? `<div style="font-size:11px;color:#666;">⚡ ${Math.round(loc.speed)} km/h</div>` : ''}
+          <div style="font-size:11px;color:#999;">🕐 ${new Date(loc?.lastUpdated||Date.now()).toLocaleTimeString()}</div>
+        </div>
+      </div>`;
     }
 
-    // ─── STATUS UPDATE ─────────────────────────────────────────────
+    // ─── STATUS UPDATE ────────────────────────────────────────────
     function updateDriverStatus(data) {
       const { driverId, isAvailable, status } = data;
       if (!driverData[driverId]) return;
-
       const statusText  = status === 'In_transit' ? 'In Transit' : (isAvailable ? 'Available' : 'Offline');
-      const markerColor = status === 'In_transit' ? 'orange'     : (isAvailable ? 'green'     : 'grey');
-
+      const markerColor = status === 'In_transit' ? 'orange' : (isAvailable ? 'green' : 'grey');
       driverData[driverId].status = statusText;
-
       if (driverMarkers[driverId]) {
-        driverMarkers[driverId].setIcon({
-          url       : `http://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`,
-          scaledSize: new google.maps.Size(40, 40)
-        });
+        driverMarkers[driverId].setIcon({ url: `http://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`, scaledSize: new google.maps.Size(40, 40) });
       }
-
       updateDriverCounts();
-      applyCurrentFilter();
     }
 
-    // ─── COUNTS ────────────────────────────────────────────────────
+    // ─── COUNTS ───────────────────────────────────────────────────
     function updateDriverCounts() {
       let available = 0, inTransit = 0, offline = 0, total = 0;
       Object.values(driverData).forEach(d => {
         total++;
-        if      (d.status === 'Available') available++;
+        if (d.status === 'Available') available++;
         else if (d.status === 'In Transit') inTransit++;
-        else                               offline++;
+        else offline++;
       });
-      document.getElementById('activeDriversCount').textContent = `${total} Drivers Online`;
-      document.getElementById('availableCount').textContent     = available;
-      document.getElementById('inTransitCount').textContent     = inTransit;
-      document.getElementById('offlineCount').textContent       = offline;
+      document.getElementById('activeDriversCount').textContent = `${total} Drivers`;
+      document.getElementById('availableCount').textContent  = available;
+      document.getElementById('inTransitCount').textContent  = inTransit;
+      document.getElementById('offlineCount').textContent    = offline;
     }
 
     function updateLastUpdateTime() {
-      document.getElementById('lastUpdateTime').textContent =
-        `Last updated: ${new Date().toLocaleTimeString()}`;
+      document.getElementById('lastUpdateTime').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
     }
 
-    // ─── MAP CONTROLS ──────────────────────────────────────────────
+    function setSocketStatus(connected) {
+      const dot  = document.getElementById('socketDot');
+      const text = document.getElementById('socketStatusText');
+      dot.className  = `socket-dot ${connected ? 'connected' : 'disconnected'}`;
+      text.textContent = connected ? 'Live' : 'Disconnected';
+    }
+
+    // ─── MAP CONTROLS ─────────────────────────────────────────────
     function fitMapToDrivers() {
       const bounds = new google.maps.LatLngBounds();
       let has = false;
-      Object.values(driverMarkers).forEach(m => {
-        if (m.getMap()) { bounds.extend(m.getPosition()); has = true; }
-      });
+      Object.values(driverMarkers).forEach(m => { if (m.getMap()) { bounds.extend(m.getPosition()); has = true; } });
       if (has) driversMap.fitBounds(bounds);
     }
 
@@ -700,9 +566,8 @@ async function fetchAllDriverLocations() {
       currentFilter = statusFilter;
       Object.entries(driverMarkers).forEach(([id, marker]) => {
         const d = driverData[id];
-        const show =
-          (statusFilter === 'available'  && d?.status === 'Available')  ||
-          (statusFilter === 'In_transit' && d?.status === 'In Transit');
+        const show = (statusFilter === 'available' && d?.status === 'Available') ||
+                     (statusFilter === 'In_transit' && d?.status === 'In Transit');
         marker.setMap(show ? driversMap : null);
       });
       updateFilterButtons(statusFilter === 'available' ? 'showAvailableBtn' : 'showInTransitBtn');
@@ -710,16 +575,17 @@ async function fetchAllDriverLocations() {
     }
 
     function applyCurrentFilter() {
-      if (currentFilter === 'all') showAllDrivers();
+      if (currentFilter === 'all') Object.values(driverMarkers).forEach(m => m.setMap(driversMap));
       else filterDrivers(currentFilter);
     }
 
     function updateFilterButtons(activeId) {
       document.querySelectorAll('.map-control-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById(activeId).classList.add('active');
+      const el = document.getElementById(activeId);
+      if (el) el.classList.add('active');
     }
 
-    // ─── COUNTER ANIMATION + CHART ─────────────────────────────────
+    // ─── COUNTER + CHART ──────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
       // Counter animation
       document.querySelectorAll('.counter').forEach(counter => {
@@ -727,55 +593,30 @@ async function fetchAllDriverLocations() {
         let count = 0;
         const update = () => {
           count += target / 100;
-          if (count < target) {
-            counter.textContent = Math.ceil(count).toLocaleString();
-            setTimeout(update, 20);
-          } else {
-            counter.textContent = target.toLocaleString();
-          }
+          if (count < target) { counter.textContent = Math.ceil(count).toLocaleString(); setTimeout(update, 20); }
+          else counter.textContent = target.toLocaleString();
         };
         update();
       });
 
       // Chart
-      const ctx       = document.getElementById('modernTrendChart').getContext('2d');
-      const chartData = <%- JSON.stringify(chartData) %> || [];
-
+      const ctx = document.getElementById('modernTrendChart').getContext('2d');
+      const chartData = <%- JSON.stringify(chartData || []) %>;
       new Chart(ctx, {
         type: 'line',
         data: {
-          labels  : chartData.map(i => i._id),
+          labels: chartData.map(i => i._id),
           datasets: [
-            {
-              label          : 'Orders',
-              data           : chartData.map(i => i.orders || 0),
-              borderColor    : '#1A9CFF',
-              backgroundColor: 'rgba(26,156,255,0.12)',
-              borderWidth    : 4,
-              tension        : 0.45,
-              fill           : true
-            },
-            {
-              label          : 'Deliveries',
-              data           : chartData.map(i => i.deliveries || 0),
-              borderColor    : '#00C853',
-              backgroundColor: 'rgba(0,200,83,0.12)',
-              borderWidth    : 4,
-              tension        : 0.45,
-              fill           : true
-            }
+            { label: 'Orders', data: chartData.map(i => i.orders||0), borderColor: '#1A9CFF', backgroundColor: 'rgba(26,156,255,.12)', borderWidth: 4, tension: .45, fill: true },
+            { label: 'Deliveries', data: chartData.map(i => i.deliveries||0), borderColor: '#00C853', backgroundColor: 'rgba(0,200,83,.12)', borderWidth: 4, tension: .45, fill: true }
           ]
         },
-        options: {
-          responsive       : true,
-          maintainAspectRatio: false,
-          plugins          : { legend: { display: true, position: 'top' } },
-          scales           : { y: { beginAtZero: true } }
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top' } }, scales: { y: { beginAtZero: true } } }
       });
     });
 
-    // ─── AUTO REFRESH every 30s (fallback) ────────────────────────
+    // ─── PERIODIC FALLBACK (agar socket miss ho jaaye) ─────────────
+    // Har 30s pe DB se refresh — socket hi primary source hai
     setInterval(fetchAllDriverLocations, 30000);
   </script>
 

@@ -1390,12 +1390,409 @@
 
 
   
+// const express = require('express');
+// require('dotenv').config();
+// const cors = require('cors');
+// const path = require('path');
+// const morgan = require('morgan');
+// const socketIO = require('socket.io');  
+// const http = require("http");
+// const cookieParser = require("cookie-parser");
+// const session = require('express-session');
+// const MongoStore = require('connect-mongo');
+// const compression = require('compression');
+// const helmet = require('helmet');
+// const flash = require('connect-flash');
+// const methodOverride = require('method-override');
+
+// // Import configurations
+// const connectDB = require('./config/db');
+
+// // Import Models (for notifications)
+// const MaintenanceSchedule = require('./models/MaintenanceSchedule');
+// const Driver = require('./models/Driver');
+
+// // ==================== EXISTING ROUTES ====================
+// const authRoutes = require('./routes/authRoutes');
+// const driverRoutes = require('./routes/Driver/driverRoutes');
+// const profileRoutes = require('./routes/Driver/profileRoutes');
+// const adminRoutes = require('./routes/admin/adminRoutes');
+// const deliveryRoutes = require("./routes/Driver/deliveryRoutes");
+// const trackingRoutes = require("./routes/Driver/trackingRoutes");
+// const journeyRoutes = require("./routes/Driver/journeyRoutes");
+// const routeRoutes = require("./routes/routeRoutes");
+// const feedbackRoutes = require("./routes/feedbackRoutes");
+// const orderRoutes = require("./routes/admin/orderRoutes");
+// const vehicleRoutes = require("./routes/admin/vehicleRoutes");
+// const regionRoutes = require("./routes/admin/regionRoutes");
+// const driverManagementRoutes = require("./routes/admin/driverManagementRoutes");
+// const customerRoutes = require("./routes/admin/customerRoutes");
+// const remarkAdminRoutes = require("./routes/admin/remarkAdminRoutes");
+// const remarkRoutes = require("./routes/remarkRoutes");
+// const maintenanceRoutes = require("./routes/Driver/maintenanceRoutes");
+// const maintenanceAdminRoutes = require("./routes/admin/maintenanceAdminRoutes");
+// const expenseAdminRoutes = require("./routes/admin/expenseAdminRoutes");
+// const expenseRoutes = require("./routes/Driver/expenseRoutes");
+// const deliveryAdminRoutes = require("./routes/admin/deliveryAdminRoutes.");
+// const AdminTrackingRoutes = require("./routes/admin/AdminTrackingRoutes");
+// const communicationRoutes = require('./routes/admin/Communicationroutes');
+// const driverChatRoutes = require("./routes/Driver/driverChatRoutes")
+// const onboardingRoutes = require("./routes/admin/onboardingRoutes")
+// const Homepage = require("./routes/Driver/Homepage")
+// const cmsRoutes = require("./routes/admin/cmsRoutes")
+// const category = require("./routes/admin/category")
+// const driverApprovalRoutes = require("./routes/admin/driverApprovalRoutes")
+
+// // Middleware
+// const errorHandler = require('./middleware/errorHandler');
+
+// // ==================== INITIALIZE APP & SERVER ====================
+// const app = express();
+// const server = http.createServer(app);
+
+// const io = socketIO(server, {
+//   cors: {
+//     origin: process.env.FRONTEND_URL || "http://localhost:8000",
+//     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+//     credentials: true
+//   },
+//   pingTimeout: 60000,
+//   pingInterval: 25000
+// });
+
+// global.io = io;
+// app.set('io', io);
+
+// // Connect DB
+// connectDB();
+
+// // ==================== MIDDLEWARE ====================
+// app.use(helmet({ contentSecurityPolicy: false }));
+// app.use(compression());
+// app.use(cors({
+//   origin: process.env.FRONTEND_URL || 'http://localhost:5001',
+//   credentials: true
+// }));
+// app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
+// app.use(morgan('dev'));
+// app.use(methodOverride('_method'));
+// app.use(cookieParser());
+
+// // ==================== SESSION WITH MONGO STORE ====================
+// // connect-mongo install karo: npm install connect-mongo
+// app.use(session({
+//   secret: process.env.SESSION_SECRET || 'orion-secret-key-2024',
+//   resave: false,
+//   saveUninitialized: false,
+//   store: MongoStore.create({
+//     mongoUrl: process.env.MONGO_URI,  // ← Sirf MONGO_URI
+//     ttl: 24 * 60 * 60,
+//     autoRemove: 'native',
+//     touchAfter: 24 * 3600 // ← Yeh add karo
+//   }),
+//   cookie: {
+//     secure: false,
+//     httpOnly: true,
+//     maxAge: 24 * 60 * 60 * 1000,
+//     sameSite: 'lax'
+//   }
+// }));
+
+// // ==================== FLASH MESSAGES ====================
+// app.use(flash());
+// app.use((req, res, next) => {
+//   res.locals.messages = {}; // ← Empty rakho
+//   res.locals.dateOptions = {
+//     hour: "2-digit",
+//     minute: "2-digit",
+//     hour12: true,
+//   };
+//   res.locals.dateLocale = "en-US";
+//   next();
+// });
+
+// app.get('/test-flash', (req, res) => {
+//   req.flash('green', 'Test message working!');
+//   return req.session.save(() => res.redirect('/test-flash-result'));
+// });
+
+// app.get('/test-flash-result', (req, res) => {
+//   const msgs = req.flash(); // ← Direct lo, res.locals se nahi
+//   console.log('Flash result:', msgs);
+//   res.json({ messages: msgs });
+// });
+
+// // Static files
+// app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+// app.use(express.static(path.join(__dirname, 'public')));
+
+// // View engine
+// app.set('view engine', 'ejs');
+// app.set('views', [path.join(__dirname, 'views')]);
+
+// // ==================== SOCKET.IO ====================
+// const activeDrivers = new Map();
+// const driverLocations = new Map();
+// io.activeDrivers = activeDrivers;
+
+// io.on("connection", (socket) => {
+//   console.log("🔌 New client connected:", socket.id);
+
+//   socket.on("join-admin-room", () => {
+//     socket.join("admin-room");
+//     console.log("👔 Admin joined admin-room:", socket.id);
+//     const activeDriversList = Array.from(activeDrivers.values()).map(driver => {
+//       const location = driverLocations.get(driver.driverId);
+//       return { ...driver, location: location || null };
+//     });
+//     socket.emit('admin:drivers:list', activeDriversList);
+//   });
+
+//   socket.on('driver:connect', async (data) => {
+//     const { driverId, driverName, vehicleNumber } = data;
+//     activeDrivers.set(driverId, {
+//       socketId: socket.id,
+//       driverId,
+//       driverName,
+//       vehicleNumber,
+//       connectedAt: new Date()
+//     });
+//     socket.join(`driver-${driverId}`);
+//     console.log(`🚗 Driver connected: ${driverName} (${vehicleNumber})`);
+//     io.to('admin-room').emit('driver:online', {
+//       driverId,
+//       driverName,
+//       vehicleNumber,
+//       status: 'online'
+//     });
+//   });
+
+//   socket.on('driver:location', async (data) => {
+//     try {
+//       const { driverId, deliveryId, latitude, longitude, speed, heading, accuracy, timestamp } = data;
+//       if (!driverId || !latitude || !longitude) {
+//         console.warn('⚠️ Invalid location data received:', data);
+//         return;
+//       }
+//       const driver = await Driver.findById(driverId);
+//       if (driver) {
+//         await driver.updateLocation({
+//           latitude, longitude,
+//           speed: speed || 0,
+//           heading: heading || 0,
+//           accuracy: accuracy || 0,
+//           deliveryId: deliveryId || null
+//         });
+//       }
+//       driverLocations.set(driverId, {
+//         latitude, longitude, speed, heading, accuracy,
+//         timestamp: timestamp || new Date(),
+//         deliveryId
+//       });
+//       const driverName = driver ? (driver.name || 'Driver') : 'Driver';
+//       const vehicleNum = driver ? (driver.vehicleNumber || 'N/A') : 'N/A';
+//       io.to('admin-room').emit('driver:location:update', {
+//         driverId, driverName,
+//         vehicleNumber: vehicleNum,
+//         deliveryId,
+//         location: { latitude, longitude },
+//         speed: speed || 0,
+//         heading: heading || 0,
+//         accuracy: accuracy || 0,
+//         timestamp: timestamp || new Date()
+//       });
+//       if (deliveryId) {
+//         io.to(`delivery-${deliveryId}`).emit('delivery:location:update', {
+//           deliveryId,
+//           location: { latitude, longitude },
+//           speed,
+//           timestamp: timestamp || new Date()
+//         });
+//       }
+//       console.log(`📍 Location updated for driver ${driverId}: ${latitude}, ${longitude}`);
+//     } catch (error) {
+//       console.error('❌ Error handling driver location update:', error);
+//     }
+//   });
+
+//   socket.on("join-delivery", (deliveryId) => {
+//     socket.join(`delivery-${deliveryId}`);
+//     console.log(`📦 Client joined delivery: ${deliveryId}`);
+//   });
+
+//   socket.on("leave-delivery", (deliveryId) => {
+//     socket.leave(`delivery-${deliveryId}`);
+//   });
+
+//   socket.on("driver-location-update", async (data) => {
+//     const { deliveryId, latitude, longitude, speed, heading } = data;
+//     io.to(`delivery-${deliveryId}`).emit('location-update', {
+//       deliveryId,
+//       location: { latitude, longitude },
+//       speed, heading,
+//       timestamp: new Date()
+//     });
+//   });
+
+//   socket.on('delivery:completed', async (data) => {
+//     try {
+//       const { driverId, deliveryId } = data;
+//       const driver = await Driver.findById(driverId);
+//       if (driver) {
+//         await driver.clearLocation();
+//         driver.isAvailable = true;
+//         await driver.save();
+//       }
+//       driverLocations.delete(driverId);
+//       io.to('admin-room').emit('driver:delivery:completed', {
+//         driverId, deliveryId,
+//         timestamp: new Date()
+//       });
+//     } catch (error) {
+//       console.error('❌ Error handling delivery completion:', error);
+//     }
+//   });
+
+//   socket.on('chat:join', (data) => {
+//     socket.join(`user-${data.userId}`);
+//     console.log(`💬 User joined chat: ${data.userId}`);
+//   });
+
+//   socket.on('chat:join-conversation', (data) => {
+//     socket.join(`conversation-${data.conversationId}`);
+//   });
+
+//   socket.on('chat:typing', (data) => {
+//     const { conversationId, userId, isTyping } = data;
+//     socket.to(`conversation-${conversationId}`).emit('chat:typing', { userId, isTyping });
+//   });
+
+//   socket.on('notifications:subscribe', (data) => {
+//     socket.join(`notifications-${data.userId}`);
+//     console.log(`🔔 User subscribed to notifications: ${data.userId}`);
+//   });
+
+//   socket.on("driver-completed-service", async ({ scheduleId, driverName, vehicleNumber }) => {
+//     try {
+//       const maintenance = await MaintenanceSchedule.findById(scheduleId).populate('vehicle');
+//       if (maintenance) {
+//         io.to("admin-room").emit('new-service-request', {
+//           type: 'service_completion_request',
+//           message: `${vehicleNumber || 'Vehicle'} - Driver "${driverName}" completed service!`,
+//           scheduleId,
+//           vehicleNumber: vehicleNumber || maintenance.vehicle?.vehicleNumber,
+//           driverName,
+//           requestedAt: new Date(),
+//           status: maintenance.status
+//         });
+//       }
+//     } catch (err) {
+//       console.error("❌ Socket maintenance notification error:", err);
+//     }
+//   });
+
+//   socket.on('disconnect', () => {
+//     console.log('🔌 Client disconnected:', socket.id);
+//     for (const [driverId, driver] of activeDrivers.entries()) {
+//       if (driver.socketId === socket.id) {
+//         activeDrivers.delete(driverId);
+//         driverLocations.delete(driverId);
+//         io.to('admin-room').emit('driver:offline', {
+//           driverId,
+//           driverName: driver.driverName,
+//           status: 'offline'
+//         });
+//         console.log(`🚗 Driver disconnected: ${driver.driverName}`);
+//         break;
+//       }
+//     }
+//   });
+// });
+
+// // ==================== API ROUTES ====================
+// app.use('/api/auth', authRoutes);
+// app.use('/api/driver', driverRoutes);
+// app.use('/api/profile', profileRoutes);
+// app.use("/api/deliveries", deliveryRoutes);
+// app.use("/api/tracking", trackingRoutes);
+// app.use("/api/feedback", feedbackRoutes);
+// app.use("/api/journey", journeyRoutes);
+// app.use("/api/routes", routeRoutes);  
+// app.use("/api/remark", remarkRoutes);
+// app.use("/api/maintenance", maintenanceRoutes);
+// app.use("/api/expenses", expenseRoutes);    
+// app.use("/api/chat", driverChatRoutes);
+// app.use("/api/home", Homepage);
+// app.use("/api/cms", require("./routes/Driver/cmsRoutes"));
+
+// // Admin Routes
+// app.use('/admin', adminRoutes);
+// app.use("/admin/orders", orderRoutes); 
+// app.use("/admin/categories", category);
+// app.use("/admin/vehicles", vehicleRoutes);
+// app.use("/admin/regions", regionRoutes); 
+// app.use("/admin/drivers", driverManagementRoutes);  
+// app.use("/admin/customers", customerRoutes);
+// app.use("/admin/deliveries", deliveryAdminRoutes);
+// app.use("/admin/remarks", remarkAdminRoutes);
+// app.use("/admin/maintenance", maintenanceAdminRoutes);
+// app.use("/admin/expenses", expenseAdminRoutes);
+// app.use("/admin/tracking", AdminTrackingRoutes);
+// app.use("/admin/onboarding", onboardingRoutes);
+// app.use('/admin/drivers', driverApprovalRoutes);
+// app.use("/admin/chat", communicationRoutes);
+// app.use("/admin/cms", cmsRoutes);
+
+// // Health check
+// app.get('/health', (req, res) => {
+//   res.json({
+//     success: true,
+//     message: 'Server Healthy',
+//     activeDrivers: activeDrivers.size,
+//     timestamp: new Date(),
+//     uptime: process.uptime(),
+//     socketIO: 'Connected'
+//   });
+// });
+
+// app.get('/api', (req, res) => {
+//   res.json({ 
+//     success: true, 
+//     message: 'Orion Delivery Tracking API v3.0'
+//   });
+// });
+
+// // 404
+// app.use((req, res) => {
+//   res.status(404).json({ success: false, message: 'Route not found', path: req.path });
+// });
+
+// // Error Handler
+// app.use(errorHandler);
+
+// // ==================== START SERVER ====================
+// const PORT = process.env.PORT || 8000;
+// server.listen(PORT, () => {
+//   console.log(`🚀 Server running on PORT ${PORT}`);
+// });
+
+// module.exports = app;
+
+
+// ============================================================
+// FILE: server.js  (apna existing server.js replace karo)
+// KEY CHANGES:
+//   1. setupSocketHandlers() use karo
+//   2. io.activeDrivers expose karo
+// ============================================================
+
 const express = require('express');
 require('dotenv').config();
 const cors = require('cors');
 const path = require('path');
 const morgan = require('morgan');
-const socketIO = require('socket.io');  
+const socketIO = require('socket.io');
 const http = require("http");
 const cookieParser = require("cookie-parser");
 const session = require('express-session');
@@ -1408,11 +1805,7 @@ const methodOverride = require('method-override');
 // Import configurations
 const connectDB = require('./config/db');
 
-// Import Models (for notifications)
-const MaintenanceSchedule = require('./models/MaintenanceSchedule');
-const Driver = require('./models/Driver');
-
-// ==================== EXISTING ROUTES ====================
+// ====================== ROUTES ======================
 const authRoutes = require('./routes/authRoutes');
 const driverRoutes = require('./routes/Driver/driverRoutes');
 const profileRoutes = require('./routes/Driver/profileRoutes');
@@ -1436,41 +1829,51 @@ const expenseRoutes = require("./routes/Driver/expenseRoutes");
 const deliveryAdminRoutes = require("./routes/admin/deliveryAdminRoutes.");
 const AdminTrackingRoutes = require("./routes/admin/AdminTrackingRoutes");
 const communicationRoutes = require('./routes/admin/Communicationroutes');
-const driverChatRoutes = require("./routes/Driver/driverChatRoutes")
-const onboardingRoutes = require("./routes/admin/onboardingRoutes")
-const Homepage = require("./routes/Driver/Homepage")
-const cmsRoutes = require("./routes/admin/cmsRoutes")
-const category = require("./routes/admin/category")
-const driverApprovalRoutes = require("./routes/admin/driverApprovalRoutes")
+const driverChatRoutes = require("./routes/Driver/driverChatRoutes");
+const onboardingRoutes = require("./routes/admin/onboardingRoutes");
+const Homepage = require("./routes/Driver/Homepage");
+const cmsRoutes = require("./routes/admin/cmsRoutes");
+const category = require("./routes/admin/category");
+const driverApprovalRoutes = require("./routes/admin/driverApprovalRoutes");
 
-// Middleware
 const errorHandler = require('./middleware/errorHandler');
 
-// ==================== INITIALIZE APP & SERVER ====================
+// ====================== INIT APP ======================
 const app = express();
 const server = http.createServer(app);
 
 const io = socketIO(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:8000",
+    origin: "*",  // Production mein specific URL do
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true
   },
   pingTimeout: 60000,
-  pingInterval: 25000
+  pingInterval: 25000,
+  transports: ["websocket", "polling"],
 });
 
+// io globally available karo
 global.io = io;
 app.set('io', io);
 
-// Connect DB
+// ====================== SOCKET HANDLERS ======================
+// ✅ Yahan setup karo — sab kuch socketHandlers.js mein hai
+const setupSocketHandlers = require('./utils/sockethandler');
+const { activeDrivers, driverLocations } = setupSocketHandlers(io);
+
+// Expose on io for controllers to use
+io.activeDrivers = activeDrivers;
+io.driverLocations = driverLocations;
+
+// ====================== DB ======================
 connectDB();
 
-// ==================== MIDDLEWARE ====================
+// ====================== MIDDLEWARE ======================
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(compression());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5001',
+  origin: process.env.FRONTEND_URL || '*',
   credentials: true
 }));
 app.use(express.json());
@@ -1479,17 +1882,16 @@ app.use(morgan('dev'));
 app.use(methodOverride('_method'));
 app.use(cookieParser());
 
-// ==================== SESSION WITH MONGO STORE ====================
-// connect-mongo install karo: npm install connect-mongo
+// Session
 app.use(session({
   secret: process.env.SESSION_SECRET || 'orion-secret-key-2024',
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URI,  // ← Sirf MONGO_URI
+    mongoUrl: process.env.MONGO_URI,
     ttl: 24 * 60 * 60,
     autoRemove: 'native',
-    touchAfter: 24 * 3600 // ← Yeh add karo
+    touchAfter: 24 * 3600
   }),
   cookie: {
     secure: false,
@@ -1499,218 +1901,22 @@ app.use(session({
   }
 }));
 
-// ==================== FLASH MESSAGES ====================
+// Flash
 app.use(flash());
 app.use((req, res, next) => {
-  res.locals.messages = {}; // ← Empty rakho
-  res.locals.dateOptions = {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  };
+  res.locals.messages = {};
+  res.locals.dateOptions = { hour: "2-digit", minute: "2-digit", hour12: true };
   res.locals.dateLocale = "en-US";
   next();
 });
 
-app.get('/test-flash', (req, res) => {
-  req.flash('green', 'Test message working!');
-  return req.session.save(() => res.redirect('/test-flash-result'));
-});
-
-app.get('/test-flash-result', (req, res) => {
-  const msgs = req.flash(); // ← Direct lo, res.locals se nahi
-  console.log('Flash result:', msgs);
-  res.json({ messages: msgs });
-});
-
-// Static files
+// Static & Views
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 app.use(express.static(path.join(__dirname, 'public')));
-
-// View engine
 app.set('view engine', 'ejs');
 app.set('views', [path.join(__dirname, 'views')]);
 
-// ==================== SOCKET.IO ====================
-const activeDrivers = new Map();
-const driverLocations = new Map();
-io.activeDrivers = activeDrivers;
-
-io.on("connection", (socket) => {
-  console.log("🔌 New client connected:", socket.id);
-
-  socket.on("join-admin-room", () => {
-    socket.join("admin-room");
-    console.log("👔 Admin joined admin-room:", socket.id);
-    const activeDriversList = Array.from(activeDrivers.values()).map(driver => {
-      const location = driverLocations.get(driver.driverId);
-      return { ...driver, location: location || null };
-    });
-    socket.emit('admin:drivers:list', activeDriversList);
-  });
-
-  socket.on('driver:connect', async (data) => {
-    const { driverId, driverName, vehicleNumber } = data;
-    activeDrivers.set(driverId, {
-      socketId: socket.id,
-      driverId,
-      driverName,
-      vehicleNumber,
-      connectedAt: new Date()
-    });
-    socket.join(`driver-${driverId}`);
-    console.log(`🚗 Driver connected: ${driverName} (${vehicleNumber})`);
-    io.to('admin-room').emit('driver:online', {
-      driverId,
-      driverName,
-      vehicleNumber,
-      status: 'online'
-    });
-  });
-
-  socket.on('driver:location', async (data) => {
-    try {
-      const { driverId, deliveryId, latitude, longitude, speed, heading, accuracy, timestamp } = data;
-      if (!driverId || !latitude || !longitude) {
-        console.warn('⚠️ Invalid location data received:', data);
-        return;
-      }
-      const driver = await Driver.findById(driverId);
-      if (driver) {
-        await driver.updateLocation({
-          latitude, longitude,
-          speed: speed || 0,
-          heading: heading || 0,
-          accuracy: accuracy || 0,
-          deliveryId: deliveryId || null
-        });
-      }
-      driverLocations.set(driverId, {
-        latitude, longitude, speed, heading, accuracy,
-        timestamp: timestamp || new Date(),
-        deliveryId
-      });
-      const driverName = driver ? (driver.name || 'Driver') : 'Driver';
-      const vehicleNum = driver ? (driver.vehicleNumber || 'N/A') : 'N/A';
-      io.to('admin-room').emit('driver:location:update', {
-        driverId, driverName,
-        vehicleNumber: vehicleNum,
-        deliveryId,
-        location: { latitude, longitude },
-        speed: speed || 0,
-        heading: heading || 0,
-        accuracy: accuracy || 0,
-        timestamp: timestamp || new Date()
-      });
-      if (deliveryId) {
-        io.to(`delivery-${deliveryId}`).emit('delivery:location:update', {
-          deliveryId,
-          location: { latitude, longitude },
-          speed,
-          timestamp: timestamp || new Date()
-        });
-      }
-      console.log(`📍 Location updated for driver ${driverId}: ${latitude}, ${longitude}`);
-    } catch (error) {
-      console.error('❌ Error handling driver location update:', error);
-    }
-  });
-
-  socket.on("join-delivery", (deliveryId) => {
-    socket.join(`delivery-${deliveryId}`);
-    console.log(`📦 Client joined delivery: ${deliveryId}`);
-  });
-
-  socket.on("leave-delivery", (deliveryId) => {
-    socket.leave(`delivery-${deliveryId}`);
-  });
-
-  socket.on("driver-location-update", async (data) => {
-    const { deliveryId, latitude, longitude, speed, heading } = data;
-    io.to(`delivery-${deliveryId}`).emit('location-update', {
-      deliveryId,
-      location: { latitude, longitude },
-      speed, heading,
-      timestamp: new Date()
-    });
-  });
-
-  socket.on('delivery:completed', async (data) => {
-    try {
-      const { driverId, deliveryId } = data;
-      const driver = await Driver.findById(driverId);
-      if (driver) {
-        await driver.clearLocation();
-        driver.isAvailable = true;
-        await driver.save();
-      }
-      driverLocations.delete(driverId);
-      io.to('admin-room').emit('driver:delivery:completed', {
-        driverId, deliveryId,
-        timestamp: new Date()
-      });
-    } catch (error) {
-      console.error('❌ Error handling delivery completion:', error);
-    }
-  });
-
-  socket.on('chat:join', (data) => {
-    socket.join(`user-${data.userId}`);
-    console.log(`💬 User joined chat: ${data.userId}`);
-  });
-
-  socket.on('chat:join-conversation', (data) => {
-    socket.join(`conversation-${data.conversationId}`);
-  });
-
-  socket.on('chat:typing', (data) => {
-    const { conversationId, userId, isTyping } = data;
-    socket.to(`conversation-${conversationId}`).emit('chat:typing', { userId, isTyping });
-  });
-
-  socket.on('notifications:subscribe', (data) => {
-    socket.join(`notifications-${data.userId}`);
-    console.log(`🔔 User subscribed to notifications: ${data.userId}`);
-  });
-
-  socket.on("driver-completed-service", async ({ scheduleId, driverName, vehicleNumber }) => {
-    try {
-      const maintenance = await MaintenanceSchedule.findById(scheduleId).populate('vehicle');
-      if (maintenance) {
-        io.to("admin-room").emit('new-service-request', {
-          type: 'service_completion_request',
-          message: `${vehicleNumber || 'Vehicle'} - Driver "${driverName}" completed service!`,
-          scheduleId,
-          vehicleNumber: vehicleNumber || maintenance.vehicle?.vehicleNumber,
-          driverName,
-          requestedAt: new Date(),
-          status: maintenance.status
-        });
-      }
-    } catch (err) {
-      console.error("❌ Socket maintenance notification error:", err);
-    }
-  });
-
-  socket.on('disconnect', () => {
-    console.log('🔌 Client disconnected:', socket.id);
-    for (const [driverId, driver] of activeDrivers.entries()) {
-      if (driver.socketId === socket.id) {
-        activeDrivers.delete(driverId);
-        driverLocations.delete(driverId);
-        io.to('admin-room').emit('driver:offline', {
-          driverId,
-          driverName: driver.driverName,
-          status: 'offline'
-        });
-        console.log(`🚗 Driver disconnected: ${driver.driverName}`);
-        break;
-      }
-    }
-  });
-});
-
-// ==================== API ROUTES ====================
+// ====================== API ROUTES ======================
 app.use('/api/auth', authRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/profile', profileRoutes);
@@ -1718,21 +1924,21 @@ app.use("/api/deliveries", deliveryRoutes);
 app.use("/api/tracking", trackingRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/journey", journeyRoutes);
-app.use("/api/routes", routeRoutes);  
+app.use("/api/routes", routeRoutes);
 app.use("/api/remark", remarkRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
-app.use("/api/expenses", expenseRoutes);    
+app.use("/api/expenses", expenseRoutes);
 app.use("/api/chat", driverChatRoutes);
 app.use("/api/home", Homepage);
 app.use("/api/cms", require("./routes/Driver/cmsRoutes"));
 
 // Admin Routes
 app.use('/admin', adminRoutes);
-app.use("/admin/orders", orderRoutes); 
+app.use("/admin/orders", orderRoutes);
 app.use("/admin/categories", category);
 app.use("/admin/vehicles", vehicleRoutes);
-app.use("/admin/regions", regionRoutes); 
-app.use("/admin/drivers", driverManagementRoutes);  
+app.use("/admin/regions", regionRoutes);
+app.use("/admin/drivers", driverManagementRoutes);
 app.use("/admin/customers", customerRoutes);
 app.use("/admin/deliveries", deliveryAdminRoutes);
 app.use("/admin/remarks", remarkAdminRoutes);
@@ -1743,6 +1949,16 @@ app.use("/admin/onboarding", onboardingRoutes);
 app.use('/admin/drivers', driverApprovalRoutes);
 app.use("/admin/chat", communicationRoutes);
 app.use("/admin/cms", cmsRoutes);
+
+// ====================== HELPER ROUTES ======================
+// Test flash
+app.get('/test-flash', (req, res) => {
+  req.flash('green', 'Test message working!');
+  return req.session.save(() => res.redirect('/test-flash-result'));
+});
+app.get('/test-flash-result', (req, res) => {
+  res.json({ messages: req.flash() });
+});
 
 // Health check
 app.get('/health', (req, res) => {
@@ -1757,10 +1973,7 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/api', (req, res) => {
-  res.json({ 
-    success: true, 
-    message: 'Orion Delivery Tracking API v3.0'
-  });
+  res.json({ success: true, message: 'Orion Delivery Tracking API v3.0' });
 });
 
 // 404
@@ -1768,13 +1981,13 @@ app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found', path: req.path });
 });
 
-// Error Handler
 app.use(errorHandler);
 
-// ==================== START SERVER ====================
+// ====================== START ======================
 const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on PORT ${PORT}`);
+  console.log(`🔌 Socket.IO ready`);
 });
 
 module.exports = app;

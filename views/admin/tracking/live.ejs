@@ -1,1031 +1,833 @@
-<!DOCTYPE html>
-<html class="loading" lang="en" data-textdirection="ltr">
 
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <%- include('../../_layouts/head') %>
-  <title>Live Driver Tracking | Orion Admin</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Driver Tracking</title>
+
+  <!-- Google Maps -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=<%= googleMapsApiKey %>&libraries=geometry"></script>
+  <!-- Socket.IO client -->
+  <script src="/socket.io/socket.io.js"></script>
 
   <style>
-    /* =========== FULL PAGE MAP LAYOUT =========== */
-    body { margin: 0; padding: 0; overflow: hidden; }
-    .page-content { padding: 0 !important; margin: 0 !important; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    #tracking-wrapper {
+    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+
+    .tracking-wrapper {
       display: flex;
-      height: calc(100vh - 75px);
-      width: 100%;
-      position: relative;
+      height: 100vh;
+      overflow: hidden;
     }
 
-    /* =========== LEFT SIDEBAR PANEL =========== */
-    #driver-panel {
+    /* ── Sidebar ── */
+    .sidebar {
       width: 320px;
-      min-width: 280px;
-      background: #fff;
-      box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+      background: #1e293b;
+      border-right: 1px solid #334155;
       display: flex;
       flex-direction: column;
-      z-index: 10;
-      transition: transform 0.3s ease;
+      overflow: hidden;
     }
 
-    #driver-panel.collapsed {
-      transform: translateX(-320px);
+    .sidebar-header {
+      padding: 16px;
+      background: #0f172a;
+      border-bottom: 1px solid #334155;
     }
 
-    .panel-header {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      color: white;
-      padding: 16px 20px;
+    .sidebar-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f1f5f9;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
+      gap: 8px;
     }
 
-    .panel-header h6 {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: 0.3px;
-    }
-
-    .panel-header .badge-count {
-      background: #00c853;
+    .live-badge {
+      background: #ef4444;
       color: white;
-      border-radius: 12px;
-      padding: 2px 10px;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    /* Stats bar */
-    .stats-bar {
-      display: flex;
-      background: #f8f9fa;
-      border-bottom: 1px solid #e0e0e0;
-      flex-shrink: 0;
-    }
-
-    .stat-item {
-      flex: 1;
-      text-align: center;
-      padding: 10px 5px;
-      border-right: 1px solid #e0e0e0;
-    }
-
-    .stat-item:last-child { border-right: none; }
-
-    .stat-number {
-      font-size: 22px;
-      font-weight: 700;
-      line-height: 1.1;
-    }
-
-    .stat-label {
       font-size: 10px;
-      color: #888;
-      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 10px;
+      animation: pulse 1.5s infinite;
+      font-weight: 700;
       letter-spacing: 0.5px;
     }
 
-    .stat-online { color: #00c853; }
-    .stat-total  { color: #1565c0; }
-    .stat-busy   { color: #f57c00; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
 
-    /* Search box */
+    .stats-bar {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      background: #0f172a;
+      border-bottom: 1px solid #334155;
+    }
+
+    .stat-chip {
+      flex: 1;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .stat-chip .num {
+      font-size: 20px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .stat-chip .label {
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .stat-chip.online .num { color: #22c55e; }
+    .stat-chip.offline .num { color: #ef4444; }
+
     .search-box {
-      padding: 10px 14px;
-      background: #fff;
-      border-bottom: 1px solid #eee;
-      flex-shrink: 0;
+      padding: 10px 16px;
+      border-bottom: 1px solid #334155;
     }
 
     .search-box input {
       width: 100%;
-      border: 1px solid #ddd;
-      border-radius: 20px;
-      padding: 7px 14px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #e2e8f0;
       font-size: 13px;
       outline: none;
-      box-sizing: border-box;
     }
 
-    .search-box input:focus { border-color: #1565c0; }
+    .search-box input:focus { border-color: #38bdf8; }
 
-    /* Drivers list */
-    #drivers-list {
+    .driver-list {
       flex: 1;
       overflow-y: auto;
-      padding: 0;
+      padding: 8px;
     }
 
-    #drivers-list::-webkit-scrollbar { width: 4px; }
-    #drivers-list::-webkit-scrollbar-track { background: #f1f1f1; }
-    #drivers-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+    .driver-list::-webkit-scrollbar { width: 4px; }
+    .driver-list::-webkit-scrollbar-track { background: transparent; }
+    .driver-list::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 
     .driver-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .driver-card:hover { border-color: #38bdf8; background: #1e293b; }
+    .driver-card.active { border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56,189,248,0.2); }
+
+    .driver-card-top {
       display: flex;
       align-items: center;
-      padding: 12px 14px;
-      border-bottom: 1px solid #f0f0f0;
-      cursor: pointer;
-      transition: background 0.2s;
+      gap: 10px;
     }
-
-    .driver-card:hover { background: #f5f9ff; }
-    .driver-card.active { background: #e3f2fd; border-left: 3px solid #1565c0; }
 
     .driver-avatar {
-      width: 42px;
-      height: 42px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
-      object-fit: cover;
-      margin-right: 10px;
-      flex-shrink: 0;
-      border: 2px solid #eee;
-    }
-
-    .driver-info { flex: 1; min-width: 0; }
-
-    .driver-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: #222;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin: 0 0 2px;
-    }
-
-    .driver-vehicle {
-      font-size: 11px;
-      color: #888;
-      margin: 0 0 3px;
-    }
-
-    .driver-speed {
-      font-size: 11px;
-      color: #555;
-      margin: 0;
-    }
-
-    .online-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      margin-left: 6px;
-    }
-
-    .online-dot.online  { background: #00c853; box-shadow: 0 0 0 2px rgba(0,200,83,0.3); animation: pulse-dot 1.5s infinite; }
-    .online-dot.offline { background: #bdbdbd; }
-
-    @keyframes pulse-dot {
-      0%, 100% { box-shadow: 0 0 0 2px rgba(0,200,83,0.3); }
-      50%       { box-shadow: 0 0 0 5px rgba(0,200,83,0.1); }
-    }
-
-    .no-drivers-msg {
-      text-align: center;
-      padding: 40px 20px;
-      color: #aaa;
-    }
-
-    .no-drivers-msg i { font-size: 48px; display: block; margin-bottom: 12px; color: #ddd; }
-
-    /* =========== MAP AREA =========== */
-    #map-container {
-      flex: 1;
-      position: relative;
-    }
-
-    #map {
-      width: 100%;
-      height: 100%;
-    }
-
-    /* Toggle panel button */
-    #toggle-panel-btn {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      z-index: 20;
-      background: white;
-      border: none;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
-      transition: background 0.2s;
+      font-size: 14px;
+      font-weight: 700;
+      flex-shrink: 0;
     }
 
-    #toggle-panel-btn:hover { background: #f0f0f0; }
+    .driver-avatar.online { background: #16a34a; color: white; }
+    .driver-avatar.offline { background: #374151; color: #9ca3af; }
 
-    /* Map top info bar */
-    #map-topbar {
-      position: absolute;
-      top: 12px;
-      left: 62px;
-      right: 12px;
-      z-index: 15;
+    .driver-info { flex: 1; min-width: 0; }
+    .driver-name { font-size: 13px; font-weight: 600; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .driver-vehicle { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot.online { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .status-dot.offline { background: #6b7280; }
+
+    .driver-card-bottom {
+      margin-top: 8px;
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #64748b;
     }
 
-    .map-badge {
-      background: white;
+    .speed-badge {
+      background: #1e3a5f;
+      color: #38bdf8;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .last-update { font-size: 10px; color: #475569; }
+
+    /* ── Map ── */
+    .map-container { flex: 1; position: relative; }
+
+    #map { width: 100%; height: 100%; }
+
+    .map-overlay {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .map-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .map-btn:hover { background: #334155; border-color: #38bdf8; color: #38bdf8; }
+
+    /* Connection indicator */
+    .conn-indicator {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #334155;
       border-radius: 20px;
       padding: 6px 14px;
       font-size: 12px;
-      font-weight: 600;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
       display: flex;
       align-items: center;
       gap: 6px;
+      backdrop-filter: blur(4px);
     }
 
-    .map-badge .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-    }
+    .conn-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .conn-dot.connected { background: #22c55e; animation: pulse 1.5s infinite; }
+    .conn-dot.disconnected { background: #ef4444; }
 
-    /* Selected driver info box */
-    #driver-info-box {
-      position: absolute;
+    /* Toast */
+    .toast-container {
+      position: fixed;
       bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: white;
-      border-radius: 16px;
-      padding: 14px 20px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-      display: none;
-      min-width: 260px;
-      max-width: 340px;
-      z-index: 15;
-    }
-
-    #driver-info-box.show { display: block; }
-
-    .info-box-header {
+      right: 20px;
+      z-index: 9999;
       display: flex;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-
-    .info-box-avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      object-fit: cover;
-      margin-right: 10px;
-      border: 2px solid #1565c0;
-    }
-
-    .info-box-name { font-size: 14px; font-weight: 700; margin: 0; color: #1a1a2e; }
-    .info-box-vehicle { font-size: 12px; color: #888; margin: 0; }
-
-    .info-box-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      flex-direction: column;
       gap: 8px;
-      margin-top: 10px;
     }
 
-    .info-stat {
-      text-align: center;
-      background: #f8f9fa;
+    .toast {
+      background: #1e293b;
+      border-left: 4px solid #22c55e;
+      color: #e2e8f0;
+      padding: 10px 16px;
       border-radius: 8px;
-      padding: 8px 5px;
+      font-size: 13px;
+      min-width: 260px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      animation: slideIn 0.3s ease;
     }
 
-    .info-stat-value { font-size: 16px; font-weight: 700; color: #1565c0; margin: 0; }
-    .info-stat-label { font-size: 10px; color: #888; margin: 0; text-transform: uppercase; }
+    .toast.error { border-left-color: #ef4444; }
+    .toast.warn { border-left-color: #f59e0b; }
 
-    #close-info-box {
-      position: absolute;
-      top: 10px;
-      right: 12px;
-      background: none;
-      border: none;
-      font-size: 20px;
-      cursor: pointer;
-      color: #888;
-      line-height: 1;
-    }
-
-    /* Connection status indicator */
-    #conn-status {
-      position: absolute;
-      bottom: 12px;
-      right: 12px;
-      background: white;
-      border-radius: 20px;
-      padding: 6px 14px;
-      font-size: 11px;
-      font-weight: 600;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      z-index: 15;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    #conn-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #f44336;
-    }
-
-    #conn-dot.connected { background: #00c853; animation: pulse-dot 1.5s infinite; }
-
-    /* Refresh button */
-    #refresh-btn {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: white;
-      border: none;
-      border-radius: 8px;
-      padding: 8px 14px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      z-index: 15;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      transition: background 0.2s;
-    }
-
-    #refresh-btn:hover { background: #f0f0f0; }
-
-    /* Driver trail (path line) - handled via JS */
-    .last-update-label {
-      font-size: 10px;
-      color: #aaa;
-      margin: 4px 0 0;
+    @keyframes slideIn {
+      from { transform: translateX(40px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
     }
   </style>
 </head>
+<body>
+  <div class="tracking-wrapper">
+    <!-- ── Sidebar ── -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>🗺️ Live Tracking <span class="live-badge">LIVE</span></h2>
+      </div>
 
-<body class="horizontal-layout horizontal-menu" data-open="hover" data-menu="horizontal-menu" data-col="2-columns">
-
-  <%- include('../../_layouts/sidenavbar', { url: '/admin/tracking/live' }) %>
-
-  <div class="app-content content">
-    <div class="content-wrapper" style="padding:0;">
-      <div id="tracking-wrapper">
-
-        <!-- ========== LEFT PANEL ========== -->
-        <div id="driver-panel">
-          <div class="panel-header">
-            <h6>🚗 Live Drivers</h6>
-            <span class="badge-count" id="online-count-badge">0 Online</span>
-          </div>
-
-          <!-- Stats Bar -->
-          <div class="stats-bar">
-            <div class="stat-item">
-              <div class="stat-number stat-online" id="stat-online">0</div>
-              <div class="stat-label">Online</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-number stat-total" id="stat-total">0</div>
-              <div class="stat-label">Total</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-number stat-busy" id="stat-busy">0</div>
-              <div class="stat-label">Moving</div>
-            </div>
-          </div>
-
-          <!-- Search -->
-          <div class="search-box">
-            <input type="text" id="driver-search" placeholder="🔍 Search driver or vehicle...">
-          </div>
-
-          <!-- Drivers List -->
-          <div id="drivers-list">
-            <div class="no-drivers-msg" id="no-drivers-msg">
-              <i class="material-icons">directions_car</i>
-              <p>Connecting to live feed...</p>
-            </div>
-          </div>
+      <div class="stats-bar">
+        <div class="stat-chip online">
+          <div class="num" id="stat-online">0</div>
+          <div class="label">Online</div>
         </div>
-
-        <!-- ========== MAP AREA ========== -->
-        <div id="map-container">
-
-          <!-- Toggle Panel Button -->
-          <button id="toggle-panel-btn" title="Toggle Driver List">☰</button>
-
-          <!-- Top Info Bar -->
-          <div id="map-topbar">
-            <div class="map-badge">
-              <span class="dot" style="background:#00c853;"></span>
-              Live Tracking
-            </div>
-            <div class="map-badge" id="active-count-badge">
-              0 drivers on map
-            </div>
-          </div>
-
-          <!-- Refresh Button -->
-          <button id="refresh-btn">↻ Refresh</button>
-
-          <!-- Google Map -->
-          <div id="map"></div>
-
-          <!-- Selected Driver Info Box -->
-          <div id="driver-info-box">
-            <button id="close-info-box" onclick="closeInfoBox()">✕</button>
-            <div class="info-box-header">
-              <img id="info-avatar" class="info-box-avatar" src="/img/default-driver.jpg" alt="Driver">
-              <div>
-                <p class="info-box-name" id="info-name">Driver Name</p>
-                <p class="info-box-vehicle" id="info-vehicle">Vehicle</p>
-              </div>
-            </div>
-            <div class="info-box-stats">
-              <div class="info-stat">
-                <p class="info-stat-value" id="info-speed">0</p>
-                <p class="info-stat-label">km/h</p>
-              </div>
-              <div class="info-stat">
-                <p class="info-stat-value" id="info-heading">—</p>
-                <p class="info-stat-label">heading</p>
-              </div>
-              <div class="info-stat">
-                <p class="info-stat-value" id="info-updated">—</p>
-                <p class="info-stat-label">ago</p>
-              </div>
-            </div>
-            <p class="last-update-label" id="info-coords">—</p>
-          </div>
-
-          <!-- Connection Status -->
-          <div id="conn-status">
-            <div id="conn-dot"></div>
-            <span id="conn-label">Connecting...</span>
-          </div>
-
+        <div class="stat-chip offline">
+          <div class="num" id="stat-offline">0</div>
+          <div class="label">Offline</div>
         </div>
+        <div class="stat-chip">
+          <div class="num" id="stat-total">0</div>
+          <div class="label">Total</div>
+        </div>
+      </div>
+
+      <div class="search-box">
+        <input type="text" id="driverSearch" placeholder="🔍 Driver ya vehicle search karo..." />
+      </div>
+
+      <div class="driver-list" id="driverList">
+        <!-- Drivers dynamically add honge -->
+        <div style="text-align:center; color:#475569; margin-top:40px; font-size:13px;">
+          Drivers connect hone ka wait kar rahe hain...
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Map ── -->
+    <div class="map-container">
+      <div id="map"></div>
+
+      <div class="map-overlay">
+        <button class="map-btn" onclick="fitAllMarkers()">📍 All Fit</button>
+        <button class="map-btn" id="btnSatellite" onclick="toggleSatellite()">🛰️ Satellite</button>
+      </div>
+
+      <div class="conn-indicator">
+        <div class="conn-dot disconnected" id="connDot"></div>
+        <span id="connText">Connecting...</span>
       </div>
     </div>
   </div>
 
-  <%- include('../../_layouts/commonJs') %>
-
-  <!-- Socket.IO -->
-  <script src="/socket.io/socket.io.js"></script>
-
-  <!-- Google Maps -->
-  <script>
-    const GOOGLE_MAPS_API_KEY = '<%= googleMapsApiKey %>';
-    (function () {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    })();
-  </script>
+  <!-- Toasts -->
+  <div class="toast-container" id="toastContainer"></div>
 
   <script>
-    // ============================================================
-    //  GLOBAL STATE
-    // ============================================================
-    const driversMap   = {};   // driverId -> { marker, info, trail[] }
-    let   map          = null;
-    let   selectedId   = null;
-    let   socket       = null;
-    let   isConnected  = false;
-    let   panelOpen    = true;
+    // ─── Config ───────────────────────────────────────────────
+    const SOCKET_URL = window.location.origin;
+    const DEFAULT_CENTER = { lat: 23.0225, lng: 72.5714 }; // Ahmedabad
 
-    // ============================================================
-    //  GOOGLE MAPS INIT
-    // ============================================================
+    // ─── State ────────────────────────────────────────────────
+    const driversMap = new Map();     // driverId -> { info, marker, path, isOnline }
+    let map;
+    let isSatellite = false;
+    let selectedDriverId = null;
+
+    // ─── Init Map ─────────────────────────────────────────────
     function initMap() {
-      map = new google.maps.Map(document.getElementById('map'), {
-        center: { lat: 23.0225, lng: 72.5714 },  // Gujarat default – auto-adjusts
-        zoom: 11,
-        mapTypeControl: true,
-        streetViewControl: false,
-        fullscreenControl: true,
-        zoomControl: true,
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: DEFAULT_CENTER,
+        zoom: 12,
+        mapTypeId: "roadmap",
         styles: [
-          { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }
-        ]
+          { elementType: "geometry", stylers: [{ color: "#1d2c4d" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#8ec3b9" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#1a3646" }] },
+          { featureType: "road", elementType: "geometry", stylers: [{ color: "#304a7d" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1626" }] },
+        ],
+        disableDefaultUI: false,
+        zoomControl: true,
       });
 
-      // Init socket + load initial data
-      initSocket();
+      // Initial driver locations DB se load karo
       loadInitialDriverLocations();
-
-      // Refresh button
-      document.getElementById('refresh-btn').addEventListener('click', loadInitialDriverLocations);
-
-      // Toggle panel
-      document.getElementById('toggle-panel-btn').addEventListener('click', () => {
-        panelOpen = !panelOpen;
-        document.getElementById('driver-panel').classList.toggle('collapsed', !panelOpen);
-        document.getElementById('toggle-panel-btn').textContent = panelOpen ? '☰' : '▶';
-      });
-
-      // Search
-      document.getElementById('driver-search').addEventListener('input', e => {
-        filterDriverList(e.target.value.toLowerCase());
-      });
+      // Socket connect karo
+      connectSocket();
     }
 
-    // ============================================================
-    //  SOCKET.IO REAL-TIME CONNECTION
-    // ============================================================
-    function initSocket() {
-      socket = io({ transports: ['websocket', 'polling'] });
+    // ─── Load Initial Locations (DB se) ───────────────────────
+    async function loadInitialDriverLocations() {
+      try {
+        const res = await fetch("/admin/api/drivers/locations");
+        const json = await res.json();
+        if (json.success && json.data) {
+          json.data.forEach((driver) => {
+            if (driver.currentLocation?.latitude && driver.currentLocation?.longitude) {
+              addOrUpdateDriver({
+                driverId: driver._id,
+                driverName: driver.name || "Driver",
+                vehicleNumber: driver.vehicleNumber || "N/A",
+                location: {
+                  latitude: driver.currentLocation.latitude,
+                  longitude: driver.currentLocation.longitude,
+                  speed: driver.currentLocation.speed || 0,
+                  lastUpdated: driver.currentLocation.lastUpdated,
+                },
+                isOnline: driver.isAvailable || false,
+              });
+            }
+          });
+          updateStats();
+          showToast(`✅ ${json.data.length} drivers loaded`, "success");
+        }
+      } catch (e) {
+        console.error("Initial load failed:", e);
+      }
+    }
 
-      socket.on('connect', () => {
-        isConnected = true;
+    // ─── Socket Connection ────────────────────────────────────
+    function connectSocket() {
+      const socket = io(SOCKET_URL, {
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 2000,
+      });
+
+      socket.on("connect", () => {
+        console.log("🔌 Socket connected:", socket.id);
         setConnStatus(true);
-        socket.emit('join-admin-room');
-        console.log('✅ Socket connected, joined admin-room');
+        socket.emit("join-admin-room");
       });
 
-      socket.on('disconnect', () => {
-        isConnected = false;
+      socket.on("disconnect", (reason) => {
+        console.log("❌ Socket disconnected:", reason);
         setConnStatus(false);
-        console.warn('⚠️ Socket disconnected');
       });
 
-      // ── Admin drivers list (on join) ──────────────────────────
-      socket.on('admin:drivers:list', (list) => {
-        console.log('📋 Received initial drivers list:', list.length);
-        list.forEach(d => {
-          if (d.location && d.location.latitude && d.location.longitude) {
-            upsertDriver(d.driverId, {
-              driverName:   d.driverName,
+      socket.on("connect_error", () => setConnStatus(false));
+      socket.on("reconnect", () => {
+        setConnStatus(true);
+        socket.emit("join-admin-room");
+        showToast("🔄 Reconnected!", "success");
+      });
+
+      // ── Pehli baar drivers list
+      socket.on("admin:drivers:list", (drivers) => {
+        console.log("Received drivers list:", drivers.length);
+        drivers.forEach((d) => {
+          if (d.location?.latitude && d.location?.longitude) {
+            addOrUpdateDriver({
+              driverId: d.driverId,
+              driverName: d.driverName,
               vehicleNumber: d.vehicleNumber,
-              profileImage: null,
+              location: { latitude: d.location.latitude, longitude: d.location.longitude, speed: d.location.speed || 0 },
               isOnline: true,
-              location: {
-                latitude:  d.location.latitude,
-                longitude: d.location.longitude,
-                speed:     d.location.speed || 0,
-                heading:   d.location.heading || 0,
-                accuracy:  d.location.accuracy || 0,
-                timestamp: d.location.timestamp || new Date()
-              }
             });
           }
         });
-        fitAllMarkers();
-        refreshSidebar();
+        updateStats();
       });
 
-      // ── Real-time location update (Uber-style smooth) ─────────
-      socket.on('driver:location:update', (data) => {
-        const { driverId, driverName, vehicleNumber, location, speed, heading, accuracy, timestamp } = data;
-        if (!location || !location.latitude || !location.longitude) return;
+      // ── MAIN EVENT: Real-time location update ──
+      socket.on("driver:location:update", (data) => {
+        const { driverId, driverName, vehicleNumber, location, journeyId, deliveryId, status } = data;
 
-        const existing = driversMap[driverId];
-        upsertDriver(driverId, {
-          driverName:    driverName   || (existing ? existing.info.driverName   : 'Driver'),
-          vehicleNumber: vehicleNumber || (existing ? existing.info.vehicleNumber : 'N/A'),
-          profileImage:  existing ? existing.info.profileImage : null,
-          isOnline: true,
+        if (!location?.latitude || !location?.longitude) return;
+
+        addOrUpdateDriver({
+          driverId,
+          driverName,
+          vehicleNumber,
           location: {
-            latitude:  location.latitude,
+            latitude: location.latitude,
             longitude: location.longitude,
-            speed:     speed     || 0,
-            heading:   heading   || 0,
-            accuracy:  accuracy  || 0,
-            timestamp: timestamp || new Date()
-          }
+            speed: location.speed || 0,
+            heading: location.heading || 0,
+            lastUpdated: location.lastUpdated || new Date().toISOString(),
+          },
+          journeyId,
+          deliveryId,
+          isOnline: true,
+          status,
         });
 
-        // Update info box if this driver is selected
-        if (selectedId === driverId) {
-          updateInfoBox(driverId);
-        }
-        refreshSidebar();
+        updateStats();
+        updateDriverCard(driverId);
       });
 
-      // ── Legacy event support ──────────────────────────────────
-      socket.on('driver-location-update', (data) => {
-        if (!data.driverId) return;
-        socket.emit('driver:location:update', {
-          driverId:   data.driverId.toString(),
-          location:   data.location,
-          speed:      data.speed,
-          heading:    data.heading,
-          timestamp:  data.timestamp
-        });
-      });
-
-      // ── Driver came online ────────────────────────────────────
-      socket.on('driver:online', (data) => {
+      // ── Driver online ──
+      socket.on("driver:online", (data) => {
         const { driverId, driverName, vehicleNumber } = data;
-        if (driversMap[driverId]) {
-          driversMap[driverId].info.isOnline = true;
-          refreshSidebar();
+        if (!driversMap.has(driverId)) {
+          driversMap.set(driverId, { driverId, driverName, vehicleNumber, isOnline: true, location: null, marker: null });
+          renderDriverCard(driverId);
+        } else {
+          const d = driversMap.get(driverId);
+          d.isOnline = true;
+          driversMap.set(driverId, d);
+          updateDriverCard(driverId);
         }
-        showToast(`🟢 ${driverName} (${vehicleNumber}) is now online`);
+        updateStats();
+        showToast(`🟢 ${driverName} online`, "success");
       });
 
-      // ── Driver went offline ───────────────────────────────────
-      socket.on('driver:offline', (data) => {
+      // ── Driver offline ──
+      socket.on("driver:offline", (data) => {
         const { driverId, driverName } = data;
-        if (driversMap[driverId]) {
-          driversMap[driverId].info.isOnline = false;
-          // Make marker grey
-          const marker = driversMap[driverId].marker;
-          if (marker) {
-            marker.setIcon(buildMarkerIcon('#9e9e9e', ''));
+        if (driversMap.has(driverId)) {
+          const d = driversMap.get(driverId);
+          d.isOnline = false;
+          driversMap.set(driverId, d);
+          if (d.marker) {
+            d.marker.setIcon(createMarkerIcon(false, "N/A"));
           }
-          refreshSidebar();
+          updateDriverCard(driverId);
         }
-        showToast(`🔴 ${driverName} went offline`, 'orange');
+        updateStats();
+        showToast(`🔴 ${driverName} offline`, "warn");
       });
+
+      // ── Journey started ──
+      socket.on("driver:journey:started", (data) => {
+        showToast(`🚀 Journey started: ${data.driverName || "Driver"}`, "success");
+      });
+
+      // ── Journey ended ──
+      socket.on("driver:journey:ended", (data) => {
+        showToast(`✅ Journey ended: ${data.driverName || "Driver"}`, "success");
+        if (driversMap.has(data.driverId)) {
+          const d = driversMap.get(data.driverId);
+          d.isOnline = false;
+          driversMap.set(data.driverId, d);
+          updateDriverCard(data.driverId);
+        }
+        updateStats();
+      });
+
+      return socket;
     }
 
-    // ============================================================
-    //  LOAD INITIAL DRIVER LOCATIONS FROM DB API
-    // ============================================================
-    async function loadInitialDriverLocations() {
-      try {
-        const res  = await fetch('/admin/tracking/all-driver-locations');
-        const data = await res.json();
-        if (!data.success) return;
+    // ─── Add / Update Driver on Map ───────────────────────────
+    function addOrUpdateDriver(data) {
+      const { driverId, driverName, vehicleNumber, location, isOnline, journeyId, deliveryId, status } = data;
 
-        data.data.forEach(d => {
-          upsertDriver(d.driverId, {
-            driverName:    d.driverName,
-            vehicleNumber: d.vehicleNumber,
-            profileImage:  d.profileImage,
-            phone:         d.phone,
-            isAvailable:   d.isAvailable,
-            isOnline:      d.isOnline,
-            location: {
-              latitude:  d.location.latitude,
-              longitude: d.location.longitude,
-              speed:     d.location.speed    || 0,
-              heading:   d.location.heading  || 0,
-              accuracy:  d.location.accuracy || 0,
-              timestamp: d.location.timestamp
-            }
-          });
-        });
+      const lat = location.latitude;
+      const lng = location.longitude;
+      const pos = new google.maps.LatLng(lat, lng);
 
-        fitAllMarkers();
-        refreshSidebar();
+      if (driversMap.has(driverId)) {
+        // Update existing
+        const d = driversMap.get(driverId);
+        const prevPos = d.marker?.getPosition();
 
-        console.log(`✅ Loaded ${data.total} driver(s) from DB`);
-      } catch (err) {
-        console.error('❌ Failed to load driver locations:', err);
-      }
-    }
+        d.driverName = driverName || d.driverName;
+        d.vehicleNumber = vehicleNumber || d.vehicleNumber;
+        d.isOnline = isOnline !== undefined ? isOnline : d.isOnline;
+        d.location = location;
+        d.journeyId = journeyId || d.journeyId;
+        d.deliveryId = deliveryId || d.deliveryId;
+        d.status = status || d.status;
+        d.lastUpdated = new Date();
 
-    // ============================================================
-    //  UPSERT DRIVER MARKER (create or update)
-    // ============================================================
-    function upsertDriver(driverId, info) {
-      const dId    = driverId.toString();
-      const latLng = { lat: info.location.latitude, lng: info.location.longitude };
-      const color  = info.isOnline ? '#1565c0' : '#9e9e9e';
-      const initials = (info.driverName || 'D').charAt(0).toUpperCase();
+        if (d.marker) {
+          // Smooth animation
+          animateMarker(d.marker, prevPos, pos);
+          d.marker.setIcon(createMarkerIcon(d.isOnline, d.vehicleNumber));
 
-      if (driversMap[dId]) {
-        // ── UPDATE existing marker (smooth animated move) ──────
-        const entry = driversMap[dId];
-
-        // Smooth animation: interpolate from old position
-        animateMarker(entry.marker, entry.marker.getPosition(), new google.maps.LatLng(latLng.lat, latLng.lng), dId);
-
-        // Update heading rotation
-        entry.marker.setIcon(buildMarkerIcon(color, initials, info.location.heading));
-
-        // Add trail point
-        if (entry.trail && entry.trail.length > 0) {
-          const lastPt = entry.trail[entry.trail.length - 1];
-          entry.trailLine.getPath().push(new google.maps.LatLng(latLng.lat, latLng.lng));
-
-          // Keep trail to max 30 points
-          if (entry.trailLine.getPath().getLength() > 30) {
-            entry.trailLine.getPath().removeAt(0);
+          // Update info window
+          if (d.infoWindow) {
+            d.infoWindow.setContent(buildInfoWindowContent(d));
           }
+        } else {
+          d.marker = createMarker(d, pos);
         }
 
-        entry.trail.push(latLng);
-        entry.info = { ...entry.info, ...info };
+        // Path (breadcrumb) update
+        if (!d.path) {
+          d.path = new google.maps.Polyline({
+            map,
+            strokeColor: "#38bdf8",
+            strokeOpacity: 0.6,
+            strokeWeight: 2,
+          });
+        }
+        const pathCoords = d.path.getPath();
+        pathCoords.push(pos);
+        // Max 50 points rakh
+        if (pathCoords.getLength() > 50) pathCoords.removeAt(0);
+
+        driversMap.set(driverId, d);
 
       } else {
-        // ── CREATE new marker ──────────────────────────────────
-        const marker = new google.maps.Marker({
-          position: latLng,
-          map: map,
-          title: info.driverName,
-          icon: buildMarkerIcon(color, initials, info.location.heading),
-          animation: google.maps.Animation.DROP,
-          zIndex: 100
+        // New driver
+        const marker = createMarker({ driverId, driverName, vehicleNumber, isOnline, location }, pos);
+
+        const path = new google.maps.Polyline({
+          map,
+          strokeColor: "#38bdf8",
+          strokeOpacity: 0.6,
+          strokeWeight: 2,
         });
+        path.getPath().push(pos);
 
-        // Info window
-        const infoWindow = new google.maps.InfoWindow();
-
-        marker.addListener('click', () => {
-          selectDriver(dId);
-        });
-
-        // Trail polyline
-        const trailLine = new google.maps.Polyline({
-          map: map,
-          path: [latLng],
-          strokeColor: '#1565c0',
-          strokeOpacity: 0.5,
-          strokeWeight: 3,
-          icons: [{
-            icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 2 },
-            offset: '100%'
-          }]
-        });
-
-        driversMap[dId] = {
+        driversMap.set(driverId, {
+          driverId,
+          driverName: driverName || "Driver",
+          vehicleNumber: vehicleNumber || "N/A",
+          isOnline: isOnline !== undefined ? isOnline : true,
+          location,
+          journeyId,
+          deliveryId,
+          status,
           marker,
-          infoWindow,
-          trailLine,
-          trail: [latLng],
-          info: { ...info, driverId: dId }
-        };
+          path,
+          infoWindow: null,
+          lastUpdated: new Date(),
+        });
+
+        renderDriverCard(driverId);
       }
     }
 
-    // ============================================================
-    //  BUILD CUSTOM TRUCK MARKER ICON (rotates with heading)
-    // ============================================================
-    function buildMarkerIcon(color, initials, heading) {
-      heading = heading || 0;
+    // ─── Marker ───────────────────────────────────────────────
+    function createMarker(driverData, pos) {
+      const marker = new google.maps.Marker({
+        position: pos,
+        map,
+        title: driverData.driverName || "Driver",
+        icon: createMarkerIcon(driverData.isOnline, driverData.vehicleNumber),
+        zIndex: 100,
+      });
+
+      const infoWindow = new google.maps.InfoWindow({
+        content: buildInfoWindowContent(driverData),
+      });
+
+      marker.addListener("click", () => {
+        // Close all others
+        driversMap.forEach((d) => { if (d.infoWindow) d.infoWindow.close(); });
+        infoWindow.open(map, marker);
+        highlightCard(driverData.driverId);
+        selectedDriverId = driverData.driverId;
+      });
+
+      if (driversMap.has(driverData.driverId)) {
+        driversMap.get(driverData.driverId).infoWindow = infoWindow;
+      }
+
+      return marker;
+    }
+
+    function createMarkerIcon(isOnline, vehicleNumber) {
+      const color = isOnline ? "#22c55e" : "#6b7280";
       const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="42" height="52" viewBox="0 0 42 52">
-          <g transform="rotate(${heading}, 21, 21)">
-            <circle cx="21" cy="21" r="19" fill="${color}" stroke="white" stroke-width="2.5"/>
-            <polygon points="21,2 17,10 25,10" fill="white" opacity="0.9"/>
-            <text x="21" y="27" text-anchor="middle" fill="white" font-size="14" font-family="Arial" font-weight="bold">${initials}</text>
-          </g>
-          <circle cx="21" cy="48" r="3" fill="${color}" opacity="0.7"/>
-          <line x1="21" y1="40" x2="21" y2="45" stroke="${color}" stroke-width="2"/>
-        </svg>`;
+        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
+          <circle cx="18" cy="18" r="16" fill="${color}" stroke="white" stroke-width="2"/>
+          <text x="18" y="23" text-anchor="middle" fill="white" font-size="16">🚚</text>
+          <polygon points="12,32 24,32 18,44" fill="${color}"/>
+        </svg>
+      `;
       return {
-        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-        scaledSize: new google.maps.Size(42, 52),
-        anchor: new google.maps.Point(21, 48)
+        url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
+        scaledSize: new google.maps.Size(36, 48),
+        anchor: new google.maps.Point(18, 44),
       };
     }
 
-    // ============================================================
-    //  SMOOTH MARKER ANIMATION — Uber-style (easing + heading)
-    // ============================================================
-    const _animating = {}; // track ongoing animations per driverId
+    function buildInfoWindowContent(d) {
+      const loc = d.location || {};
+      const speed = loc.speed ? `${Math.round(loc.speed)} km/h` : "N/A";
+      const updated = loc.lastUpdated
+        ? new Date(loc.lastUpdated).toLocaleTimeString("en-IN")
+        : "N/A";
+      return `
+        <div style="min-width:200px;font-family:sans-serif;font-size:13px;line-height:1.6;padding:4px;">
+          <strong style="font-size:14px;">${d.driverName || "Driver"}</strong><br/>
+          🚗 ${d.vehicleNumber || "N/A"}<br/>
+          📍 ${loc.latitude?.toFixed(4) || "?"}, ${loc.longitude?.toFixed(4) || "?"}<br/>
+          ⚡ Speed: ${speed}<br/>
+          🕐 Updated: ${updated}<br/>
+          ${d.journeyId ? `🗺️ Journey: ${String(d.journeyId).slice(-8)}` : ""}
+        </div>
+      `;
+    }
 
-    function animateMarker(marker, from, to, driverId) {
+    // ─── Smooth marker animation ──────────────────────────────
+    function animateMarker(marker, from, to) {
       if (!from) { marker.setPosition(to); return; }
+      const STEPS = 10;
+      const latDiff = (to.lat() - from.lat()) / STEPS;
+      const lngDiff = (to.lng() - from.lng()) / STEPS;
+      let step = 0;
+      const interval = setInterval(() => {
+        step++;
+        marker.setPosition(
+          new google.maps.LatLng(from.lat() + latDiff * step, from.lng() + lngDiff * step)
+        );
+        if (step >= STEPS) clearInterval(interval);
+      }, 30);
+    }
 
-      // Cancel any existing animation for this driver
-      if (_animating[driverId]) {
-        cancelAnimationFrame(_animating[driverId]);
-        delete _animating[driverId];
+    // ─── Driver Cards (Sidebar) ───────────────────────────────
+    function renderDriverCard(driverId) {
+      const d = driversMap.get(driverId);
+      if (!d) return;
+
+      const listEl = document.getElementById("driverList");
+      // Remove "waiting" placeholder
+      const placeholder = listEl.querySelector("[data-placeholder]");
+      if (placeholder) placeholder.remove();
+
+      let card = document.getElementById(`card-${driverId}`);
+      if (!card) {
+        card = document.createElement("div");
+        card.className = "driver-card";
+        card.id = `card-${driverId}`;
+        card.onclick = () => focusDriver(driverId);
+        listEl.prepend(card);
       }
 
-      const duration  = 1800;  // ms — smooth over ~1.8 seconds
-      const startTime = performance.now();
-      const fromLat   = from.lat();
-      const fromLng   = from.lng();
-      const toLat     = to.lat();
-      const toLng     = to.lng();
+      const initials = (d.driverName || "D").charAt(0).toUpperCase();
+      const speed = d.location?.speed ? `${Math.round(d.location.speed)} km/h` : "Idle";
+      const updated = d.lastUpdated
+        ? timeSince(d.lastUpdated)
+        : "N/A";
 
-      // Easing: ease-in-out cubic
-      function easeInOut(t) {
-        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      card.innerHTML = `
+        <div class="driver-card-top">
+          <div class="driver-avatar ${d.isOnline ? "online" : "offline"}">${initials}</div>
+          <div class="driver-info">
+            <div class="driver-name">${d.driverName || "Driver"}</div>
+            <div class="driver-vehicle">🚗 ${d.vehicleNumber || "N/A"}</div>
+          </div>
+          <div class="status-dot ${d.isOnline ? "online" : "offline"}"></div>
+        </div>
+        <div class="driver-card-bottom">
+          <span>${d.location ? `📍 ${d.location.latitude?.toFixed(4)}, ${d.location.longitude?.toFixed(4)}` : "No location"}</span>
+          <span class="speed-badge">${speed}</span>
+        </div>
+        <div class="last-update">Updated: ${updated}</div>
+      `;
+    }
+
+    function updateDriverCard(driverId) {
+      renderDriverCard(driverId);
+    }
+
+    function focusDriver(driverId) {
+      const d = driversMap.get(driverId);
+      if (!d || !d.location) return;
+
+      const pos = new google.maps.LatLng(d.location.latitude, d.location.longitude);
+      map.panTo(pos);
+      map.setZoom(15);
+
+      // Close all info windows, open this one
+      driversMap.forEach((dd) => { if (dd.infoWindow) dd.infoWindow.close(); });
+      if (d.marker && d.infoWindow) {
+        d.infoWindow.setContent(buildInfoWindowContent(d));
+        d.infoWindow.open(map, d.marker);
       }
 
-      function step(now) {
-        const elapsed  = now - startTime;
-        const raw      = Math.min(elapsed / duration, 1);
-        const progress = easeInOut(raw);
-
-        marker.setPosition({
-          lat: fromLat + (toLat - fromLat) * progress,
-          lng: fromLng + (toLng - fromLng) * progress
-        });
-
-        if (raw < 1) {
-          _animating[driverId] = requestAnimationFrame(step);
-        } else {
-          marker.setPosition(to);
-          delete _animating[driverId];
-        }
-      }
-
-      _animating[driverId] = requestAnimationFrame(step);
+      highlightCard(driverId);
+      selectedDriverId = driverId;
     }
 
-    // ============================================================
-    //  SELECT DRIVER (click → focus map + show info box)
-    // ============================================================
-    function selectDriver(dId) {
-      // Deselect previous
-      if (selectedId && driversMap[selectedId]) {
-        const prev = driversMap[selectedId];
-        const prevColor = prev.info.isOnline ? '#1565c0' : '#9e9e9e';
-        const prevInit  = (prev.info.driverName || 'D').charAt(0).toUpperCase();
-        prev.marker.setIcon(buildMarkerIcon(prevColor, prevInit, prev.info.location.heading));
-        prev.marker.setZIndex(100);
-      }
-
-      selectedId = dId;
-
-      // Highlight selected marker
-      const entry = driversMap[dId];
-      if (!entry) return;
-
-      entry.marker.setIcon(buildMarkerIcon('#e53935', (entry.info.driverName || 'D').charAt(0).toUpperCase(), entry.info.location.heading));
-      entry.marker.setZIndex(200);
-
-      // Pan map
-      map.panTo(entry.marker.getPosition());
-      map.setZoom(14);
-
-      // Highlight sidebar card
-      document.querySelectorAll('.driver-card').forEach(c => c.classList.remove('active'));
-      const card = document.getElementById(`card-${dId}`);
-      if (card) { card.classList.add('active'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
-
-      // Show info box
-      updateInfoBox(dId);
-      document.getElementById('driver-info-box').classList.add('show');
+    function highlightCard(driverId) {
+      document.querySelectorAll(".driver-card").forEach((c) => c.classList.remove("active"));
+      const card = document.getElementById(`card-${driverId}`);
+      if (card) { card.classList.add("active"); card.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
     }
 
-    function updateInfoBox(dId) {
-      const entry = driversMap[dId];
-      if (!entry) return;
-      const { info } = entry;
-
-      document.getElementById('info-name').textContent    = info.driverName    || 'Unknown';
-      document.getElementById('info-vehicle').textContent = info.vehicleNumber || 'N/A';
-      document.getElementById('info-avatar').src          = info.profileImage  || '/img/default-driver.jpg';
-
-      const speedKmh = info.location.speed ? (info.location.speed < 10 ? (info.location.speed * 3.6).toFixed(0) : info.location.speed.toFixed(0)) : 0;
-      document.getElementById('info-speed').textContent   = speedKmh;
-      document.getElementById('info-heading').textContent = headingToCompass(info.location.heading);
-
-      const ago = info.location.timestamp ? timeSince(new Date(info.location.timestamp)) : '—';
-      document.getElementById('info-updated').textContent = ago;
-      document.getElementById('info-coords').textContent  =
-        `${info.location.latitude?.toFixed(5)}, ${info.location.longitude?.toFixed(5)}`;
-    }
-
-    function closeInfoBox() {
-      document.getElementById('driver-info-box').classList.remove('show');
-      if (selectedId && driversMap[selectedId]) {
-        const entry = driversMap[selectedId];
-        const color = entry.info.isOnline ? '#1565c0' : '#9e9e9e';
-        entry.marker.setIcon(buildMarkerIcon(color, (entry.info.driverName || 'D').charAt(0).toUpperCase(), entry.info.location.heading));
-        entry.marker.setZIndex(100);
-      }
-      selectedId = null;
-      document.querySelectorAll('.driver-card').forEach(c => c.classList.remove('active'));
-    }
-
-    // ============================================================
-    //  REFRESH SIDEBAR LIST
-    // ============================================================
-    function refreshSidebar() {
-      const list     = document.getElementById('drivers-list');
-      const noMsg    = document.getElementById('no-drivers-msg');
-      const keys     = Object.keys(driversMap);
-      const search   = document.getElementById('driver-search').value.toLowerCase();
-
-      if (keys.length === 0) {
-        noMsg.style.display = 'block';
-        list.innerHTML = '';
-        list.appendChild(noMsg);
-        updateStats(0, 0, 0);
-        return;
-      }
-
-      noMsg.style.display = 'none';
-
-      let onlineCount = 0, movingCount = 0;
-      let html = '';
-
-      keys.forEach(dId => {
-        const { info } = driversMap[dId];
-        if (info.isOnline) onlineCount++;
-        if ((info.location.speed || 0) > 1) movingCount++;
-
-        const name    = info.driverName    || 'Unknown';
-        const vehicle = info.vehicleNumber || 'N/A';
-        const speed   = info.location.speed ? (info.location.speed < 10 ? (info.location.speed * 3.6).toFixed(1) : parseFloat(info.location.speed).toFixed(1)) : 0;
-        const ago     = info.location.timestamp ? timeSince(new Date(info.location.timestamp)) : '—';
-        const isOnline = info.isOnline;
-
-        // Filter by search
-        if (search && !name.toLowerCase().includes(search) && !vehicle.toLowerCase().includes(search)) return;
-
-        const isSelected = selectedId === dId;
-        html += `
-          <div class="driver-card ${isSelected ? 'active' : ''}" id="card-${dId}" onclick="selectDriver('${dId}')">
-            <img class="driver-avatar"
-                 src="${info.profileImage || '/img/default-driver.jpg'}"
-                 onerror="this.src='/img/default-driver.jpg'">
-            <div class="driver-info">
-              <p class="driver-name">${name}</p>
-              <p class="driver-vehicle">🚗 ${vehicle}</p>
-              <p class="driver-speed">⚡ ${speed} km/h &nbsp;·&nbsp; ${ago}</p>
-            </div>
-            <div class="online-dot ${isOnline ? 'online' : 'offline'}" title="${isOnline ? 'Online' : 'Offline'}"></div>
-          </div>`;
-      });
-
-      list.innerHTML = html || '<div class="no-drivers-msg"><i class="material-icons">search_off</i><p>No drivers match search</p></div>';
-
-      updateStats(onlineCount, keys.length, movingCount);
-    }
-
-    function filterDriverList(query) {
-      refreshSidebar();
-    }
-
-    function updateStats(online, total, moving) {
-      document.getElementById('stat-online').textContent = online;
-      document.getElementById('stat-total').textContent  = total;
-      document.getElementById('stat-busy').textContent   = moving;
-      document.getElementById('online-count-badge').textContent = `${online} Online`;
-      document.getElementById('active-count-badge').textContent = `${total} driver${total !== 1 ? 's' : ''} on map`;
-    }
-
-    // ============================================================
-    //  FIT MAP TO ALL MARKERS
-    // ============================================================
+    // ─── Map Controls ─────────────────────────────────────────
     function fitAllMarkers() {
-      const keys = Object.keys(driversMap);
-      if (keys.length === 0) return;
-      if (keys.length === 1) {
-        const pos = driversMap[keys[0]].marker.getPosition();
-        map.setCenter(pos);
-        map.setZoom(13);
-        return;
-      }
+      if (!driversMap.size) return;
       const bounds = new google.maps.LatLngBounds();
-      keys.forEach(dId => bounds.extend(driversMap[dId].marker.getPosition()));
-      map.fitBounds(bounds, { top: 60, right: 20, bottom: 80, left: 20 });
+      let hasPoints = false;
+      driversMap.forEach((d) => {
+        if (d.location?.latitude) {
+          bounds.extend(new google.maps.LatLng(d.location.latitude, d.location.longitude));
+          hasPoints = true;
+        }
+      });
+      if (hasPoints) map.fitBounds(bounds);
     }
 
-    // ============================================================
-    //  HELPERS
-    // ============================================================
+    function toggleSatellite() {
+      isSatellite = !isSatellite;
+      map.setMapTypeId(isSatellite ? "satellite" : "roadmap");
+      document.getElementById("btnSatellite").textContent = isSatellite ? "🗺️ Roadmap" : "🛰️ Satellite";
+    }
+
+    // ─── Stats ────────────────────────────────────────────────
+    function updateStats() {
+      let online = 0, total = 0;
+      driversMap.forEach((d) => { total++; if (d.isOnline) online++; });
+      document.getElementById("stat-online").textContent = online;
+      document.getElementById("stat-offline").textContent = total - online;
+      document.getElementById("stat-total").textContent = total;
+    }
+
+    // ─── Connection Status ────────────────────────────────────
     function setConnStatus(connected) {
-      document.getElementById('conn-dot').className = connected ? 'connected' : '';
-      document.getElementById('conn-label').textContent = connected ? 'Live Connected' : 'Disconnected';
-    }
-
-    function timeSince(date) {
-      const sec = Math.floor((Date.now() - date.getTime()) / 1000);
-      if (sec < 60)  return `${sec}s ago`;
-      if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
-      return `${Math.floor(sec / 3600)}h ago`;
-    }
-
-    function headingToCompass(deg) {
-      if (!deg && deg !== 0) return '—';
-      const dirs = ['N','NE','E','SE','S','SW','W','NW'];
-      return dirs[Math.round(deg / 45) % 8];
-    }
-
-    function showToast(msg, color = 'green') {
-      if (typeof M !== 'undefined') {
-        M.toast({ html: msg, classes: color, displayLength: 3000 });
+      const dot = document.getElementById("connDot");
+      const txt = document.getElementById("connText");
+      if (connected) {
+        dot.className = "conn-dot connected";
+        txt.textContent = "Socket Live";
+      } else {
+        dot.className = "conn-dot disconnected";
+        txt.textContent = "Reconnecting...";
       }
     }
 
-    // Auto-refresh sidebar every 30s to update "ago" times
-    setInterval(() => {
-      Object.keys(driversMap).forEach(dId => {
-        if (selectedId === dId) updateInfoBox(dId);
+    // ─── Search ───────────────────────────────────────────────
+    document.getElementById("driverSearch").addEventListener("input", function () {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll(".driver-card").forEach((card) => {
+        const name = card.querySelector(".driver-name")?.textContent.toLowerCase() || "";
+        const vehicle = card.querySelector(".driver-vehicle")?.textContent.toLowerCase() || "";
+        card.style.display = name.includes(q) || vehicle.includes(q) ? "block" : "none";
       });
-      refreshSidebar();
-    }, 30000);
-  </script>
+    });
 
+    // ─── Toast ────────────────────────────────────────────────
+    function showToast(msg, type = "success") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      toast.className = `toast ${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3500);
+    }
+
+    // ─── Utils ────────────────────────────────────────────────
+    function timeSince(date) {
+      const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+      if (seconds < 60) return `${seconds}s ago`;
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      return `${Math.floor(seconds / 3600)}h ago`;
+    }
+
+    // ─── Auto-refresh time labels ─────────────────────────────
+    setInterval(() => {
+      driversMap.forEach((d) => {
+        const card = document.getElementById(`card-${d.driverId}`);
+        if (card) {
+          const updateEl = card.querySelector(".last-update");
+          if (updateEl && d.lastUpdated) {
+            updateEl.textContent = `Updated: ${timeSince(d.lastUpdated)}`;
+          }
+        }
+      });
+    }, 10000);
+
+    // Init
+    window.addEventListener("load", initMap);
+  </script>
 </body>
 </html>
