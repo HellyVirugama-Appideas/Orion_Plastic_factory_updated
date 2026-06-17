@@ -1540,6 +1540,7 @@ exports.renderLiveTracking = async (req, res) => {
       title: 'Live Tracking',
       user: req.admin,
       activeDeliveries,
+      url: req.originalUrl,
       googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ''  // ← Yeh ZAROORI hai
     });
   } catch (error) {

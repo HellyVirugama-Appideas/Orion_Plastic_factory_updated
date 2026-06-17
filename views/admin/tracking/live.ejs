@@ -1,6 +1,6 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,9 +12,17 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
 
     .tracking-wrapper {
       display: flex;
@@ -59,8 +67,15 @@
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
     }
 
     .stats-bar {
@@ -92,8 +107,13 @@
       margin-top: 2px;
     }
 
-    .stat-chip.online .num { color: #22c55e; }
-    .stat-chip.offline .num { color: #ef4444; }
+    .stat-chip.online .num {
+      color: #22c55e;
+    }
+
+    .stat-chip.offline .num {
+      color: #ef4444;
+    }
 
     .search-box {
       padding: 10px 16px;
@@ -111,7 +131,9 @@
       outline: none;
     }
 
-    .search-box input:focus { border-color: #38bdf8; }
+    .search-box input:focus {
+      border-color: #38bdf8;
+    }
 
     .driver-list {
       flex: 1;
@@ -119,9 +141,18 @@
       padding: 8px;
     }
 
-    .driver-list::-webkit-scrollbar { width: 4px; }
-    .driver-list::-webkit-scrollbar-track { background: transparent; }
-    .driver-list::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    .driver-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .driver-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .driver-list::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
 
     .driver-card {
       background: #0f172a;
@@ -133,8 +164,15 @@
       transition: all 0.2s;
     }
 
-    .driver-card:hover { border-color: #38bdf8; background: #1e293b; }
-    .driver-card.active { border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56,189,248,0.2); }
+    .driver-card:hover {
+      border-color: #38bdf8;
+      background: #1e293b;
+    }
+
+    .driver-card.active {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
 
     .driver-card-top {
       display: flex;
@@ -154,12 +192,35 @@
       flex-shrink: 0;
     }
 
-    .driver-avatar.online { background: #16a34a; color: white; }
-    .driver-avatar.offline { background: #374151; color: #9ca3af; }
+    .driver-avatar.online {
+      background: #16a34a;
+      color: white;
+    }
 
-    .driver-info { flex: 1; min-width: 0; }
-    .driver-name { font-size: 13px; font-weight: 600; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .driver-vehicle { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .driver-avatar.offline {
+      background: #374151;
+      color: #9ca3af;
+    }
+
+    .driver-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .driver-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #f1f5f9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .driver-vehicle {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
 
     .status-dot {
       width: 8px;
@@ -167,8 +228,15 @@
       border-radius: 50%;
       flex-shrink: 0;
     }
-    .status-dot.online { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
-    .status-dot.offline { background: #6b7280; }
+
+    .status-dot.online {
+      background: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+    }
+
+    .status-dot.offline {
+      background: #6b7280;
+    }
 
     .driver-card-bottom {
       margin-top: 8px;
@@ -188,12 +256,21 @@
       font-weight: 600;
     }
 
-    .last-update { font-size: 10px; color: #475569; }
+    .last-update {
+      font-size: 10px;
+      color: #475569;
+    }
 
     /* ── Map ── */
-    .map-container { flex: 1; position: relative; }
+    .map-container {
+      flex: 1;
+      position: relative;
+    }
 
-    #map { width: 100%; height: 100%; }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
 
     .map-overlay {
       position: absolute;
@@ -216,7 +293,11 @@
       transition: all 0.2s;
     }
 
-    .map-btn:hover { background: #334155; border-color: #38bdf8; color: #38bdf8; }
+    .map-btn:hover {
+      background: #334155;
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
 
     /* Connection indicator */
     .conn-indicator {
@@ -234,9 +315,20 @@
       backdrop-filter: blur(4px);
     }
 
-    .conn-dot { width: 8px; height: 8px; border-radius: 50%; }
-    .conn-dot.connected { background: #22c55e; animation: pulse 1.5s infinite; }
-    .conn-dot.disconnected { background: #ef4444; }
+    .conn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .conn-dot.connected {
+      background: #22c55e;
+      animation: pulse 1.5s infinite;
+    }
+
+    .conn-dot.disconnected {
+      background: #ef4444;
+    }
 
     /* Toast */
     .toast-container {
@@ -257,68 +349,80 @@
       border-radius: 8px;
       font-size: 13px;
       min-width: 260px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
       animation: slideIn 0.3s ease;
     }
 
-    .toast.error { border-left-color: #ef4444; }
-    .toast.warn { border-left-color: #f59e0b; }
+    .toast.error {
+      border-left-color: #ef4444;
+    }
 
+    .toast.warn {
+      border-left-color: #f59e0b;
+    }
     @keyframes slideIn {
-      from { transform: translateX(40px); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+      from {
+        transform: translateX(40px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
     }
   </style>
 </head>
+
 <body>
   <div class="tracking-wrapper">
-    <!-- ── Sidebar ── -->
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <h2>🗺️ Live Tracking <span class="live-badge">LIVE</span></h2>
-      </div>
-
-      <div class="stats-bar">
-        <div class="stat-chip online">
-          <div class="num" id="stat-online">0</div>
-          <div class="label">Online</div>
+      <!-- ── Sidebar ── -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h2>🗺️ Live Tracking <span class="live-badge">LIVE</span></h2>
         </div>
-        <div class="stat-chip offline">
-          <div class="num" id="stat-offline">0</div>
-          <div class="label">Offline</div>
+
+        <div class="stats-bar">
+          <div class="stat-chip online">
+            <div class="num" id="stat-online">0</div>
+            <div class="label">Online</div>
+          </div>
+          <div class="stat-chip offline">
+            <div class="num" id="stat-offline">0</div>
+            <div class="label">Offline</div>
+          </div>
+          <div class="stat-chip">
+            <div class="num" id="stat-total">0</div>
+            <div class="label">Total</div>
+          </div>
         </div>
-        <div class="stat-chip">
-          <div class="num" id="stat-total">0</div>
-          <div class="label">Total</div>
+
+        <div class="search-box">
+          <input type="text" id="driverSearch" placeholder="🔍 Driver ya vehicle search karo..." />
+        </div>
+
+        <div class="driver-list" id="driverList">
+          <!-- Drivers dynamically add honge -->
+          <div style="text-align:center; color:#475569; margin-top:40px; font-size:13px;">
+            Drivers connect hone ka wait kar rahe hain...
+          </div>
         </div>
       </div>
 
-      <div class="search-box">
-        <input type="text" id="driverSearch" placeholder="🔍 Driver ya vehicle search karo..." />
-      </div>
+      <!-- ── Map ── -->
+      <div class="map-container">
+        <div id="map"></div>
 
-      <div class="driver-list" id="driverList">
-        <!-- Drivers dynamically add honge -->
-        <div style="text-align:center; color:#475569; margin-top:40px; font-size:13px;">
-          Drivers connect hone ka wait kar rahe hain...
+        <div class="map-overlay">
+          <button class="map-btn" onclick="fitAllMarkers()">📍 All Fit</button>
+          <button class="map-btn" id="btnSatellite" onclick="toggleSatellite()">🛰️ Satellite</button>
+        </div>
+
+        <div class="conn-indicator">
+          <div class="conn-dot disconnected" id="connDot"></div>
+          <span id="connText">Connecting...</span>
         </div>
       </div>
-    </div>
-
-    <!-- ── Map ── -->
-    <div class="map-container">
-      <div id="map"></div>
-
-      <div class="map-overlay">
-        <button class="map-btn" onclick="fitAllMarkers()">📍 All Fit</button>
-        <button class="map-btn" id="btnSatellite" onclick="toggleSatellite()">🛰️ Satellite</button>
-      </div>
-
-      <div class="conn-indicator">
-        <div class="conn-dot disconnected" id="connDot"></div>
-        <span id="connText">Connecting...</span>
-      </div>
-    </div>
   </div>
 
   <!-- Toasts -->
@@ -830,4 +934,5 @@
     window.addEventListener("load", initMap);
   </script>
 </body>
+
 </html>
