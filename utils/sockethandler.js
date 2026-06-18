@@ -1089,230 +1089,6 @@ function setupSocketHandlers(io) {
     // STEP 5 (FIXED): DRIVER — driver:journey:ended
     // FIX: DB mein Journey + Delivery status update karo
     // ─────────────────────────────────────────────
-    // socket.on("driver:journey:ended", async (data) => {
-    //   try {
-    //     const { driverId, journeyId, deliveryId, latitude, longitude, address } = data || {};
-
-    //     // ── Memory cleanup ──
-    //     if (driverId) {
-    //       driverLocations.delete(driverId);
-    //       if (activeDrivers.has(driverId)) {
-    //         const di = activeDrivers.get(driverId);
-    //         activeDrivers.set(driverId, { ...di, journeyId: null, deliveryId: null });
-    //       }
-    //     }
-
-    //     log("DRIVER", `Journey ENDED | journeyId: ${journeyId} | driverId: ${driverId}`);
-
-    //     // ── FIX: DB update — Journey status update karo ──
-    //     if (journeyId) {
-    //       try {
-    //         const endLocation = latitude && longitude ? {
-    //           coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
-    //           address: address || "Driver ended journey",
-    //         } : undefined;
-
-    //         const journeyUpdate = {
-    //           status: "completed",
-    //           endTime: new Date(),
-    //           ...(endLocation && { endLocation }),
-    //         };
-
-    //         await Journey.findByIdAndUpdate(journeyId, journeyUpdate, { new: false });
-    //         log("INFO", `Journey DB updated to completed | journeyId: ${journeyId}`);
-    //       } catch (dbErr) {
-    //         log("ERR", `Journey DB update failed | ${dbErr.message}`);
-    //       }
-    //     }
-
-    //     // ── FIX: DB update — Delivery status update karo ──
-    //     if (deliveryId) {
-    //       try {
-    //         await Delivery.findByIdAndUpdate(
-    //           deliveryId,
-    //           { status: "delivered", actualDeliveryTime: new Date() },
-    //           { new: false }
-    //         );
-
-    //         await DeliveryStatusHistory.create({
-    //           deliveryId,
-    //           status: "delivered",
-    //           location: latitude && longitude ? {
-    //             coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
-    //             address: address || "Delivery location",
-    //           } : undefined,
-    //           remarks: "Journey ended by driver via socket",
-    //           updatedBy: {
-    //             userId: driverId,
-    //             userRole: "driver",
-    //             userName: activeDrivers.get(driverId)?.driverName || "Driver",
-    //           },
-    //         });
-
-    //         log("INFO", `Delivery DB updated to delivered | deliveryId: ${deliveryId}`);
-    //       } catch (dbErr) {
-    //         log("ERR", `Delivery DB update failed | ${dbErr.message}`);
-    //       }
-    //     }
-
-    //     // ── FIX: Driver ko available mark karo ──
-    //     if (driverId) {
-    //       try {
-    //         await Driver.findByIdAndUpdate(
-    //           driverId,
-    //           {
-    //             isAvailable: true,
-    //             currentJourney: null,
-    //             "currentLocation.latitude": null,
-    //             "currentLocation.longitude": null,
-    //             "currentLocation.lastUpdated": null,
-    //           },
-    //           { new: false }
-    //         );
-    //         log("INFO", `Driver ${driverId} marked available in DB`);
-    //       } catch (dbErr) {
-    //         log("ERR", `Driver DB update failed | ${dbErr.message}`);
-    //       }
-    //     }
-
-    //     // ── Admin ko broadcast karo — driverId clearly bhejo ──
-    //     io.to("admin-room").emit("driver:journey:ended", {
-    //       driverId,
-    //       journeyId,
-    //       deliveryId,
-    //       location: latitude && longitude ? { latitude, longitude, address } : null,
-    //       status: "completed",
-    //       timestamp: new Date().toISOString(),
-    //     });
-
-    //   } catch (err) {
-    //     log("ERR", `driver:journey:ended | ${err.message}`);
-    //   }
-    // });
-
-    // socket.on("driver:journey:ended", async (data, callback) => {
-    //   try {
-    //     const { driverId, journeyId, deliveryId, latitude, longitude, address } = data || {};
-
-    //     // ── Memory cleanup ──
-    //     if (driverId) {
-    //       driverLocations.delete(driverId);
-    //       if (activeDrivers.has(driverId)) {
-    //         const di = activeDrivers.get(driverId);
-    //         activeDrivers.set(driverId, { ...di, journeyId: null, deliveryId: null });
-    //       }
-    //     }
-
-    //     log("DRIVER", `Journey ENDED | journeyId: ${journeyId} | driverId: ${driverId}`);
-
-    //     // ── Journey DB update ──
-    //     if (journeyId) {
-    //       await Journey.findByIdAndUpdate(
-    //         journeyId,
-    //         {
-    //           status: "completed",
-    //           endTime: new Date(),
-    //           ...(latitude && longitude && {
-    //             endLocation: {
-    //               coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
-    //               address: address || "Journey ended",
-    //             },
-    //           }),
-    //         },
-    //         { new: false }
-    //       ).catch(e => log("ERR", `Journey update failed | ${e.message}`));
-    //     }
-
-    //     // ── Delivery DB update + Order update ──
-    //     if (deliveryId) {
-    //       try {
-    //         const delivery = await Delivery.findByIdAndUpdate(
-    //           deliveryId,
-    //           { status: "delivered", actualDeliveryTime: new Date() },
-    //           { new: true }
-    //         );
-
-    //         log("INFO", `Delivery marked delivered | deliveryId: ${deliveryId}`);
-
-    //         if (delivery?.orderId) {
-    //           const orderQuery = mongoose.Types.ObjectId.isValid(delivery.orderId)
-    //             ? { _id: delivery.orderId }
-    //             : { orderNumber: delivery.orderId };
-
-    //           const updatedOrder = await Order.findOneAndUpdate(
-    //             orderQuery,
-    //             { status: "delivered", updatedAt: new Date() },
-    //             { new: true }
-    //           );
-
-    //           if (updatedOrder) {
-    //             log("INFO", `Order marked delivered | orderNumber: ${updatedOrder.orderNumber}`);
-    //           } else {
-    //             log("WARN", `Order NOT found | orderId value: ${delivery.orderId}`);
-    //           }
-    //         }
-
-    //         await DeliveryStatusHistory.create({
-    //           deliveryId,
-    //           status: "delivered",
-    //           location: latitude && longitude ? {
-    //             coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
-    //             address: address || "Delivery location",
-    //           } : undefined,
-    //           remarks: "Journey ended by driver via socket",
-    //           updatedBy: {
-    //             userId: driverId,
-    //             userRole: "driver",
-    //             userName: activeDrivers.get(driverId)?.driverName || "Driver",
-    //           },
-    //         }).catch(e => log("ERR", `DeliveryStatusHistory failed | ${e.message}`));
-
-    //       } catch (dbErr) {
-    //         log("ERR", `Delivery/Order DB update failed | ${dbErr.message}`);
-    //       }
-    //     }
-
-    //     // ── Driver available mark karo ──
-    //     if (driverId) {
-    //       await Driver.findByIdAndUpdate(
-    //         driverId,
-    //         {
-    //           isAvailable: true,
-    //           currentJourney: null,
-    //           activeDelivery: null,
-    //           "currentLocation.latitude": null,
-    //           "currentLocation.longitude": null,
-    //           "currentLocation.lastUpdated": null,
-    //         },
-    //         { new: false }
-    //       ).catch(e => log("ERR", `Driver update failed | ${e.message}`));
-
-    //       log("INFO", `Driver ${driverId} marked available`);
-    //     }
-
-    //     // ── Admin broadcast ──
-    //     io.to("admin-room").emit("driver:journey:ended", {
-    //       driverId,
-    //       journeyId,
-    //       deliveryId,
-    //       location: latitude && longitude ? { latitude, longitude, address } : null,
-    //       status: "completed",
-    //       timestamp: new Date().toISOString(),
-    //     });
-
-    //     // ✅ ACK callback — frontend ko confirm karo
-    //     if (typeof callback === 'function') {
-    //       callback({ success: true, message: "Journey ended successfully" });
-    //     }
-
-    //   } catch (err) {
-    //     log("ERR", `driver:journey:ended | ${err.message}`);
-    //     if (typeof callback === 'function') {
-    //       callback({ success: false, message: "Server error while ending journey" });
-    //     }
-    //   }
-    // });
-
 
     // socket.on("driver:journey:ended", async (data, callback) => {
     //   try {
@@ -1424,7 +1200,7 @@ function setupSocketHandlers(io) {
     //     //   }
     //     // }
 
-        
+
 
     //     // ── Driver available mark karo ──
     //     if (driverId) {
@@ -1512,11 +1288,235 @@ function setupSocketHandlers(io) {
     //   }
     // });
 
+    // socket.on("driver:journey:ended", async (data, callback) => {
+    //   try {
+    //     const { driverId, journeyId, deliveryId, latitude, longitude, address } = data || {};
+
+    //     // ── Memory cleanup ──
+    //     if (driverId) {
+    //       driverLocations.delete(driverId);
+    //       if (activeDrivers.has(driverId)) {
+    //         const di = activeDrivers.get(driverId);
+    //         activeDrivers.set(driverId, { ...di, journeyId: null, deliveryId: null });
+    //       }
+    //     }
+
+    //     log("DRIVER", `Journey ENDED | journeyId: ${journeyId} | driverId: ${driverId}`);
+
+    //     // ── Journey DB update ──
+    //     let journeyDoc = null;
+    //     if (journeyId) {
+    //       const now = new Date();
+
+    //       journeyDoc = await Journey.findById(journeyId);
+    //       if (journeyDoc) {
+    //         const actualMinutes = journeyDoc.startTime
+    //           ? Math.round((now - new Date(journeyDoc.startTime)) / 60000)
+    //           : null;
+
+    //         journeyDoc.status = "Completed";
+    //         journeyDoc.endTime = now;
+    //         journeyDoc.totalDuration = actualMinutes;
+    //         if (latitude && longitude) {
+    //           journeyDoc.endLocation = {
+    //             coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
+    //             address: address || "Journey ended",
+    //           };
+    //         }
+    //         await journeyDoc.save();
+
+    //         log("INFO", `Journey updated | journeyId: ${journeyId} | duration: ${actualMinutes} mins`);
+    //       } else {
+    //         log("WARN", `Journey not found in DB | journeyId: ${journeyId}`);
+    //       }
+    //     }
+
+    //     // ── Delivery DB update + Order update ──
+    //     let deliveryDoc = null;
+    //     let companyName = 'N/A';
+    //     let deliveryAddress = 'N/A';
+    //     let customerId = null;
+
+    //     if (deliveryId) {
+    //       try {
+    //         // ✅ Step 1: pehle update karo
+    //         await Delivery.findByIdAndUpdate(
+    //           deliveryId,
+    //           { status: "delivered", actualDeliveryTime: new Date() },
+    //           { new: false }
+    //         );
+
+    //         // ✅ Step 2: alag query se populate karo — findByIdAndUpdate ke saath populate reliable nahi
+    //         deliveryDoc = await Delivery.findById(deliveryId)
+    //           .populate({ path: 'customerId', select: 'companyName name locations' });
+
+    //         log("INFO", `Delivery marked delivered | deliveryId: ${deliveryId}`);
+    //         log("INFO", `customerId raw: ${JSON.stringify(deliveryDoc?.customerId)}`);
+
+    //         // ── Customer info extract ──
+    //         const customer = deliveryDoc?.customerId;
+    //         if (customer) {
+    //           customerId = customer._id?.toString() || null;
+    //           companyName = customer.companyName || customer.name || 'N/A';
+    //           log("INFO", `Customer found | companyName: ${companyName} | customerId: ${customerId}`);
+
+    //           if (customer.locations?.length > 0) {
+    //             const loc = customer.locations.find(l => l.isPrimary) || customer.locations[0];
+    //             deliveryAddress = [
+    //               loc.addressLine1,
+    //               loc.addressLine2,
+    //               loc.city,
+    //               loc.state,
+    //               loc.zipcode,
+    //               loc.country
+    //             ].filter(Boolean).join(', ') || 'N/A';
+    //           } else {
+    //             // fallback — delivery model ka deliveryLocation use karo
+    //             deliveryAddress = deliveryDoc?.deliveryLocation?.address || 'N/A';
+    //             log("WARN", `Customer locations empty, fallback address: ${deliveryAddress}`);
+    //           }
+    //         } else {
+    //           // customer populate nahi hua — delivery address fallback
+    //           deliveryAddress = deliveryDoc?.deliveryLocation?.address || 'N/A';
+    //           log("WARN", `customerId null after populate | deliveryId: ${deliveryId}`);
+    //         }
+
+    //         // ── Order update ──
+    //         if (deliveryDoc?.orderId) {
+    //           const orderQuery = mongoose.Types.ObjectId.isValid(deliveryDoc.orderId)
+    //             ? { _id: deliveryDoc.orderId }
+    //             : { orderNumber: deliveryDoc.orderId };
+
+    //           const updatedOrder = await Order.findOneAndUpdate(
+    //             orderQuery,
+    //             { status: "delivered", updatedAt: new Date() },
+    //             { new: true }
+    //           );
+
+    //           if (updatedOrder) {
+    //             log("INFO", `Order marked delivered | orderNumber: ${updatedOrder.orderNumber}`);
+    //           } else {
+    //             log("WARN", `Order NOT found | orderId: ${deliveryDoc.orderId}`);
+    //           }
+    //         } else {
+    //           log("WARN", `Delivery has no orderId | deliveryId: ${deliveryId}`);
+    //         }
+
+    //         // ── DeliveryStatusHistory ──
+    //         await DeliveryStatusHistory.create({
+    //           deliveryId,
+    //           status: "delivered",
+    //           location: latitude && longitude ? {
+    //             coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
+    //             address: address || "Delivery location",
+    //           } : undefined,
+    //           remarks: "Journey ended by driver via socket",
+    //           updatedBy: {
+    //             userId: driverId,
+    //             userRole: "driver",
+    //             userName: activeDrivers.get(driverId)?.driverName || "Driver",
+    //           },
+    //         }).catch(e => log("ERR", `DeliveryStatusHistory failed | ${e.message}`));
+
+    //       } catch (dbErr) {
+    //         log("ERR", `Delivery/Order DB update failed | ${dbErr.message}`);
+    //       }
+    //     }
+
+    //     // ── Driver available mark karo ──
+    //     if (driverId) {
+    //       await Driver.findByIdAndUpdate(
+    //         driverId,
+    //         {
+    //           isAvailable: true,
+    //           currentJourney: null,
+    //           activeDelivery: null,
+    //           "currentLocation.latitude": null,
+    //           "currentLocation.longitude": null,
+    //           "currentLocation.lastUpdated": null,
+    //         },
+    //         { new: false }
+    //       ).catch(e => log("ERR", `Driver update failed | ${e.message}`));
+
+    //       log("INFO", `Driver ${driverId} marked available`);
+    //     }
+
+    //     // ── Timing calculate ──
+    //     const now = new Date();
+    //     const actualMinutes = journeyDoc?.startTime
+    //       ? Math.round((now - new Date(journeyDoc.startTime)) / 60000)
+    //       : null;
+    //     const estimatedMin = journeyDoc?.estimatedDurationFromGoogle || null;
+
+    //     let timeDifferenceText = 'N/A';
+    //     if (estimatedMin !== null && actualMinutes !== null) {
+    //       const diff = actualMinutes - estimatedMin;
+    //       timeDifferenceText = diff > 5
+    //         ? `Delayed by ${diff} mins`
+    //         : diff < -5
+    //           ? `Ahead by ${Math.abs(diff)} mins`
+    //           : 'On time';
+    //     }
+
+    //     const arrivalTime = now.toLocaleString('en-IN', {
+    //       timeZone: 'Asia/Kolkata',
+    //       dateStyle: 'medium',
+    //       timeStyle: 'short',
+    //     });
+
+    //     // ── Admin broadcast ──
+    //     io.to("admin-room").emit("driver:journey:ended", {
+    //       driverId,
+    //       journeyId,
+    //       deliveryId,
+    //       location: latitude && longitude ? { latitude, longitude, address } : null,
+    //       status: "Completed",
+    //       timestamp: now.toISOString(),
+    //     });
+
+    //     log("EMIT", `driver:journey:ended emitted to admin-room | driverId: ${driverId}`);
+
+    //     // ── ACK callback ──
+    //     if (typeof callback === 'function') {
+    //       callback({
+    //         success: true,
+    //         message: "Journey ended successfully",
+    //         journeyId,
+    //         deliveryId,
+    //         journeyStatus: "Completed",
+    //         deliveryStatus: "delivered",
+    //         location: { latitude, longitude },
+    //         customer: {
+    //           customerId,
+    //           companyName,
+    //           deliveryAddress,
+    //         },
+    //         arrivalTime,
+    //         arrivalTimeISO: now.toISOString(),
+    //         timing: {
+    //           actualTimeTaken: actualMinutes !== null ? `${actualMinutes} mins` : 'N/A',
+    //           estimatedTime: estimatedMin ? `${estimatedMin} mins` : 'N/A',
+    //           difference: timeDifferenceText,
+    //           startTime: journeyDoc?.startTime?.toISOString() || null,
+    //           arrivedAt: now.toISOString(),
+    //         },
+    //       });
+    //     }
+
+    //   } catch (err) {
+    //     log("ERR", `driver:journey:ended | ${err.message}`);
+    //     if (typeof callback === 'function') {
+    //       callback({ success: false, message: "Server error while ending journey" });
+    //     }
+    //   }
+    // });
+
+
     socket.on("driver:journey:ended", async (data, callback) => {
   try {
-    const { driverId, journeyId, deliveryId, latitude, longitude, address } = data || {};
+    const { driverId, journeyId, deliveryId } = data || {};
 
-    // ── Memory cleanup ──
+    // ── Sirf memory cleanup — marker remove ──
     if (driverId) {
       driverLocations.delete(driverId);
       if (activeDrivers.has(driverId)) {
@@ -1525,212 +1525,35 @@ function setupSocketHandlers(io) {
       }
     }
 
-    log("DRIVER", `Journey ENDED | journeyId: ${journeyId} | driverId: ${driverId}`);
+    log("DRIVER", `Journey ENDED (marker removed) | journeyId: ${journeyId} | driverId: ${driverId}`);
 
-    // ── Journey DB update ──
-    let journeyDoc = null;
-    if (journeyId) {
-      const now = new Date();
-
-      journeyDoc = await Journey.findById(journeyId);
-      if (journeyDoc) {
-        const actualMinutes = journeyDoc.startTime
-          ? Math.round((now - new Date(journeyDoc.startTime)) / 60000)
-          : null;
-
-        journeyDoc.status = "Completed";
-        journeyDoc.endTime = now;
-        journeyDoc.totalDuration = actualMinutes;
-        if (latitude && longitude) {
-          journeyDoc.endLocation = {
-            coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
-            address: address || "Journey ended",
-          };
-        }
-        await journeyDoc.save();
-
-        log("INFO", `Journey updated | journeyId: ${journeyId} | duration: ${actualMinutes} mins`);
-      } else {
-        log("WARN", `Journey not found in DB | journeyId: ${journeyId}`);
-      }
-    }
-
-    // ── Delivery DB update + Order update ──
-    let deliveryDoc = null;
-    let companyName = 'N/A';
-    let deliveryAddress = 'N/A';
-    let customerId = null;
-
-    if (deliveryId) {
-      try {
-        // ✅ Step 1: pehle update karo
-        await Delivery.findByIdAndUpdate(
-          deliveryId,
-          { status: "delivered", actualDeliveryTime: new Date() },
-          { new: false }
-        );
-
-        // ✅ Step 2: alag query se populate karo — findByIdAndUpdate ke saath populate reliable nahi
-        deliveryDoc = await Delivery.findById(deliveryId)
-          .populate({ path: 'customerId', select: 'companyName name locations' });
-
-        log("INFO", `Delivery marked delivered | deliveryId: ${deliveryId}`);
-        log("INFO", `customerId raw: ${JSON.stringify(deliveryDoc?.customerId)}`);
-
-        // ── Customer info extract ──
-        const customer = deliveryDoc?.customerId;
-        if (customer) {
-          customerId = customer._id?.toString() || null;
-          companyName = customer.companyName || customer.name || 'N/A';
-          log("INFO", `Customer found | companyName: ${companyName} | customerId: ${customerId}`);
-
-          if (customer.locations?.length > 0) {
-            const loc = customer.locations.find(l => l.isPrimary) || customer.locations[0];
-            deliveryAddress = [
-              loc.addressLine1,
-              loc.addressLine2,
-              loc.city,
-              loc.state,
-              loc.zipcode,
-              loc.country
-            ].filter(Boolean).join(', ') || 'N/A';
-          } else {
-            // fallback — delivery model ka deliveryLocation use karo
-            deliveryAddress = deliveryDoc?.deliveryLocation?.address || 'N/A';
-            log("WARN", `Customer locations empty, fallback address: ${deliveryAddress}`);
-          }
-        } else {
-          // customer populate nahi hua — delivery address fallback
-          deliveryAddress = deliveryDoc?.deliveryLocation?.address || 'N/A';
-          log("WARN", `customerId null after populate | deliveryId: ${deliveryId}`);
-        }
-
-        // ── Order update ──
-        if (deliveryDoc?.orderId) {
-          const orderQuery = mongoose.Types.ObjectId.isValid(deliveryDoc.orderId)
-            ? { _id: deliveryDoc.orderId }
-            : { orderNumber: deliveryDoc.orderId };
-
-          const updatedOrder = await Order.findOneAndUpdate(
-            orderQuery,
-            { status: "delivered", updatedAt: new Date() },
-            { new: true }
-          );
-
-          if (updatedOrder) {
-            log("INFO", `Order marked delivered | orderNumber: ${updatedOrder.orderNumber}`);
-          } else {
-            log("WARN", `Order NOT found | orderId: ${deliveryDoc.orderId}`);
-          }
-        } else {
-          log("WARN", `Delivery has no orderId | deliveryId: ${deliveryId}`);
-        }
-
-        // ── DeliveryStatusHistory ──
-        await DeliveryStatusHistory.create({
-          deliveryId,
-          status: "delivered",
-          location: latitude && longitude ? {
-            coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
-            address: address || "Delivery location",
-          } : undefined,
-          remarks: "Journey ended by driver via socket",
-          updatedBy: {
-            userId: driverId,
-            userRole: "driver",
-            userName: activeDrivers.get(driverId)?.driverName || "Driver",
-          },
-        }).catch(e => log("ERR", `DeliveryStatusHistory failed | ${e.message}`));
-
-      } catch (dbErr) {
-        log("ERR", `Delivery/Order DB update failed | ${dbErr.message}`);
-      }
-    }
-
-    // ── Driver available mark karo ──
-    if (driverId) {
-      await Driver.findByIdAndUpdate(
-        driverId,
-        {
-          isAvailable: true,
-          currentJourney: null,
-          activeDelivery: null,
-          "currentLocation.latitude": null,
-          "currentLocation.longitude": null,
-          "currentLocation.lastUpdated": null,
-        },
-        { new: false }
-      ).catch(e => log("ERR", `Driver update failed | ${e.message}`));
-
-      log("INFO", `Driver ${driverId} marked available`);
-    }
-
-    // ── Timing calculate ──
-    const now = new Date();
-    const actualMinutes = journeyDoc?.startTime
-      ? Math.round((now - new Date(journeyDoc.startTime)) / 60000)
-      : null;
-    const estimatedMin = journeyDoc?.estimatedDurationFromGoogle || null;
-
-    let timeDifferenceText = 'N/A';
-    if (estimatedMin !== null && actualMinutes !== null) {
-      const diff = actualMinutes - estimatedMin;
-      timeDifferenceText = diff > 5
-        ? `Delayed by ${diff} mins`
-        : diff < -5
-          ? `Ahead by ${Math.abs(diff)} mins`
-          : 'On time';
-    }
-
-    const arrivalTime = now.toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-
-    // ── Admin broadcast ──
+    // ── Admin ko broadcast — marker remove karo ──
     io.to("admin-room").emit("driver:journey:ended", {
       driverId,
       journeyId,
       deliveryId,
-      location: latitude && longitude ? { latitude, longitude, address } : null,
       status: "Completed",
-      timestamp: now.toISOString(),
+      timestamp: new Date().toISOString(),
     });
 
-    log("EMIT", `driver:journey:ended emitted to admin-room | driverId: ${driverId}`);
+    // ── Driver offline bhi bhejo — map se marker hatane ke liye ──
+    io.to("admin-room").emit("driver:offline", {
+      driverId,
+      status: "offline",
+      timestamp: new Date().toISOString(),
+    });
 
-    // ── ACK callback ──
+    log("EMIT", `Marker removed for driverId: ${driverId}`);
+
+    // ── ACK ──
     if (typeof callback === 'function') {
-      callback({
-        success: true,
-        message: "Journey ended successfully",
-        journeyId,
-        deliveryId,
-        journeyStatus: "Completed",
-        deliveryStatus: "delivered",
-        location: { latitude, longitude },
-        customer: {
-          customerId,
-          companyName,
-          deliveryAddress,
-        },
-        arrivalTime,
-        arrivalTimeISO: now.toISOString(),
-        timing: {
-          actualTimeTaken: actualMinutes !== null ? `${actualMinutes} mins` : 'N/A',
-          estimatedTime: estimatedMin ? `${estimatedMin} mins` : 'N/A',
-          difference: timeDifferenceText,
-          startTime: journeyDoc?.startTime?.toISOString() || null,
-          arrivedAt: now.toISOString(),
-        },
-      });
+      callback({ success: true, message: "Journey ended, marker removed" });
     }
 
   } catch (err) {
     log("ERR", `driver:journey:ended | ${err.message}`);
     if (typeof callback === 'function') {
-      callback({ success: false, message: "Server error while ending journey" });
+      callback({ success: false, message: "Server error" });
     }
   }
 });
