@@ -6220,16 +6220,6 @@ exports.uploadProofSignature = async (req, res) => {
       journey.status = 'Completed';
       await journey.save();
 
-      broadcastToAdmin(req, 'driver:journey:ended', {
-        driverId: req.user._id.toString(),
-        driverName: req.user.name,
-        journeyId: journey._id.toString(),
-        deliveryId: delivery._id.toString(),
-        isAvailable: true,
-        status: 'completed',
-      });
-    }
-
     await DeliveryStatusHistory.create({
       deliveryId: delivery._id,
       status: 'Delivered',
