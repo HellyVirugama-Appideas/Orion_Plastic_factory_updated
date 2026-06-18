@@ -1513,50 +1513,50 @@ function setupSocketHandlers(io) {
 
 
     socket.on("driver:journey:ended", async (data, callback) => {
-  try {
-    const { driverId, journeyId, deliveryId } = data || {};
+      try {
+        const { driverId, journeyId, deliveryId } = data || {};
 
-    // ── Sirf memory cleanup — marker remove ──
-    if (driverId) {
-      driverLocations.delete(driverId);
-      if (activeDrivers.has(driverId)) {
-        const di = activeDrivers.get(driverId);
-        activeDrivers.set(driverId, { ...di, journeyId: null, deliveryId: null });
+        // ── Sirf memory cleanup — marker remove ──
+        if (driverId) {
+          driverLocations.delete(driverId);
+          if (activeDrivers.has(driverId)) {
+            const di = activeDrivers.get(driverId);
+            activeDrivers.set(driverId, { ...di, journeyId: null, deliveryId: null });
+          }
+        }
+
+        log("DRIVER", `Journey ENDED (marker removed) | journeyId: ${journeyId} | driverId: ${driverId}`);
+
+        // ── Admin ko broadcast — marker remove karo ──
+        io.to("admin-room").emit("driver:journey:ended", {
+          driverId,
+          journeyId,
+          deliveryId,
+          status: "Completed",
+          timestamp: new Date().toISOString(),
+        });
+
+        // ── Driver offline bhi bhejo — map se marker hatane ke liye ──
+        io.to("admin-room").emit("driver:offline", {
+          driverId,
+          status: "offline",
+          timestamp: new Date().toISOString(),
+        });
+
+        log("EMIT", `Marker removed for driverId: ${driverId}`);
+
+        // ── ACK ──
+        if (typeof callback === 'function') {
+          callback({ success: true, message: "Journey ended, marker removed" });
+        }
+
+      } catch (err) {
+        log("ERR", `driver:journey:ended | ${err.message}`);
+        if (typeof callback === 'function') {
+          callback({ success: false, message: "Server error" });
+        }
       }
-    }
-
-    log("DRIVER", `Journey ENDED (marker removed) | journeyId: ${journeyId} | driverId: ${driverId}`);
-
-    // ── Admin ko broadcast — marker remove karo ──
-    io.to("admin-room").emit("driver:journey:ended", {
-      driverId,
-      journeyId,
-      deliveryId,
-      status: "Completed",
-      timestamp: new Date().toISOString(),
     });
-
-    // ── Driver offline bhi bhejo — map se marker hatane ke liye ──
-    io.to("admin-room").emit("driver:offline", {
-      driverId,
-      status: "offline",
-      timestamp: new Date().toISOString(),
-    });
-
-    log("EMIT", `Marker removed for driverId: ${driverId}`);
-
-    // ── ACK ──
-    if (typeof callback === 'function') {
-      callback({ success: true, message: "Journey ended, marker removed" });
-    }
-
-  } catch (err) {
-    log("ERR", `driver:journey:ended | ${err.message}`);
-    if (typeof callback === 'function') {
-      callback({ success: false, message: "Server error" });
-    }
-  }
-});
 
 
     // ─────────────────────────────────────────────

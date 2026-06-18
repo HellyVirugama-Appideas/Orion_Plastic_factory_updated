@@ -5712,7 +5712,7 @@ exports.continueJourney = async (req, res) => {
     const journey = await Journey.findOne({
       deliveryId,
       driverId: driver._id,
-      status: { $in: ['Started', 'In_transit', 'In_progress', 'Picked_up', 'Arrived'] },
+      status: { $in: ['Started', 'In_transit', 'In_progress', 'Picked_up', 'Arrived', "Proof_uploaded"] },
     }).populate('deliveryId', 'trackingNumber recipientName recipientPhone recipientAddress');
 
     if (!journey) return errorResponse(res, 'No active journey found for this delivery', 404);
