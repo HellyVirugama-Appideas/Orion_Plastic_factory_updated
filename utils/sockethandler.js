@@ -1340,7 +1340,7 @@ function setupSocketHandlers(io) {
               ? Math.round((now - new Date(journeyDoc.startTime)) / 60000)
               : null;
 
-            journeyDoc.status = "completed";
+            journeyDoc.status = "Completed";
             journeyDoc.endTime = now;
             journeyDoc.totalDuration = actualMinutes;
             if (latitude && longitude) {
@@ -1471,7 +1471,7 @@ function setupSocketHandlers(io) {
           journeyId,
           deliveryId,
           location: latitude && longitude ? { latitude, longitude, address } : null,
-          status: "completed",
+          status: "Completed",
           timestamp: now.toISOString(),
         });
 
@@ -1482,7 +1482,7 @@ function setupSocketHandlers(io) {
             message: "Journey ended successfully",
             journeyId,
             deliveryId,
-            journeyStatus: "completed",
+            journeyStatus: "Completed",
             deliveryStatus: "delivered",
             location: { latitude, longitude },
             customer: {
