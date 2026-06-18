@@ -547,6 +547,8 @@ const Driver = require("../models/Driver");
 const Journey = require("../models/Journey");
 const Delivery = require("../models/Delivery");
 const DeliveryStatusHistory = require("../models/DeliveryStatusHistory");
+const Order = require("../models/Order")
+const mongoose = require("mongoose")
 
 const activeDrivers = new Map();
 const driverLocations = new Map();
@@ -655,25 +657,190 @@ function setupSocketHandlers(io) {
     // STEP 3: DRIVER — driver:journey:started
     // FIX: DB mein Journey create karo, journeyId generate karo
     // ─────────────────────────────────────────────
-    socket.on("driver:journey:started", async (data) => {
+    // socket.on("driver:journey:started", async (data) => {
+    //   try {
+    //     const { driverId, deliveryId, address } = data || {};
+
+    //     // ✅ FIX: location nested object se nikalo — dono formats support karo
+    //     // Format 1: { latitude, longitude }  (flat)
+    //     // Format 2: { location: { latitude, longitude } }  (nested) ← driver app bhejta hai
+    //     const latitude = data?.latitude ?? data?.location?.latitude;
+    //     const longitude = data?.longitude ?? data?.location?.longitude;
+
+    //     if (!driverId || !deliveryId) {
+    //       log("WARN", `driver:journey:started — driverId/deliveryId missing | data: ${JSON.stringify(data)}`);
+    //       socket.emit("journey:start:error", { message: "driverId and deliveryId required" });
+    //       return;
+    //     }
+
+    //     if (!latitude || !longitude) {
+    //       log("WARN", `driver:journey:started — location missing | received: ${JSON.stringify(data)}`);
+    //       socket.emit("journey:start:error", { message: "latitude and longitude required" });
+    //       return;
+    //     }
+
+    //     // ── Delivery check ──
+    //     const delivery = await Delivery.findOne({
+    //       _id: deliveryId,
+    //       driverId: driverId,
+    //       status: 'assigned',
+    //     });
+
+    //     if (!delivery) {
+    //       log("WARN", `driver:journey:started — delivery not found or not assigned | deliveryId: ${deliveryId}`);
+    //       socket.emit("journey:start:error", { message: "Delivery not found or not assigned to you" });
+    //       return;
+    //     }
+
+    //     // ── Already started check ──
+    //     const existingJourney = await Journey.findOne({
+    //       deliveryId,
+    //       status: { $in: ['Started', 'In_transit', 'In_progress'] },
+    //     });
+
+    //     if (existingJourney) {
+    //       log("WARN", `driver:journey:started — journey already exists | journeyId: ${existingJourney._id}`);
+    //       // Already started hai to existing journeyId bhejo
+    //       socket.emit("journey:start:ack", {
+    //         success: true,
+    //         journeyId: existingJourney._id.toString(),
+    //         deliveryId,
+    //         status: existingJourney.status,
+    //         message: "Journey already in progress",
+    //       });
+    //       return;
+    //     }
+
+    //     const locationData = {
+    //       latitude: Number(latitude),
+    //       longitude: Number(longitude),
+    //       address: address || 'GPS Location',
+    //       lastUpdated: new Date(),
+    //     };
+
+    //     // ── DB mein Journey create karo ──
+    //     const journey = await Journey.create({
+    //       deliveryId,
+    //       driverId: driverId,
+    //       startLocation: {
+    //         coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
+    //         address: address || 'Location captured via GPS',
+    //       },
+    //       startTime: new Date(),
+    //       status: 'In_transit',
+    //     });
+
+    //     log("DRIVER", `Journey created in DB | journeyId: ${journey._id} | driverId: ${driverId}`);
+
+    //     // ── Delivery status update ──
+    //     delivery.status = 'In_transit';
+    //     delivery.actualPickupTime = new Date();
+    //     await delivery.save();
+
+    //     await DeliveryStatusHistory.create({
+    //       deliveryId: delivery._id,
+    //       status: 'In_transit',
+    //       location: {
+    //         coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
+    //         address: address || 'GPS Location',
+    //       },
+    //       remarks: 'Driver started journey via socket',
+    //       updatedBy: { userId: driverId, userRole: 'driver', userName: activeDrivers.get(driverId)?.driverName || 'Driver' },
+    //     });
+
+    //     // ── Driver model update ──
+    //     await Driver.findByIdAndUpdate(driverId, {
+    //       currentJourney: journey._id,
+    //       activeDelivery: delivery._id,
+    //       currentLocation: locationData,
+    //       lastLocationUpdate: new Date(),
+    //     });
+
+    //     // ── driverLocations update ──
+    //     driverLocations.set(driverId, {
+    //       ...locationData,
+    //       journeyId: journey._id.toString(),
+    //       deliveryId,
+    //     });
+
+    //     // ── activeDrivers mein journeyId save karo ──
+    //     if (activeDrivers.has(driverId)) {
+    //       const di = activeDrivers.get(driverId);
+    //       activeDrivers.set(driverId, {
+    //         ...di,
+    //         journeyId: journey._id.toString(),
+    //         deliveryId,
+    //       });
+    //     }
+
+    //     // ── Driver ko journeyId bhejo (ACK) ──
+    //     socket.emit("journey:start:ack", {
+    //       success: true,
+    //       journeyId: journey._id.toString(),
+    //       deliveryId,
+    //       status: 'In_transit',
+    //       message: "Journey started successfully",
+    //     });
+
+    //     log("EMIT", `journey:start:ack sent to driver | journeyId: ${journey._id}`);
+
+    //     // ── Admin ko broadcast karo ──
+    //     const driverInfo = activeDrivers.get(driverId);
+    //     io.to("admin-room").emit("driver:journey:started", {
+    //       driverId,
+    //       driverName: driverInfo?.driverName || "Driver",
+    //       vehicleNumber: driverInfo?.vehicleNumber || "N/A",
+    //       journeyId: journey._id.toString(),
+    //       deliveryId,
+    //       location: locationData,
+    //       status: "In_transit",
+    //       timestamp: new Date().toISOString(),
+    //     });
+
+    //     // ── Admin ko initial location update bhi bhejo ──
+    //     io.to("admin-room").emit("driver:location:update", {
+    //       driverId,
+    //       driverName: driverInfo?.driverName || "Driver",
+    //       vehicleNumber: driverInfo?.vehicleNumber || "N/A",
+    //       journeyId: journey._id.toString(),
+    //       deliveryId,
+    //       location: locationData,
+    //       isAvailable: false,
+    //       status: "In_transit",
+    //       timestamp: new Date().toISOString(),
+    //     });
+
+    //   } catch (err) {
+    //     log("ERR", `driver:journey:started | ${err.stack}`);
+    //     socket.emit("journey:start:error", { message: "Server error while starting journey" });
+    //   }
+    // });
+
+    // ─────────────────────────────────────────────
+    // STEP 3: DRIVER — driver:journey:started
+    // FIX: Proper ACK callback pattern
+    // ─────────────────────────────────────────────
+    socket.on("driver:journey:started", async (data, callback) => {
       try {
         const { driverId, deliveryId, address } = data || {};
 
-        // ✅ FIX: location nested object se nikalo — dono formats support karo
-        // Format 1: { latitude, longitude }  (flat)
-        // Format 2: { location: { latitude, longitude } }  (nested) ← driver app bhejta hai
         const latitude = data?.latitude ?? data?.location?.latitude;
         const longitude = data?.longitude ?? data?.location?.longitude;
 
+        // ── Validation ──
         if (!driverId || !deliveryId) {
           log("WARN", `driver:journey:started — driverId/deliveryId missing | data: ${JSON.stringify(data)}`);
-          socket.emit("journey:start:error", { message: "driverId and deliveryId required" });
+          if (typeof callback === 'function') {
+            callback({ success: false, message: "driverId and deliveryId required" });
+          }
           return;
         }
 
         if (!latitude || !longitude) {
           log("WARN", `driver:journey:started — location missing | received: ${JSON.stringify(data)}`);
-          socket.emit("journey:start:error", { message: "latitude and longitude required" });
+          if (typeof callback === 'function') {
+            callback({ success: false, message: "latitude and longitude required" });
+          }
           return;
         }
 
@@ -685,8 +852,10 @@ function setupSocketHandlers(io) {
         });
 
         if (!delivery) {
-          log("WARN", `driver:journey:started — delivery not found or not assigned | deliveryId: ${deliveryId}`);
-          socket.emit("journey:start:error", { message: "Delivery not found or not assigned to you" });
+          log("WARN", `driver:journey:started — delivery not found | deliveryId: ${deliveryId}`);
+          if (typeof callback === 'function') {
+            callback({ success: false, message: "Delivery not found or not assigned to you" });
+          }
           return;
         }
 
@@ -698,14 +867,15 @@ function setupSocketHandlers(io) {
 
         if (existingJourney) {
           log("WARN", `driver:journey:started — journey already exists | journeyId: ${existingJourney._id}`);
-          // Already started hai to existing journeyId bhejo
-          socket.emit("journey:start:ack", {
-            success: true,
-            journeyId: existingJourney._id.toString(),
-            deliveryId,
-            status: existingJourney.status,
-            message: "Journey already in progress",
-          });
+          if (typeof callback === 'function') {
+            callback({
+              success: true,
+              journeyId: existingJourney._id.toString(),
+              deliveryId,
+              status: existingJourney.status,
+              message: "Journey already in progress",
+            });
+          }
           return;
         }
 
@@ -743,7 +913,11 @@ function setupSocketHandlers(io) {
             address: address || 'GPS Location',
           },
           remarks: 'Driver started journey via socket',
-          updatedBy: { userId: driverId, userRole: 'driver', userName: activeDrivers.get(driverId)?.driverName || 'Driver' },
+          updatedBy: {
+            userId: driverId,
+            userRole: 'driver',
+            userName: activeDrivers.get(driverId)?.driverName || 'Driver',
+          },
         });
 
         // ── Driver model update ──
@@ -754,14 +928,13 @@ function setupSocketHandlers(io) {
           lastLocationUpdate: new Date(),
         });
 
-        // ── driverLocations update ──
+        // ── In-memory update ──
         driverLocations.set(driverId, {
           ...locationData,
           journeyId: journey._id.toString(),
           deliveryId,
         });
 
-        // ── activeDrivers mein journeyId save karo ──
         if (activeDrivers.has(driverId)) {
           const di = activeDrivers.get(driverId);
           activeDrivers.set(driverId, {
@@ -771,19 +944,9 @@ function setupSocketHandlers(io) {
           });
         }
 
-        // ── Driver ko journeyId bhejo (ACK) ──
-        socket.emit("journey:start:ack", {
-          success: true,
-          journeyId: journey._id.toString(),
-          deliveryId,
-          status: 'In_transit',
-          message: "Journey started successfully",
-        });
-
-        log("EMIT", `journey:start:ack sent to driver | journeyId: ${journey._id}`);
-
-        // ── Admin ko broadcast karo ──
+        // ── Admin broadcast ──
         const driverInfo = activeDrivers.get(driverId);
+
         io.to("admin-room").emit("driver:journey:started", {
           driverId,
           driverName: driverInfo?.driverName || "Driver",
@@ -795,7 +958,6 @@ function setupSocketHandlers(io) {
           timestamp: new Date().toISOString(),
         });
 
-        // ── Admin ko initial location update bhi bhejo ──
         io.to("admin-room").emit("driver:location:update", {
           driverId,
           driverName: driverInfo?.driverName || "Driver",
@@ -808,9 +970,24 @@ function setupSocketHandlers(io) {
           timestamp: new Date().toISOString(),
         });
 
+        log("EMIT", `journey:start:ack sent via callback | journeyId: ${journey._id}`);
+
+        // ✅ Proper ACK callback — event emit nahi, direct callback
+        if (typeof callback === 'function') {
+          callback({
+            success: true,
+            journeyId: journey._id.toString(),
+            deliveryId,
+            status: 'In_transit',
+            message: "Journey started successfully",
+          });
+        }
+
       } catch (err) {
         log("ERR", `driver:journey:started | ${err.stack}`);
-        socket.emit("journey:start:error", { message: "Server error while starting journey" });
+        if (typeof callback === 'function') {
+          callback({ success: false, message: "Server error while starting journey" });
+        }
       }
     });
 
@@ -909,16 +1086,16 @@ function setupSocketHandlers(io) {
     });
 
     // ─────────────────────────────────────────────
-    // STEP 5: DRIVER — driver:journey:ended
+    // STEP 5 (FIXED): DRIVER — driver:journey:ended
+    // FIX: DB mein Journey + Delivery status update karo
     // ─────────────────────────────────────────────
     // socket.on("driver:journey:ended", async (data) => {
     //   try {
     //     const { driverId, journeyId, deliveryId, latitude, longitude, address } = data || {};
 
+    //     // ── Memory cleanup ──
     //     if (driverId) {
     //       driverLocations.delete(driverId);
-
-    //       // activeDrivers se journeyId clear karo
     //       if (activeDrivers.has(driverId)) {
     //         const di = activeDrivers.get(driverId);
     //         activeDrivers.set(driverId, { ...di, journeyId: null, deliveryId: null });
@@ -927,9 +1104,80 @@ function setupSocketHandlers(io) {
 
     //     log("DRIVER", `Journey ENDED | journeyId: ${journeyId} | driverId: ${driverId}`);
 
-    //     // Admin ko driverId bhi bhejo taaki marker remove ho sake
+    //     // ── FIX: DB update — Journey status update karo ──
+    //     if (journeyId) {
+    //       try {
+    //         const endLocation = latitude && longitude ? {
+    //           coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
+    //           address: address || "Driver ended journey",
+    //         } : undefined;
+
+    //         const journeyUpdate = {
+    //           status: "completed",
+    //           endTime: new Date(),
+    //           ...(endLocation && { endLocation }),
+    //         };
+
+    //         await Journey.findByIdAndUpdate(journeyId, journeyUpdate, { new: false });
+    //         log("INFO", `Journey DB updated to completed | journeyId: ${journeyId}`);
+    //       } catch (dbErr) {
+    //         log("ERR", `Journey DB update failed | ${dbErr.message}`);
+    //       }
+    //     }
+
+    //     // ── FIX: DB update — Delivery status update karo ──
+    //     if (deliveryId) {
+    //       try {
+    //         await Delivery.findByIdAndUpdate(
+    //           deliveryId,
+    //           { status: "delivered", actualDeliveryTime: new Date() },
+    //           { new: false }
+    //         );
+
+    //         await DeliveryStatusHistory.create({
+    //           deliveryId,
+    //           status: "delivered",
+    //           location: latitude && longitude ? {
+    //             coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
+    //             address: address || "Delivery location",
+    //           } : undefined,
+    //           remarks: "Journey ended by driver via socket",
+    //           updatedBy: {
+    //             userId: driverId,
+    //             userRole: "driver",
+    //             userName: activeDrivers.get(driverId)?.driverName || "Driver",
+    //           },
+    //         });
+
+    //         log("INFO", `Delivery DB updated to delivered | deliveryId: ${deliveryId}`);
+    //       } catch (dbErr) {
+    //         log("ERR", `Delivery DB update failed | ${dbErr.message}`);
+    //       }
+    //     }
+
+    //     // ── FIX: Driver ko available mark karo ──
+    //     if (driverId) {
+    //       try {
+    //         await Driver.findByIdAndUpdate(
+    //           driverId,
+    //           {
+    //             isAvailable: true,
+    //             currentJourney: null,
+    //             "currentLocation.latitude": null,
+    //             "currentLocation.longitude": null,
+    //             "currentLocation.lastUpdated": null,
+    //           },
+    //           { new: false }
+    //         );
+    //         log("INFO", `Driver ${driverId} marked available in DB`);
+    //       } catch (dbErr) {
+    //         log("ERR", `Driver DB update failed | ${dbErr.message}`);
+    //       }
+    //     }
+
+    //     // ── Admin ko broadcast karo — driverId clearly bhejo ──
     //     io.to("admin-room").emit("driver:journey:ended", {
-    //       driverId,           // ✅ dashboard ke liye zaroori
+    //       driverId,
     //       journeyId,
     //       deliveryId,
     //       location: latitude && longitude ? { latitude, longitude, address } : null,
@@ -941,164 +1189,130 @@ function setupSocketHandlers(io) {
     //     log("ERR", `driver:journey:ended | ${err.message}`);
     //   }
     // });
+socket.on("driver:journey:ended", async (data) => {
+  try {
+    const { driverId, journeyId, deliveryId, latitude, longitude, address } = data || {};
 
-    // // ─────────────────────────────────────────────
-    // // STEP 6: DRIVER — delivery:completed
-    // // FIX: driverId properly emit karo taaki marker remove ho
-    // // ─────────────────────────────────────────────
-    // socket.on("delivery:completed", async (data) => {
-    //   try {
-    //     log("DRIVER", `Delivery COMPLETED | data: ${JSON.stringify(data)}`);
-
-    //     const { driverId, deliveryId } = data || {};
-
-    //     if (!driverId) {
-    //       log("WARN", `delivery:completed — driverId missing`);
-    //       return;
-    //     }
-
-    //     // Memory cleanup
-    //     driverLocations.delete(driverId);
-
-    //     if (activeDrivers.has(driverId)) {
-    //       const di = activeDrivers.get(driverId);
-    //       activeDrivers.set(driverId, { ...di, journeyId: null, deliveryId: null });
-    //     }
-
-    //     // Driver DB update
-    //     await Driver.findByIdAndUpdate(
-    //       driverId,
-    //       {
-    //         isAvailable: true,
-    //         currentJourney: null,
-    //         "currentLocation.latitude": null,
-    //         "currentLocation.longitude": null,
-    //         "currentLocation.lastUpdated": null,
-    //       },
-    //       { new: false }
-    //     ).catch((e) => log("ERR", `Driver update failed | ${e.message}`));
-
-    //     log("INFO", `Driver ${driverId} marked available in DB`);
-
-    //     // ✅ FIX: driverId clearly bhejo admin ko
-    //     io.to("admin-room").emit("driver:delivery:completed", {
-    //       driverId: String(driverId),   // marker remove ke liye
-    //       deliveryId: String(deliveryId || ''),
-    //       status: "completed",
-    //       timestamp: new Date().toISOString(),
-    //     });
-
-    //     log("EMIT", `driver:delivery:completed emitted | driverId: ${driverId}`);
-
-    //   } catch (err) {
-    //     log("ERR", `delivery:completed | ${err.stack}`);
-    //   }
-    // });
-
-    // ─────────────────────────────────────────────
-    // STEP 5 (FIXED): DRIVER — driver:journey:ended
-    // FIX: DB mein Journey + Delivery status update karo
-    // ─────────────────────────────────────────────
-    socket.on("driver:journey:ended", async (data) => {
-      try {
-        const { driverId, journeyId, deliveryId, latitude, longitude, address } = data || {};
-
-        // ── Memory cleanup ──
-        if (driverId) {
-          driverLocations.delete(driverId);
-          if (activeDrivers.has(driverId)) {
-            const di = activeDrivers.get(driverId);
-            activeDrivers.set(driverId, { ...di, journeyId: null, deliveryId: null });
-          }
-        }
-
-        log("DRIVER", `Journey ENDED | journeyId: ${journeyId} | driverId: ${driverId}`);
-
-        // ── FIX: DB update — Journey status update karo ──
-        if (journeyId) {
-          try {
-            const endLocation = latitude && longitude ? {
-              coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
-              address: address || "Driver ended journey",
-            } : undefined;
-
-            const journeyUpdate = {
-              status: "completed",
-              endTime: new Date(),
-              ...(endLocation && { endLocation }),
-            };
-
-            await Journey.findByIdAndUpdate(journeyId, journeyUpdate, { new: false });
-            log("INFO", `Journey DB updated to completed | journeyId: ${journeyId}`);
-          } catch (dbErr) {
-            log("ERR", `Journey DB update failed | ${dbErr.message}`);
-          }
-        }
-
-        // ── FIX: DB update — Delivery status update karo ──
-        if (deliveryId) {
-          try {
-            await Delivery.findByIdAndUpdate(
-              deliveryId,
-              { status: "delivered", actualDeliveryTime: new Date() },
-              { new: false }
-            );
-
-            await DeliveryStatusHistory.create({
-              deliveryId,
-              status: "delivered",
-              location: latitude && longitude ? {
-                coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
-                address: address || "Delivery location",
-              } : undefined,
-              remarks: "Journey ended by driver via socket",
-              updatedBy: {
-                userId: driverId,
-                userRole: "driver",
-                userName: activeDrivers.get(driverId)?.driverName || "Driver",
-              },
-            });
-
-            log("INFO", `Delivery DB updated to delivered | deliveryId: ${deliveryId}`);
-          } catch (dbErr) {
-            log("ERR", `Delivery DB update failed | ${dbErr.message}`);
-          }
-        }
-
-        // ── FIX: Driver ko available mark karo ──
-        if (driverId) {
-          try {
-            await Driver.findByIdAndUpdate(
-              driverId,
-              {
-                isAvailable: true,
-                currentJourney: null,
-                "currentLocation.latitude": null,
-                "currentLocation.longitude": null,
-                "currentLocation.lastUpdated": null,
-              },
-              { new: false }
-            );
-            log("INFO", `Driver ${driverId} marked available in DB`);
-          } catch (dbErr) {
-            log("ERR", `Driver DB update failed | ${dbErr.message}`);
-          }
-        }
-
-        // ── Admin ko broadcast karo — driverId clearly bhejo ──
-        io.to("admin-room").emit("driver:journey:ended", {
-          driverId,
-          journeyId,
-          deliveryId,
-          location: latitude && longitude ? { latitude, longitude, address } : null,
-          status: "completed",
-          timestamp: new Date().toISOString(),
-        });
-
-      } catch (err) {
-        log("ERR", `driver:journey:ended | ${err.message}`);
+    // ── Memory cleanup ──
+    if (driverId) {
+      driverLocations.delete(driverId);
+      if (activeDrivers.has(driverId)) {
+        const di = activeDrivers.get(driverId);
+        activeDrivers.set(driverId, { ...di, journeyId: null, deliveryId: null });
       }
+    }
+
+    log("DRIVER", `Journey ENDED | journeyId: ${journeyId} | driverId: ${driverId}`);
+
+    // ── Journey DB update ──
+    if (journeyId) {
+      await Journey.findByIdAndUpdate(
+        journeyId,
+        {
+          status: "completed",
+          endTime: new Date(),
+          ...(latitude && longitude && {
+            endLocation: {
+              coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
+              address: address || "Journey ended",
+            },
+          }),
+        },
+        { new: false }
+      ).catch(e => log("ERR", `Journey update failed | ${e.message}`));
+    }
+
+    // ── Delivery DB update + Order update ──
+    if (deliveryId) {
+      try {
+        const delivery = await Delivery.findByIdAndUpdate(
+          deliveryId,
+          { status: "delivered", actualDeliveryTime: new Date() },
+          { new: true }  // new: true — updated delivery chahiye orderId ke liye
+        );
+
+        log("INFO", `Delivery marked delivered | deliveryId: ${deliveryId}`);
+
+        // ✅ FIX: orderId string ho sakta hai (orderNumber) ya ObjectId
+        // Dono cases handle karo
+        if (delivery?.orderId) {
+          const orderQuery = mongoose.Types.ObjectId.isValid(delivery.orderId)
+            ? { _id: delivery.orderId }           // ObjectId hai
+            : { orderNumber: delivery.orderId };  // String orderNumber hai jaise "ORD2606180003"
+
+          const updatedOrder = await Order.findOneAndUpdate(
+            orderQuery,
+            {
+              status: "delivered",
+              updatedAt: new Date(),
+            },
+            { new: true }
+          );
+
+          if (updatedOrder) {
+            log("INFO", `Order marked delivered | orderId: ${delivery.orderId} | orderNumber: ${updatedOrder.orderNumber}`);
+          } else {
+            log("WARN", `Order NOT found | orderId value: ${delivery.orderId}`);
+          }
+        } else {
+          log("WARN", `Delivery has no orderId | deliveryId: ${deliveryId}`);
+        }
+
+        // ── DeliveryStatusHistory ──
+        await DeliveryStatusHistory.create({
+          deliveryId,
+          status: "delivered",
+          location: latitude && longitude ? {
+            coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
+            address: address || "Delivery location",
+          } : undefined,
+          remarks: "Journey ended by driver via socket",
+          updatedBy: {
+            userId: driverId,
+            userRole: "driver",
+            userName: activeDrivers.get(driverId)?.driverName || "Driver",
+          },
+        }).catch(e => log("ERR", `DeliveryStatusHistory create failed | ${e.message}`));
+
+      } catch (dbErr) {
+        log("ERR", `Delivery/Order DB update failed | ${dbErr.message}`);
+      }
+    }
+
+    // ── Driver available mark karo ──
+    if (driverId) {
+      await Driver.findByIdAndUpdate(
+        driverId,
+        {
+          isAvailable: true,
+          currentJourney: null,
+          activeDelivery: null,
+          "currentLocation.latitude": null,
+          "currentLocation.longitude": null,
+          "currentLocation.lastUpdated": null,
+        },
+        { new: false }
+      ).catch(e => log("ERR", `Driver update failed | ${e.message}`));
+
+      log("INFO", `Driver ${driverId} marked available`);
+    }
+
+    // ── Admin broadcast ──
+    io.to("admin-room").emit("driver:journey:ended", {
+      driverId,
+      journeyId,
+      deliveryId,
+      location: latitude && longitude ? { latitude, longitude, address } : null,
+      status: "completed",
+      timestamp: new Date().toISOString(),
     });
+
+  } catch (err) {
+    log("ERR", `driver:journey:ended | ${err.message}`);
+  }
+});
+
+
 
     // ─────────────────────────────────────────────
     // STEP 6 (FIXED): DRIVER — delivery:completed
