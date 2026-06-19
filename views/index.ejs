@@ -589,10 +589,43 @@
 
       const ctx = document.getElementById('modernTrendChart').getContext('2d');
       const chartData = <%- JSON.stringify(chartData || []) %>;
+
+      // ✅ FIX: _id ko readable date format mein convert karo
+      function formatChartLabel(id) {
+        if (!id) return 'N/A';
+        // Already string format hai jaise "2024-01-15"
+        if (typeof id === 'string' && id.includes('-')) {
+          const d = new Date(id);
+          if (!isNaN(d)) {
+            return String(d.getDate()).padStart(2,'0') + '/' +
+                   String(d.getMonth()+1).padStart(2,'0');
+          }
+          return id;
+        }
+        // Object format hai jaise { year: 2024, month: 1, day: 15 }
+        if (typeof id === 'object' && id !== null) {
+          if (id.day && id.month) {
+            return String(id.day).padStart(2,'0') + '/' + String(id.month).padStart(2,'0');
+          }
+          if (id.year && id.month) {
+            return String(id.month).padStart(2,'0') + '/' + String(id.year);
+          }
+        }
+        // Number (timestamp) hai
+        if (typeof id === 'number') {
+          const d = new Date(id);
+          if (!isNaN(d)) {
+            return String(d.getDate()).padStart(2,'0') + '/' +
+                   String(d.getMonth()+1).padStart(2,'0');
+          }
+        }
+        return String(id);
+      }
+
       new Chart(ctx, {
         type: 'line',
         data: {
-          labels: chartData.map(i => i._id),
+          labels: chartData.map(i => formatChartLabel(i._id)),
           datasets: [
             { label: 'Orders',     data: chartData.map(i => i.orders||0),     borderColor: '#1A9CFF', backgroundColor: 'rgba(26,156,255,.12)', borderWidth: 4, tension: .45, fill: true },
             { label: 'Deliveries', data: chartData.map(i => i.deliveries||0), borderColor: '#00C853', backgroundColor: 'rgba(0,200,83,.12)',    borderWidth: 4, tension: .45, fill: true }

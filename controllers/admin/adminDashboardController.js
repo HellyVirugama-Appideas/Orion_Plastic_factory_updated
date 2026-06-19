@@ -1380,14 +1380,107 @@ const Vehicle = require("../../models/Vehicle");
 const { sendNotification } = require('../../utils/sendNotification');
 
 // ==================== RENDER DASHBOARD ====================
+// exports.renderDashboard = async (req, res) => {
+//   try {
+//     const today = new Date();
+//     today.setHours(0, 0, 0, 0);
+//     const todayEnd = new Date();
+//     todayEnd.setHours(23, 59, 59, 999);
+//     const last7DaysStart = new Date(today);
+//     last7DaysStart.setDate(today.getDate() - 6);
+
+//     const approvedDriverFilter = {
+//       profileStatus: 'approved',
+//       isActive: true,
+//       'blockStatus.isBlocked': { $ne: true }
+//     };
+
+//     const [
+//       totalOrders,
+//       totalDeliveries,
+//       totalDrivers,
+//       totalCustomers,
+//       todayDeliveries,
+//       availableDrivers,
+//       availableVehicles,
+//       recentOrders,
+//       chartData
+//     ] = await Promise.all([
+//       Order.countDocuments(),
+//       Delivery.countDocuments(),
+//       Driver.countDocuments(approvedDriverFilter),
+//       Customer.countDocuments(),
+//       Delivery.countDocuments({ createdAt: { $gte: today, $lte: todayEnd } }),
+//       Driver.countDocuments({ isAvailable: true }),
+//       Driver.countDocuments({ ...approvedDriverFilter, isAvailable: true }),
+//       Vehicle.countDocuments({ status: "available" }),
+//       Order.find()
+//         .populate('customerId', 'name companyName phone')
+//         .sort({ createdAt: -1 })
+//         .limit(10),
+//       Order.aggregate([
+//         { $match: { createdAt: { $gte: last7DaysStart, $lte: today } } },
+//         {
+//           $group: {
+//             _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+//             orders: { $sum: 1 },
+//             deliveries: { $sum: { $cond: [{ $eq: ["$status", "delivered"] }, 1, 0] } }
+//           }
+//         },
+//         { $sort: { _id: 1 } }
+//       ])
+//     ]);
+
+//     const currentUrl = req.originalUrl || req.url;
+
+//     res.render('index', {
+//       title: 'Dashboard',
+//       user: req.admin,
+//       url: currentUrl,
+//       googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',  // ← Added
+//       stats: {
+//         totalOrders: totalOrders || 0,
+//         totalDeliveries: totalDeliveries || 0,
+//         totalDrivers: totalDrivers || 0,
+//         totalCustomers: totalCustomers || 0,
+//         todayDeliveries: todayDeliveries || 0,
+//         availableDrivers: availableDrivers || 0,
+//         availableVehicles: availableVehicles || 0
+//       },
+//       recentOrders: recentOrders || [],
+//       chartData: chartData || []
+//     });
+
+//   } catch (error) {
+//     console.error('Dashboard render error:', error);
+//     const currentUrl = req.originalUrl || req.url;
+//     res.render('index', {
+//       title: 'Dashboard',
+//       user: req.admin,
+//       url: currentUrl,
+//       googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
+//       stats: { totalOrders: 0, totalDeliveries: 0, totalDrivers: 0, totalCustomers: 0, todayDeliveries: 0, availableDrivers: 0, availableVehicles: 0 },
+//       recentOrders: [],
+//       chartData: [],
+//       error: 'Failed to load dashboard data.'
+//     });
+//   }
+// };
+
 exports.renderDashboard = async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
+    const now = new Date();
+
+    // ── Aaj ka range ──
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayEnd = new Date(now);
     todayEnd.setHours(23, 59, 59, 999);
-    const last7DaysStart = new Date(today);
-    last7DaysStart.setDate(today.getDate() - 6);
+
+    // ── Last 7 days (aaj included) ──
+    const last7DaysStart = new Date(todayStart);
+    last7DaysStart.setDate(todayStart.getDate() - 6); // 6 days peeche + aaj = 7 days
 
     const approvedDriverFilter = {
       profileStatus: 'approved',
@@ -1410,26 +1503,96 @@ exports.renderDashboard = async (req, res) => {
       Delivery.countDocuments(),
       Driver.countDocuments(approvedDriverFilter),
       Customer.countDocuments(),
-      Delivery.countDocuments({ createdAt: { $gte: today, $lte: todayEnd } }),
+
+      // ✅ FIX: todayEnd use karo taaki poora din count ho
+      Delivery.countDocuments({
+        createdAt: { $gte: todayStart, $lte: todayEnd }
+      }),
+
       Driver.countDocuments({ isAvailable: true }),
-      Driver.countDocuments({ ...approvedDriverFilter, isAvailable: true }),
-      Vehicle.countDocuments({ status: "available" }),
+      Vehicle.countDocuments({ status: 'available' }),
+
       Order.find()
         .populate('customerId', 'name companyName phone')
         .sort({ createdAt: -1 })
         .limit(10),
+
+      // ✅ FIX: Weekly chart — Orders + Deliveries alag models se
+      // Pehle Orders per day
       Order.aggregate([
-        { $match: { createdAt: { $gte: last7DaysStart, $lte: today } } },
+        {
+          $match: {
+            createdAt: { $gte: last7DaysStart, $lte: todayEnd }
+          }
+        },
         {
           $group: {
-            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-            orders: { $sum: 1 },
-            deliveries: { $sum: { $cond: [{ $eq: ["$status", "delivered"] }, 1, 0] } }
+            _id: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$createdAt',
+                timezone: 'Asia/Kolkata'   // ← apna timezone set karo
+              }
+            },
+            orders: { $sum: 1 }
           }
         },
         { $sort: { _id: 1 } }
       ])
     ]);
+
+    // ── Deliveries per day alag fetch karo ──
+    const deliveriesPerDay = await Delivery.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: last7DaysStart, $lte: todayEnd }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$createdAt',
+              timezone: 'Asia/Kolkata'
+            }
+          },
+          deliveries: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // ── Last 7 days ki saari dates generate karo (gaps fill karne ke liye) ──
+    const allDates = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(todayStart);
+      d.setDate(todayStart.getDate() - i);
+      // YYYY-MM-DD format
+      const key = d.toISOString().slice(0, 10);
+      allDates.push(key);
+    }
+
+    // ── Orders map banao ──
+    const ordersMap = {};
+    chartData.forEach(item => { ordersMap[item._id] = item.orders; });
+
+    // ── Deliveries map banao ──
+    const deliveriesMap = {};
+    deliveriesPerDay.forEach(item => { deliveriesMap[item._id] = item.deliveries; });
+
+    // ── Final chartData — har din ka data, missing days = 0 ──
+    const finalChartData = allDates.map(date => {
+      // DD/MM format for display
+      const [year, month, day] = date.split('-');
+      const label = `${day}/${month}`;
+      return {
+        _id: label,           // frontend pe yahi label show hoga
+        date: date,           // raw date for sorting
+        orders: ordersMap[date] || 0,
+        deliveries: deliveriesMap[date] || 0
+      };
+    });
 
     const currentUrl = req.originalUrl || req.url;
 
@@ -1437,18 +1600,18 @@ exports.renderDashboard = async (req, res) => {
       title: 'Dashboard',
       user: req.admin,
       url: currentUrl,
-      googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',  // ← Added
+      googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
       stats: {
-        totalOrders: totalOrders || 0,
-        totalDeliveries: totalDeliveries || 0,
-        totalDrivers: totalDrivers || 0,
-        totalCustomers: totalCustomers || 0,
-        todayDeliveries: todayDeliveries || 0,
+        totalOrders:      totalOrders      || 0,
+        totalDeliveries:  totalDeliveries  || 0,
+        totalDrivers:     totalDrivers     || 0,
+        totalCustomers:   totalCustomers   || 0,
+        todayDeliveries:  todayDeliveries  || 0,
         availableDrivers: availableDrivers || 0,
         availableVehicles: availableVehicles || 0
       },
       recentOrders: recentOrders || [],
-      chartData: chartData || []
+      chartData: finalChartData
     });
 
   } catch (error) {
@@ -1459,7 +1622,11 @@ exports.renderDashboard = async (req, res) => {
       user: req.admin,
       url: currentUrl,
       googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
-      stats: { totalOrders: 0, totalDeliveries: 0, totalDrivers: 0, totalCustomers: 0, todayDeliveries: 0, availableDrivers: 0, availableVehicles: 0 },
+      stats: {
+        totalOrders: 0, totalDeliveries: 0, totalDrivers: 0,
+        totalCustomers: 0, todayDeliveries: 0,
+        availableDrivers: 0, availableVehicles: 0
+      },
       recentOrders: [],
       chartData: [],
       error: 'Failed to load dashboard data.'

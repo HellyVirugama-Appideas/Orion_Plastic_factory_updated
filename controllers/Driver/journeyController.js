@@ -67,7 +67,7 @@
 // //         journeyId: journey._id.toString(),
 // //         timestamp: new Date().toISOString()
 // //       });
-      
+
 // //       console.log(`📍 [SOCKET] Location broadcasted for driver: ${driver.name} at ${latitude}, ${longitude}`);
 // //     } else {
 // //       console.warn('⚠️ Socket.IO not available - location not broadcasted');
@@ -3006,7 +3006,7 @@
 // //         journeyId: journey._id.toString(),
 // //         timestamp: new Date().toISOString()
 // //       });
-      
+
 // //       console.log(`📍 [SOCKET] Location broadcasted for driver: ${driver.name} at ${latitude}, ${longitude}`);
 // //     } else {
 // //       console.warn('⚠️ Socket.IO not available - location not broadcasted');
@@ -3109,7 +3109,7 @@
 //         journeyId: journey._id.toString(),
 //         timestamp: new Date().toISOString()
 //       });
-      
+
 //       console.log(`📍 [SOCKET] Location broadcasted for driver: ${driver.name} at ${latitude}, ${longitude}`);
 //     } else {
 //       console.warn('⚠️ Socket.IO not available - location not broadcasted');
@@ -3295,7 +3295,7 @@
 //             status: 'In_transit',
 //             journeyId: journey._id.toString()
 //           });
-          
+
 //           console.log(`🔄 [SOCKET] Status change broadcasted: In_transit`);
 //         }
 
@@ -3451,7 +3451,7 @@
 
 //     const driver = req.user;
 //     const journey = await Journey.findById(journeyId);
-    
+
 //     if (!journey) {
 //       return errorResponse(res, 'Journey not found', 404);
 //     }
@@ -5441,6 +5441,7 @@ const Journey = require('../../models/Journey');
 const Delivery = require('../../models/Delivery');
 const Driver = require('../../models/Driver');
 const Remark = require("../../models/Remark");
+const Order = require("../../models/Order");
 const DeliveryStatusHistory = require('../../models/DeliveryStatusHistory');
 const { successResponse, errorResponse } = require('../../utils/responseHelper');
 const { calculateDistance } = require('../../utils/geoHelper');
@@ -5469,10 +5470,10 @@ function toDegrees(rad) { return rad * 180 / Math.PI; }
 
 function calculateBearing(startLat, startLng, destLat, destLng) {
   startLat = toRadians(startLat); startLng = toRadians(startLng);
-  destLat = toRadians(destLat);   destLng = toRadians(destLng);
+  destLat = toRadians(destLat); destLng = toRadians(destLng);
   const y = Math.sin(destLng - startLng) * Math.cos(destLat);
   const x = Math.cos(startLat) * Math.sin(destLat) -
-             Math.sin(startLat) * Math.cos(destLat) * Math.cos(destLng - startLng);
+    Math.sin(startLat) * Math.cos(destLat) * Math.cos(destLng - startLng);
   return ((toDegrees(Math.atan2(y, x)) + 360) % 360);
 }
 
@@ -6196,6 +6197,66 @@ exports.getCommunicationHistory = async (req, res) => {
 };
 
 // ==================== UPLOAD PROOF SIGNATURE ====================
+// exports.uploadProofSignature = async (req, res) => {
+//   try {
+//     const { deliveryId } = req.params;
+//     if (!req.file) return errorResponse(res, 'Signature image is required', 400);
+
+//     const delivery = await Delivery.findById(deliveryId);
+//     if (!delivery) return errorResponse(res, 'Delivery not found', 404);
+//     if (delivery.driverId.toString() !== req.user._id.toString()) return errorResponse(res, 'Unauthorized', 403);
+
+//     const signatureUrl = `/uploads/signatures/${req.file.filename}`;
+//     delivery.deliveryProof = delivery.deliveryProof || {};
+//     delivery.deliveryProof.signature = signatureUrl;
+//     delivery.deliveryProof.signedAt = new Date();
+//     delivery.status = 'Delivered';
+//     delivery.actualDeliveryTime = new Date();
+//     await delivery.save();
+
+//     if (delivery.orderId) {
+//       await Order.findByIdAndUpdate(
+//         delivery.orderId,
+//         { status: 'delivered' },
+//         { new: false }
+//       );
+//     }
+
+//     const journey = await Journey.findOne({ deliveryId: delivery._id });
+//     if (journey) {
+//       journey.deliveryProof = journey.deliveryProof || {};
+//       journey.deliveryProof.signature = signatureUrl;
+//       journey.status = 'Completed';
+//       await journey.save();
+
+//       broadcastToAdmin(req, 'driver:journey:ended', {
+//         driverId: req.user._id.toString(),
+//         driverName: req.user.name,
+//         journeyId: journey._id.toString(),
+//         deliveryId: delivery._id.toString(),
+//         isAvailable: true,
+//         status: 'completed',
+//       });
+//     }
+
+//     await DeliveryStatusHistory.create({
+//       deliveryId: delivery._id,
+//       status: 'Delivered',
+//       remarks: 'Customer signature obtained',
+//       updatedBy: { userId: req.user._id, userRole: 'driver', userName: req.user.name },
+//     });
+
+//     return successResponse(res, 'Signature uploaded! Delivery marked as delivered.', {
+//       signatureUrl,
+//       deliveryStatus: delivery.status,
+//       journeyStatus: journey?.status || null,
+//     });
+//   } catch (error) {
+//     return errorResponse(res, 'Failed to upload signature', 500);
+//   }
+// };
+
+// ==================== UPLOAD PROOF SIGNATURE ====================
 exports.uploadProofSignature = async (req, res) => {
   try {
     const { deliveryId } = req.params;
@@ -6213,7 +6274,35 @@ exports.uploadProofSignature = async (req, res) => {
     delivery.actualDeliveryTime = new Date();
     await delivery.save();
 
-    const journey = await Journey.findOne({ deliveryId: delivery._id });
+    // ✅ FIX: orderId string ya ObjectId dono handle karo
+    if (delivery.orderId) {
+      try {
+        const orderQuery = mongoose.Types.ObjectId.isValid(delivery.orderId)
+          ? { _id: delivery.orderId }
+          : { orderNumber: delivery.orderId };
+
+        const updatedOrder = await Order.findOneAndUpdate(
+          orderQuery,
+          { status: 'delivered', updatedAt: new Date() },
+          { new: true }
+        );
+
+        if (updatedOrder) {
+          console.log(`✅ Order marked delivered | orderNumber: ${updatedOrder.orderNumber}`);
+        } else {
+          console.log(`⚠️ Order NOT found | orderId: ${delivery.orderId}`);
+        }
+      } catch (orderErr) {
+        console.error('❌ Order update failed:', orderErr.message);
+        // Order update fail hone se signature upload fail nahi hoga
+      }
+    }
+
+    const journey = await Journey.findOne({
+      deliveryId: delivery._id,
+      status: { $in: ['In_transit', 'In_progress', 'Started', 'Arrived', 'Completed', 'Proof_uploaded'] },
+    });
+
     if (journey) {
       journey.deliveryProof = journey.deliveryProof || {};
       journey.deliveryProof.signature = signatureUrl;
@@ -6235,14 +6324,16 @@ exports.uploadProofSignature = async (req, res) => {
       status: 'Delivered',
       remarks: 'Customer signature obtained',
       updatedBy: { userId: req.user._id, userRole: 'driver', userName: req.user.name },
-    });
+    }).catch(e => console.error('DeliveryStatusHistory error:', e.message));
 
     return successResponse(res, 'Signature uploaded! Delivery marked as delivered.', {
       signatureUrl,
       deliveryStatus: delivery.status,
       journeyStatus: journey?.status || null,
     });
+
   } catch (error) {
+    console.error('❌ uploadProofSignature error:', error.message, error.stack);
     return errorResponse(res, 'Failed to upload signature', 500);
   }
 };
