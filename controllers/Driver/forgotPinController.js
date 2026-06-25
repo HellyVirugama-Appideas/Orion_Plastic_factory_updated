@@ -647,7 +647,8 @@ exports.resendPinResetOtp = async (req, res) => {
       name: driver.name,
       maskedEmail: driver.email.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
       message: 'New OTP sent to your email',
-      ...(process.env.NODE_ENV !== 'production' && { otp: newOtp })
+      // ...(process.env.NODE_ENV !== 'production' && { otp: newOtp })
+      otp : newOtp
     });
 
   } catch (error) {
