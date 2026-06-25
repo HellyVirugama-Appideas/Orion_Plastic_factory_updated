@@ -582,7 +582,8 @@ exports.sendPinResetOtp = async (req, res) => {
       maskedEmail: email.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
       expiresIn: '5 minutes',
       message: `OTP sent to your email`,
-      ...(process.env.NODE_ENV !== 'production' && { otp })
+      otp
+      // ...(process.env.NODE_ENV !== 'production' && { otp })
     });
 
   } catch (error) {
