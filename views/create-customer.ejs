@@ -117,9 +117,11 @@
                           <label for="city">City</label>
                         </div>
                         <div class="input-field col s12 m4">
-                          <input id="zipcode" name="zipcode" type="text" maxlength="4" pattern="\d{4}">
+                          <!-- <input id="zipcode" name="zipcode" type="text" maxlength="4" pattern="\d{4}"> -->
+                          <input id="zipcode" name="zipcode" type="text" maxlength="4" pattern="[A-Za-z0-9]{4}">
                           <label for="zipcode">Pincode / Zipcode (4 digits)</label>
-                          <span class="helper-text form-note">Enter 4-digit pincode/zipcode</span>
+                          <span class="helper-text form-note">Enter 4-character alphanumeric ZIP code (e.g. A123, AB45,
+                            12AB, DXB1)</span>
                         </div>
                         <div class="input-field col s12 m4">
                           <select id="region" name="region">
@@ -230,10 +232,19 @@
           $('select').formSelect();
           M.updateTextFields();
           M.textareaAutoResize($('#specialInstructions'));
+
           $('#zipcode').on('blur', function () {
             var v = $(this).val().trim();
-            if (v && !/^\d{4}$/.test(v)) { M.toast({ html: 'Pincode must be exactly 4 digits', classes: 'red darken-1', displayLength: 3000 }); }
+
+            if (v && !/^[A-Za-z0-9]{4}$/.test(v)) {
+              M.toast({
+                html: 'Pincode must be exactly 4 alphanumeric characters',
+                classes: 'red darken-1',
+                displayLength: 3000
+              });
+            }
           });
+
         });
       </script>
 </body>

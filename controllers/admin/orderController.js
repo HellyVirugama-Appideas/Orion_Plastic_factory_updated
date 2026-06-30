@@ -1096,7 +1096,7 @@ exports.updateOrder = async (req, res) => {
     }
 
     // Check if order can be modified (assuming you have this method in model)
-    if (!order.canBeModified()) {
+    if (!order.canUpdateOrder()) {
       return res.status(400).json({ success: false, message: 'Order cannot be modified in current status' });
     }
 

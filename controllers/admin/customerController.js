@@ -1681,8 +1681,8 @@ exports.createCustomer = async (req, res) => {
     } = req.body;
 
     // ✅ Zipcode validation (UAE: 4 digit)
-    if (zipcode && !/^\d{4}$/.test(zipcode)) {
-      req.flash('error', 'Zipcode must be 4 digits');
+    if (zipcode && !/^[A-Za-z0-9]{4}$/.test(zipcode)) {
+      req.flash('error', 'Zipcode must be exactly 4 alphanumeric characters');
       return res.redirect('/admin/customers/create-customer');
     }
 

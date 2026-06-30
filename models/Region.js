@@ -30,8 +30,7 @@ const regionSchema = new mongoose.Schema({
   zipcodes: [{
     zipcode: {
       type: String,
-      required: true,
-      // match: [/^\d{6}$/, 'Zipcode must be 6 digits']
+      required: true
     },
     area: String,
     city: String
