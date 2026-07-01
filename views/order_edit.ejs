@@ -5,6 +5,11 @@
     <%- include('_layouts/head') %>
     <title>Edit Order - <%= order.orderNumber %> | <%= title %></title>
 
+    <!-- Google Maps API key for front-end geocoding -->
+    <script>
+        const GMAPS_KEY = '<%= process.env.GOOGLE_MAPS_API_KEY || "" %>';
+    </script>
+
     <style>
         .form-section {
             background: white;
@@ -42,6 +47,67 @@
 
         .btn-gradient {
             background: linear-gradient(45deg, #667eea, #764ba2) !important;
+        }
+
+        /* ===== MAPS LINK PASTE WIDGET ===== */
+        .maps-link-box {
+            background: #f3f0ff;
+            border: 1px dashed #9c7ee8;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .maps-link-box input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 0.85rem;
+            outline: none;
+            color: #424242;
+            height: 32px;
+            box-shadow: none !important;
+            margin: 0 !important;
+        }
+
+        .maps-link-box .parse-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .maps-link-box .parse-btn:hover {
+            background: #5569d4;
+        }
+
+        .maps-link-status {
+            font-size: 0.78rem;
+            margin-top: 4px;
+            padding: 0 2px;
+        }
+
+        .maps-link-status.success {
+            color: #2e7d32;
+        }
+
+        .maps-link-status.error {
+            color: #c62828;
+        }
+
+        /* Delivery address fields wrapper — highlight when auto-filled */
+        .autofill-highlight input,
+        .autofill-highlight textarea {
+            border-bottom: 2px solid #667eea !important;
+            transition: border-color 0.3s;
         }
     </style>
 </head>
@@ -87,7 +153,7 @@
                                         <select name="customerId" id="customerId" required>
                                             <option value="" disabled>Select Customer</option>
                                             <% customers.forEach(customer => { %>
-                                                <option value="<%= customer._id %>" 
+                                                <option value="<%= customer._id %>"
                                                         <%= order.customerId && order.customerId._id && order.customerId._id.toString() === customer._id.toString() ? 'selected' : '' %>>
                                                     <%= customer.companyName || customer.name %> - <%= customer.phone %>
                                                 </option>
@@ -104,7 +170,7 @@
                                     <div class="col s12">
                                         <div id="itemsContainer"></div>
 
-                                        <button type="button" id="addItemBtn" 
+                                        <button type="button" id="addItemBtn"
                                                 class="btn btn-gradient waves-effect waves-light mt-2">
                                             <i class="material-icons left">add_circle_outline</i>
                                             Add New Item
@@ -116,46 +182,67 @@
                                         <h5 class="section-title mt-5">Delivery Information</h5>
                                     </div>
 
-                                    <div class="input-field col s12 m6">
-                                        <input name="deliveryLocation[contactPerson]" type="text" required 
-                                               value="<%= order.deliveryLocation?.contactPerson || '' %>">
-                                        <label>Contact Person *</label>
+                                    <!-- GOOGLE MAPS LINK PASTE (DELIVERY) -->
+                                    <div class="col s12 m8 l7" style="margin-bottom:8px;">
+                                        <div class="maps-link-box">
+                                            <i class="material-icons" style="color:#667eea; font-size:20px;">location_on</i>
+                                            <input type="text" id="deliveryMapsLink"
+                                                placeholder="Paste Google Maps link to auto-fill delivery address…"
+                                                onkeydown="if(event.key==='Enter'){event.preventDefault();parseDeliveryLink();}">
+                                            <button type="button" class="parse-btn" onclick="parseDeliveryLink()">
+                                                <i class="material-icons tiny">my_location</i> Fill
+                                            </button>
+                                        </div>
+                                        <div class="maps-link-status" id="deliveryLinkStatus"></div>
                                     </div>
 
-                                    <div class="input-field col s12 m6">
-                                        <input name="deliveryLocation[contactPhone]" type="tel" required 
-                                               value="<%= order.deliveryLocation?.contactPhone || '' %>">
-                                        <label>Contact Phone *</label>
-                                    </div>
+                                    <!-- Hidden lat/lng for delivery — pre-filled with existing coordinates -->
+                                    <input type="hidden" name="deliveryLocation[coordinates][latitude]" id="delLat"
+                                           value="<%= order.deliveryLocation?.coordinates?.latitude || '' %>">
+                                    <input type="hidden" name="deliveryLocation[coordinates][longitude]" id="delLng"
+                                           value="<%= order.deliveryLocation?.coordinates?.longitude || '' %>">
 
-                                    <div class="input-field col s12">
-                                        <textarea name="deliveryLocation[address]" class="materialize-textarea" required>
-<%= order.deliveryLocation?.address || '' %></textarea>
-                                        <label>Full Delivery Address *</label>
-                                    </div>
+                                    <div id="deliveryFields">
+                                        <div class="input-field col s12 m6">
+                                            <input id="contactPerson" name="deliveryLocation[contactPerson]" type="text" required
+                                                   value="<%= order.deliveryLocation?.contactPerson || '' %>">
+                                            <label for="contactPerson" class="active">Contact Person *</label>
+                                        </div>
 
-                                    <div class="input-field col s12 m4">
-                                        <input name="deliveryLocation[city]" type="text" required 
-                                               value="<%= order.deliveryLocation?.city || '' %>">
-                                        <label>City *</label>
-                                    </div>
+                                        <div class="input-field col s12 m6">
+                                            <input id="contactPhone" name="deliveryLocation[contactPhone]" type="tel" required
+                                                   value="<%= order.deliveryLocation?.contactPhone || '' %>">
+                                            <label for="contactPhone" class="active">Contact Phone *</label>
+                                        </div>
 
-                                    <div class="input-field col s12 m4">
-                                        <input name="deliveryLocation[state]" type="text" required 
-                                               value="<%= order.deliveryLocation?.state || '' %>">
-                                        <label>State *</label>
-                                    </div>
+                                        <div class="input-field col s12">
+                                            <textarea id="delAddress" name="deliveryLocation[address]" class="materialize-textarea" required><%= order.deliveryLocation?.address || '' %></textarea>
+                                            <label for="delAddress" class="active">Full Delivery Address *</label>
+                                        </div>
 
-                                    <div class="input-field col s12 m4">
-                                        <input name="deliveryLocation[pincode]" type="text" maxlength="6" required 
-                                               value="<%= order.deliveryLocation?.pincode || '' %>">
-                                        <label>Pincode *</label>
-                                    </div>
+                                        <div class="input-field col s12 m4">
+                                            <input id="city" name="deliveryLocation[city]" type="text" required
+                                                   value="<%= order.deliveryLocation?.city || '' %>">
+                                            <label for="city" class="active">City *</label>
+                                        </div>
 
-                                    <div class="input-field col s12">
-                                        <input name="deliveryLocation[landmark]" type="text" 
-                                               value="<%= order.deliveryLocation?.landmark || '' %>">
-                                        <label>Landmark (Optional)</label>
+                                        <div class="input-field col s12 m4">
+                                            <input id="state" name="deliveryLocation[state]" type="text" required
+                                                   value="<%= order.deliveryLocation?.state || '' %>">
+                                            <label for="state" class="active">State *</label>
+                                        </div>
+
+                                        <div class="input-field col s12 m4">
+                                            <input id="pincode" name="deliveryLocation[pincode]" type="text" maxlength="12" required
+                                                   value="<%= order.deliveryLocation?.pincode || '' %>">
+                                            <label for="pincode" class="active">Pincode *</label>
+                                        </div>
+
+                                        <div class="input-field col s12">
+                                            <input id="landmark" name="deliveryLocation[landmark]" type="text"
+                                                   value="<%= order.deliveryLocation?.landmark || '' %>">
+                                            <label for="landmark" class="active">Landmark (Optional)</label>
+                                        </div>
                                     </div>
 
                                     <!-- Order Details -->
@@ -186,13 +273,13 @@
                                     <div class="input-field col s12 m6">
                                         <input type="datetime-local" name="scheduledPickupDate"
                                                value="<%= order.scheduledPickupDate ? new Date(order.scheduledPickupDate).toISOString().slice(0,16) : '' %>">
-                                        <label>Scheduled Pickup (Optional)</label>
+                                       
                                     </div>
 
                                     <div class="input-field col s12 m6">
                                         <input type="datetime-local" name="scheduledDeliveryDate"
                                                value="<%= order.scheduledDeliveryDate ? new Date(order.scheduledDeliveryDate).toISOString().slice(0,16) : '' %>">
-                                        <label>Scheduled Delivery (Optional)</label>
+                                       
                                     </div>
 
                                     <!-- Special Instructions -->
@@ -201,15 +288,13 @@
                                     </div>
 
                                     <div class="input-field col s12">
-                                        <textarea name="specialInstructions" class="materialize-textarea">
-<%= order.specialInstructions || '' %></textarea>
-                                        <label>Special Instructions (Optional)</label>
+                                        <textarea name="specialInstructions" class="materialize-textarea"><%= order.specialInstructions || '' %></textarea>
+                                        <label class="active">Special Instructions (Optional)</label>
                                     </div>
 
                                     <div class="input-field col s12">
-                                        <textarea name="packagingInstructions" class="materialize-textarea">
-<%= order.packagingInstructions || '' %></textarea>
-                                        <label>Packaging Instructions (Optional)</label>
+                                        <textarea name="packagingInstructions" class="materialize-textarea"><%= order.packagingInstructions || '' %></textarea>
+                                        <label class="active">Packaging Instructions (Optional)</label>
                                     </div>
 
                                     <!-- Hidden Items JSON -->
@@ -237,6 +322,185 @@
     <script>
         let itemCounter = 0;
 
+        // ================================================================
+        //  GOOGLE MAPS LINK PARSER (same logic as order_create.ejs)
+        // ================================================================
+
+        // --- Step 1: Extract coordinates ---
+        function extractCoordsFromUrl(url) {
+            let m = url.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
+            if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+            m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+            if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+            m = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+            if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+            return null;
+        }
+
+        // --- Step 2: Extract place name from URL path ---
+        function extractPlaceNameFromUrl(url) {
+            const m = url.match(/\/maps\/place\/([^/@?]+)/);
+            if (!m) return null;
+            const raw = decodeURIComponent(m[1].replace(/\+/g, ' ')).trim();
+            if (!raw || raw.length < 2) return null;
+            return raw;
+        }
+
+        // --- Step 3: Extract search query (for geocode fallback) ---
+        function extractQueryFromUrl(url) {
+            let m = url.match(/\/maps\/(?:search|place)\/([^/@?]+)/);
+            if (m) return decodeURIComponent(m[1].replace(/\+/g, ' '));
+            m = url.match(/[?&]q=([^&]+)/);
+            if (m) return decodeURIComponent(m[1].replace(/\+/g, ' '));
+            return null;
+        }
+
+        // --- Step 4: Parse geocode API result ---
+        function parseGeocodeResult(result, lat, lng, placeName) {
+            const components = result.address_components || [];
+            const get = (types) => {
+                const c = components.find(c => types.some(t => c.types.includes(t)));
+                return c ? c.long_name : '';
+            };
+
+            const locality    = get(['locality']);
+            const adminArea2  = get(['administrative_area_level_2']);
+            const adminArea1  = get(['administrative_area_level_1']);
+            const postal      = get(['postal_code']);
+
+            let baseAddress = '';
+            if (result.formatted_address) {
+                const parts = result.formatted_address.split(',').map(p => p.trim()).filter(Boolean);
+                const useful = parts.slice(0, Math.max(parts.length - 2, 2));
+                baseAddress = useful.join(', ');
+            }
+
+            let address = baseAddress;
+            if (placeName && placeName.trim()) {
+                const p = placeName.trim();
+                if (!baseAddress.toLowerCase().includes(p.toLowerCase())) {
+                    address = p + ', ' + baseAddress;
+                }
+            }
+
+            const city  = locality || adminArea2 || '';
+            const state = adminArea1 || '';
+
+            return { address, city, state, pincode: postal, lat, lng };
+        }
+
+        // --- Step 5: Reverse geocode (lat/lng → address) ---
+        async function reverseGeocode(lat, lng, placeName) {
+            if (!GMAPS_KEY) throw new Error('Google Maps API key not configured');
+            const url  = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GMAPS_KEY}`;
+            const res  = await fetch(url);
+            const data = await res.json();
+            if (data.status !== 'OK' || !data.results.length)
+                throw new Error('Reverse geocode failed: ' + data.status);
+            return parseGeocodeResult(data.results[0], lat, lng, placeName || null);
+        }
+
+        // --- Step 6: Forward geocode (address string → lat/lng + address) ---
+        async function forwardGeocode(query) {
+            if (!GMAPS_KEY) throw new Error('Google Maps API key not configured');
+            const url  = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${GMAPS_KEY}`;
+            const res  = await fetch(url);
+            const data = await res.json();
+            if (data.status !== 'OK' || !data.results.length)
+                throw new Error('Geocode failed: ' + data.status);
+            const loc = data.results[0].geometry.location;
+            return parseGeocodeResult(data.results[0], loc.lat, loc.lng, query);
+        }
+
+        // --- Step 7: Master resolver — handles any input type ---
+        async function resolveLocation(rawInput) {
+            const input = rawInput.trim();
+
+            if (input.includes('google.com/maps') || input.includes('goo.gl') || input.includes('maps.app')) {
+
+                const coords    = extractCoordsFromUrl(input);
+                const placeName = extractPlaceNameFromUrl(input);
+
+                if (coords) {
+                    return await reverseGeocode(coords.lat, coords.lng, placeName);
+                }
+
+                const query = extractQueryFromUrl(input);
+                if (query) {
+                    return await forwardGeocode(query);
+                }
+
+                if (input.includes('goo.gl') || input.includes('maps.app')) {
+                    throw new Error('Short link detected. Please tap "Share" → "Copy link" and use the FULL Google Maps URL (starts with https://www.google.com/maps/...)');
+                }
+
+                throw new Error('Could not extract location from this URL. Try sharing the full Maps link.');
+            }
+
+            const latLngMatch = input.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+            if (latLngMatch) {
+                return await reverseGeocode(parseFloat(latLngMatch[1]), parseFloat(latLngMatch[2]), null);
+            }
+
+            return await forwardGeocode(input);
+        }
+
+        // ================================================================
+        //  DELIVERY ADDRESS AUTO-FILL
+        // ================================================================
+        async function parseDeliveryLink() {
+            const raw    = document.getElementById('deliveryMapsLink').value.trim();
+            const status = document.getElementById('deliveryLinkStatus');
+
+            if (!raw) {
+                status.textContent = 'Please paste a Google Maps link or address.';
+                status.className   = 'maps-link-status error';
+                return;
+            }
+
+            status.textContent = '⏳ Fetching location…';
+            status.className   = 'maps-link-status';
+
+            try {
+                const loc = await resolveLocation(raw);
+
+                setFieldValue('delAddress', loc.address);
+                setFieldValue('city',       loc.city);
+                setFieldValue('state',      loc.state);
+                setFieldValue('pincode',    loc.pincode);
+                document.getElementById('delLat').value = loc.lat;
+                document.getElementById('delLng').value = loc.lng;
+
+                M.updateTextFields();
+                M.textareaAutoResize(document.getElementById('delAddress'));
+
+                status.innerHTML = `✅ Location filled — <strong>${loc.address}</strong>${loc.city ? ', ' + loc.city : ''} (${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})`;
+                status.className = 'maps-link-status success';
+
+                document.getElementById('deliveryFields').classList.add('autofill-highlight');
+                setTimeout(() => document.getElementById('deliveryFields').classList.remove('autofill-highlight'), 2500);
+
+            } catch (err) {
+                status.textContent = '❌ ' + err.message;
+                status.className   = 'maps-link-status error';
+            }
+        }
+
+        // Helper: set input/textarea value + trigger Materialize label float
+        function setFieldValue(id, value) {
+            const el = document.getElementById(id);
+            if (!el || value === undefined) return;
+            el.value = value || '';
+            el.dispatchEvent(new Event('input'));
+        }
+
+        // ================================================================
+        // ORDER ITEMS
+        // ================================================================
+
         // Add new item
         document.getElementById('addItemBtn').addEventListener('click', function() {
             itemCounter++;
@@ -244,7 +508,7 @@
 
             const itemHTML = `
                 <div class="item-card" id="${itemId}">
-                    <button type="button" class="btn-small red remove-item-btn waves-effect" 
+                    <button type="button" class="btn-small red remove-item-btn waves-effect"
                             onclick="this.closest('.item-card').remove()">
                         <i class="material-icons">close</i>
                     </button>
@@ -296,7 +560,6 @@
             const existingItems = <%- JSON.stringify(order.items || []) %>;
 
             if (existingItems.length === 0) {
-                // Add one empty item if none exist
                 document.getElementById('addItemBtn').click();
                 return;
             }
@@ -307,7 +570,7 @@
 
                 const itemHTML = `
                     <div class="item-card" id="${itemId}">
-                        <button type="button" class="btn-small red remove-item-btn waves-effect" 
+                        <button type="button" class="btn-small red remove-item-btn waves-effect"
                                 onclick="this.closest('.item-card').remove()">
                             <i class="material-icons">close</i>
                         </button>

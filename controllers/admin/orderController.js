@@ -1084,36 +1084,87 @@ exports.renderEditOrder = async (req, res) => {
   }
 };
 
+// exports.updateOrder = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+//     const updates = req.body;
+
+//     // Fetch order
+//     const order = await Order.findById(orderId);
+//     if (!order) {
+//       return res.status(404).json({ success: false, message: 'Order not found' });
+//     }
+
+//     // Check if order can be modified (assuming you have this method in model)
+//     if (!order.canUpdateOrder()) {
+//       return res.status(400).json({ success: false, message: 'Order cannot be modified in current status' });
+//     }
+
+//     // Check authorization
+//     if (req.user.role === 'customer' && order.customerId.toString() !== req.user._id.toString()) {
+//       return res.status(403).json({ success: false, message: 'Access denied' });
+//     }
+
+//     // Restricted fields for customers
+//     if (req.user.role === 'customer') {
+//       delete updates.status;
+//       delete updates.taxPercentage;
+//       delete updates.shippingCharges;
+//       delete updates.discount;
+//     }
+
+//     // Handle items if updated (parse from JSON string)
+//     if (updates.items) {
+//       try {
+//         updates.items = JSON.parse(updates.items);
+//       } catch (err) {
+//         return res.status(400).json({ success: false, message: 'Invalid items format' });
+//       }
+//     }
+
+//     // Update order
+//     Object.assign(order, updates);
+//     await order.save();
+
+//     // Optional: Re-populate for response
+//     const updatedOrder = await Order.findById(order._id)
+//       .populate('customerId', 'name email phone companyName');
+
+//     res.redirect(`/admin/orders`);
+
+//   } catch (error) {
+//     console.error('Update Order Error:', error);
+//     req.flash('error', 'Failed to update order');
+//     res.redirect(`/admin/orders/${orderId}/edit`);
+//   }
+// };
+
+
 exports.updateOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const updates = req.body;
-
-    // Fetch order
+ 
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
-
-    // Check if order can be modified (assuming you have this method in model)
+ 
     if (!order.canUpdateOrder()) {
       return res.status(400).json({ success: false, message: 'Order cannot be modified in current status' });
     }
-
-    // Check authorization
+ 
     if (req.user.role === 'customer' && order.customerId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
-
-    // Restricted fields for customers
+ 
     if (req.user.role === 'customer') {
       delete updates.status;
       delete updates.taxPercentage;
       delete updates.shippingCharges;
       delete updates.discount;
     }
-
-    // Handle items if updated (parse from JSON string)
+ 
     if (updates.items) {
       try {
         updates.items = JSON.parse(updates.items);
@@ -1121,23 +1172,142 @@ exports.updateOrder = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid items format' });
       }
     }
-
-    // Update order
+ 
+    // ✅ FIX: deliveryLocation ko MERGE karo, blind overwrite mat karo.
+    // Form se coordinates nahi aaye to purane coordinates hi rakho — delete mat karo.
+    if (updates.deliveryLocation) {
+      const oldLoc = order.deliveryLocation ? order.deliveryLocation.toObject() : {};
+      const newLoc = updates.deliveryLocation;
+ 
+      const hasNewCoords =
+        newLoc.coordinates &&
+        newLoc.coordinates.latitude !== undefined &&
+        newLoc.coordinates.latitude !== '' &&
+        newLoc.coordinates.longitude !== undefined &&
+        newLoc.coordinates.longitude !== '';
+ 
+      order.deliveryLocation = {
+        ...oldLoc,
+        address:       newLoc.address       ?? oldLoc.address,
+        contactPerson: newLoc.contactPerson ?? oldLoc.contactPerson,
+        contactPhone:  newLoc.contactPhone  ?? oldLoc.contactPhone,
+        city:          newLoc.city          ?? oldLoc.city,
+        state:         newLoc.state         ?? oldLoc.state,
+        pincode:       newLoc.pincode       ?? oldLoc.pincode,
+        landmark:      newLoc.landmark      ?? oldLoc.landmark,
+        coordinates: hasNewCoords
+          ? {
+              latitude:  Number(newLoc.coordinates.latitude),
+              longitude: Number(newLoc.coordinates.longitude)
+            }
+          : oldLoc.coordinates // naya coordinate nahi aaya → purana hi safe rakho
+      };
+ 
+      // isko updates se hata do taaki neeche wala Object.assign dubara
+      // isko (bina merge kiye) overwrite na kar de
+      delete updates.deliveryLocation;
+    }
+ 
     Object.assign(order, updates);
     await order.save();
-
-    // Optional: Re-populate for response
-    const updatedOrder = await Order.findById(order._id)
-      .populate('customerId', 'name email phone companyName');
-
+ 
+    // ✅ Delivery collection ko order ke FINAL (merged) deliveryLocation se sync karo
+    if (order.deliveryId) {
+      try {
+        const deliveryUpdate = {
+          'deliveryLocation.address':       order.deliveryLocation.address,
+          'deliveryLocation.contactPerson': order.deliveryLocation.contactPerson,
+          'deliveryLocation.contactPhone':  order.deliveryLocation.contactPhone,
+        };
+ 
+        if (order.deliveryLocation.coordinates?.latitude && order.deliveryLocation.coordinates?.longitude) {
+          deliveryUpdate['deliveryLocation.coordinates.latitude']  = order.deliveryLocation.coordinates.latitude;
+          deliveryUpdate['deliveryLocation.coordinates.longitude'] = order.deliveryLocation.coordinates.longitude;
+        }
+ 
+        await Delivery.findByIdAndUpdate(order.deliveryId, deliveryUpdate, { new: false });
+        console.log(`✅ Delivery location updated for orderId: ${orderId}`);
+      } catch (delErr) {
+        console.error('❌ Delivery update failed:', delErr.message);
+      }
+    }
+ 
+    // ✅ Driver ko socket + FCM notification bhejo
+    if (order.deliveryId) {
+      try {
+        const delivery = await Delivery.findById(order.deliveryId).select('driverId');
+ 
+        if (delivery?.driverId) {
+          // ⚠️ FIX: room naam ab `driver_<id>` (underscore) hai — updateOrderPriority
+          // jaisa hi. Pehle `driver-<id>` (hyphen) tha jo driver app ke join()
+          // room se MATCH nahi karta tha, isliye notification kabhi milti hi nahi thi.
+          const driverRoom = `driver_${delivery.driverId.toString()}`;
+ 
+          const io = req.app.get('io');
+          if (io) {
+            io.to(driverRoom).emit('order:updated', {
+              orderId:     order._id.toString(),
+              orderNumber: order.orderNumber,
+              message:     `Order ${order.orderNumber} has been updated`,
+              updatedFields: {
+                deliveryLocation:     order.deliveryLocation || null,
+                specialInstructions:  updates.specialInstructions || null,
+                priority:             updates.priority || null,
+              },
+              timestamp: new Date().toISOString(),
+            });
+ 
+            // Admin room ko bhi broadcast karo
+            io.to('admin-room').emit('order:updated', {
+              orderId:     order._id.toString(),
+              orderNumber: order.orderNumber,
+              updatedBy:   req.user?.name || 'Admin',
+              timestamp:   new Date().toISOString(),
+            });
+ 
+            console.log(`✅ Socket notification sent to room: ${driverRoom}`);
+          } else {
+            console.warn('⚠️ Socket.io instance (io) not found on app — check app.set("io", io) setup');
+          }
+ 
+          // FCM push notification
+          try {
+            const Driver = require('../../models/Driver');
+            const driver = await Driver.findById(delivery.driverId).select('fcmToken name');
+            if (driver?.fcmToken) {
+              const { sendRideNotification } = require('../../utils/sendNotification');
+              await sendRideNotification(driver.fcmToken, {
+                code:        '2',
+                title:       `Order Updated — ${order.orderNumber}`,
+                body:        `Delivery address or details have been updated. Please check the app.`,
+                orderId:     order._id.toString(),
+                orderNumber: order.orderNumber,
+              });
+              console.log(`✅ FCM notification sent to driver: ${driver.name}`);
+            } else {
+              console.warn('⚠️ Driver has no fcmToken saved — FCM push skipped');
+            }
+          } catch (fcmErr) {
+            console.warn('FCM notification failed (non-fatal):', fcmErr.message);
+          }
+        } else {
+          console.warn('⚠️ No driverId found on delivery — order may not be assigned yet');
+        }
+      } catch (notifyErr) {
+        console.warn('Driver notification failed (non-fatal):', notifyErr.message);
+      }
+    }
+ 
+    req.flash('success', 'Order updated successfully');
     res.redirect(`/admin/orders`);
-
+ 
   } catch (error) {
     console.error('Update Order Error:', error);
     req.flash('error', 'Failed to update order');
-    res.redirect(`/admin/orders/${orderId}/edit`);
+    res.redirect(`/admin/orders/edit/${req.params.orderId}`);
   }
 };
+ 
 
 // ============= DELETE ORDER =============
 
