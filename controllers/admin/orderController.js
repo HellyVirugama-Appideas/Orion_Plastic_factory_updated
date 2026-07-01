@@ -1140,7 +1140,6 @@ exports.renderEditOrder = async (req, res) => {
 //   }
 // };
 
-
 exports.updateOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -1174,7 +1173,7 @@ exports.updateOrder = async (req, res) => {
       }
     }
 
-    // ✅ FIX: deliveryLocation ko MERGE karo, blind overwrite mat karo.
+    // deliveryLocation ko MERGE karo, blind overwrite mat karo.
     // Form se coordinates nahi aaye to purane coordinates hi rakho — delete mat karo.
     if (updates.deliveryLocation) {
       const oldLoc = order.deliveryLocation ? order.deliveryLocation.toObject() : {};
@@ -1204,15 +1203,13 @@ exports.updateOrder = async (req, res) => {
           : oldLoc.coordinates // naya coordinate nahi aaya → purana hi safe rakho
       };
 
-      // isko updates se hata do taaki neeche wala Object.assign dubara
-      // isko (bina merge kiye) overwrite na kar de
       delete updates.deliveryLocation;
     }
 
     Object.assign(order, updates);
     await order.save();
 
-    // ✅ Delivery collection ko order ke FINAL (merged) deliveryLocation se sync karo
+    // Delivery collection ko order ke FINAL (merged) deliveryLocation se sync karo
     if (order.deliveryId) {
       try {
         const deliveryUpdate = {
@@ -1233,78 +1230,13 @@ exports.updateOrder = async (req, res) => {
       }
     }
 
-    // ✅ Driver ko socket + FCM notification bhejo
-    // if (order.deliveryId) {
-    //   try {
-    //     const delivery = await Delivery.findById(order.deliveryId).select('driverId');
-
-    //     if (delivery?.driverId) {
-    //       // ⚠️ FIX: room naam ab `driver_<id>` (underscore) hai — updateOrderPriority
-    //       // jaisa hi. Pehle `driver-<id>` (hyphen) tha jo driver app ke join()
-    //       // room se MATCH nahi karta tha, isliye notification kabhi milti hi nahi thi.
-    //       const driverRoom = `driver_${delivery.driverId.toString()}`;
-
-    //       const io = req.app.get('io');
-    //       if (io) {
-    //         io.to(driverRoom).emit('order:updated', {
-    //           orderId: order._id.toString(),
-    //           orderNumber: order.orderNumber,
-    //           message: `Order ${order.orderNumber} has been updated`,
-    //           updatedFields: {
-    //             deliveryLocation: order.deliveryLocation || null,
-    //             specialInstructions: updates.specialInstructions || null,
-    //             priority: updates.priority || null,
-    //           },
-    //           timestamp: new Date().toISOString(),
-    //         });
-
-    //         // Admin room ko bhi broadcast karo
-    //         io.to('admin-room').emit('order:updated', {
-    //           orderId: order._id.toString(),
-    //           orderNumber: order.orderNumber,
-    //           updatedBy: req.user?.name || 'Admin',
-    //           timestamp: new Date().toISOString(),
-    //         });
-
-    //         console.log(`✅ Socket notification sent to room: ${driverRoom}`);
-    //       } else {
-    //         console.warn('⚠️ Socket.io instance (io) not found on app — check app.set("io", io) setup');
-    //       }
-
-    //       // FCM push notification
-    //       try {
-    //         const Driver = require('../../models/Driver');
-    //         const driver = await Driver.findById(delivery.driverId).select('fcmToken name');
-    //         if (driver?.fcmToken) {
-    //           // ✅ naya
-    //           const { sendNotification } = require('../../utils/sendNotification');
-    //           await sendNotification(driver.fcmToken, {
-    //             title: `Order Updated — ${order.orderNumber}`,
-    //             body: `Delivery address or details have been updated. Please check the app.`,
-    //             orderId: order._id.toString(),
-    //             orderNumber: order.orderNumber,
-    //           });
-    //           console.log(`✅ FCM notification sent to driver: ${driver.name}`);
-    //         } else {
-    //           console.warn('⚠️ Driver has no fcmToken saved — FCM push skipped');
-    //         }
-    //       } catch (fcmErr) {
-    //         console.warn('FCM notification failed (non-fatal):', fcmErr.message);
-    //       }
-    //     } else {
-    //       console.warn('⚠️ No driverId found on delivery — order may not be assigned yet');
-    //     }
-    //   } catch (notifyErr) {
-    //     console.warn('Driver notification failed (non-fatal):', notifyErr.message);
-    //   }
-    // }
-
+    // Driver ko socket + notification bhejo
     if (order.deliveryId) {
       try {
         const delivery = await Delivery.findById(order.deliveryId).select('driverId');
 
         if (delivery?.driverId) {
-          const driverRoom = `driver-${delivery.driverId.toString()}`;   // ✅ HYPHEN — driver:connect se match
+          const driverRoom = `driver-${delivery.driverId.toString()}`; // HYPHEN — driver:connect se match
 
           const io = req.app.get('io');
           if (io) {
@@ -1332,28 +1264,34 @@ exports.updateOrder = async (req, res) => {
             console.warn('⚠️ Socket.io instance (io) not found on app');
           }
 
-          // ✅ FIX: NotificationService use karo — DB record + push dono banega
+          // ✅ FIX: schema ka `data` field sirf fixed keys accept karta hai —
+          // orderId/orderNumber ko customData Map me daalna zaroori hai
           const NotificationService = require('../../services/NotificationService');
-          await NotificationService.sendNotification({
+          const savedNotif = await NotificationService.sendNotification({
             recipientId: delivery.driverId,
             recipientType: 'Driver',
             type: 'delivery_updated',
             title: `Order Updated — ${order.orderNumber}`,
             message: `Delivery address or details have been updated. Please check the app.`,
             data: {
-              orderId: order._id.toString(),
-              orderNumber: order.orderNumber,
+              deliveryId: order.deliveryId,
+              customData: new Map([
+                ['orderId', order._id.toString()],
+                ['orderNumber', order.orderNumber],
+              ])
             },
             channels: ['push'],
             priority: 'medium',
           });
 
+          console.log(`[NOTIF-DEBUG] Saved notification ID: ${savedNotif?._id} | recipientId: ${savedNotif?.recipientId}`);
           console.log(`✅ Notification saved + push sent for driver: ${delivery.driverId}`);
         } else {
           console.warn('⚠️ No driverId found on delivery — order may not be assigned yet');
         }
       } catch (notifyErr) {
         console.warn('Driver notification failed (non-fatal):', notifyErr.message);
+        console.error(notifyErr.stack);
       }
     }
 
@@ -1893,9 +1831,9 @@ exports.updateOrderPriority = async (req, res) => {
         const delivery = await Delivery.findById(order.deliveryId).select('driverId');
 
         if (delivery?.driverId) {
-          const driverRoom = `driver-${delivery.driverId.toString()}`;   // ✅ HYPHEN
+          const driverRoom = `driver-${delivery.driverId.toString()}`; // HYPHEN — driver:connect se match
 
-          // 1. Socket notification
+          // 1. Socket notification (real-time, agar driver connected hai)
           const io = req.app.get('io');
           if (io) {
             io.to(driverRoom).emit('order:priority:changed', {
@@ -1906,31 +1844,46 @@ exports.updateOrderPriority = async (req, res) => {
               message: `Order ${order.orderNumber} priority changed to ${priority.toUpperCase()}`
             });
             console.log(`✅ Socket notification sent to room: ${driverRoom}`);
+          } else {
+            console.warn('⚠️ Socket.io instance (io) not found on app');
           }
 
-          // 2. ✅ FIX: NotificationService — DB save + push dono
-          await NotificationService.sendNotification({
+          // 2. NotificationService — DB record + push dono
+          // ✅ FIX: schema ka `data` field sirf fixed keys accept karta hai
+          // (deliveryId, journeyId, chatMessageId, expenseId, customData).
+          // orderId/orderNumber jaisi custom keys ko customData Map me daalna zaroori hai,
+          // warna Mongoose unknown keys ko chup-chaap drop kar deta hai.
+          const savedNotif = await NotificationService.sendNotification({
             recipientId: delivery.driverId,
             recipientType: 'Driver',
             type: 'delivery_updated',
             title: `Order Priority: ${priority.toUpperCase()}`,
             message: `Order #${order.orderNumber} priority changed from ${oldPriority} to ${priority}.`,
             data: {
-              orderId: order._id.toString(),
-              orderNumber: order.orderNumber,
-              newPriority: priority,
-              oldPriority: String(oldPriority),
+              deliveryId: order.deliveryId,
+              customData: new Map([
+                ['orderId', order._id.toString()],
+                ['orderNumber', order.orderNumber],
+                ['newPriority', priority],
+                ['oldPriority', String(oldPriority)],
+              ])
             },
             channels: ['push'],
             priority: 'medium',
           });
 
+          console.log(`[NOTIF-DEBUG] Saved notification ID: ${savedNotif?._id} | recipientId: ${savedNotif?.recipientId} | recipientType: ${savedNotif?.recipientType}`);
+
           driverNotified = true;
-          console.log(`✅ Notification saved + push sent for driver: ${delivery.driverId}`);
+        } else {
+          console.warn('⚠️ No driverId found on delivery for this order');
         }
+      } else {
+        console.warn('⚠️ Order has no deliveryId — not assigned to any delivery yet');
       }
     } catch (notifyErr) {
       console.warn('[PRIORITY] Notification failed (non-fatal):', notifyErr.message);
+      console.error(notifyErr.stack); // full stack trace — debug ke liye
     }
 
     return res.json({
