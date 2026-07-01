@@ -73,6 +73,75 @@ class NotificationService {
   }
 
   // ==================== PUSH NOTIFICATION (FCM) ====================
+  // static async sendPushNotification(notification) {
+  //   try {
+  //     // Get user's FCM token
+  //     const fcmToken = await this.getUserFCMToken(
+  //       notification.recipientId,
+  //       notification.recipientType
+  //     );
+
+  //     if (!fcmToken) {
+  //       console.log('No FCM token found for user');
+  //       return;
+  //     }
+
+  //     // Firebase Cloud Messaging API
+  //     const FCM_SERVER_KEY = process.env.FCM_SERVER_KEY;
+  //     const FCM_URL = 'https://fcm.googleapis.com/fcm/send';
+
+  //     const payload = {
+  //       to: fcmToken,
+  //       notification: {
+  //         title: notification.title,
+  //         body: notification.message,
+  //         icon: 'ic_notification',
+  //         sound: 'default',
+  //         badge: '1',
+  //         priority: notification.priority === 'urgent' ? 'high' : 'normal'
+  //       },
+  //       data: {
+  //         notificationId: notification._id.toString(),
+  //         type: notification.type,
+  //         actionUrl: notification.actionUrl || '',
+  //         ...notification.data
+  //       },
+  //       android: {
+  //         priority: notification.priority === 'urgent' ? 'high' : 'normal',
+  //         ttl: 86400 // 24 hours
+  //       },
+  //       apns: {
+  //         headers: {
+  //           'apns-priority': notification.priority === 'urgent' ? '10' : '5'
+  //         }
+  //       }
+  //     };
+
+  //     const response = await axios.post(FCM_URL, payload, {
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': `key=${FCM_SERVER_KEY}`
+  //       }
+  //     });
+
+  //     // Update notification
+  //     await Notification.findByIdAndUpdate(notification._id, {
+  //       'channels.push.sent': true,
+  //       'channels.push.sentAt': new Date(),
+  //       'channels.push.fcmMessageId': response.data.multicast_id
+  //     });
+
+  //     console.log('✅ Push notification sent:', response.data);
+
+  //   } catch (error) {
+  //     console.error('❌ Push notification error:', error.message);
+  //     await Notification.findByIdAndUpdate(notification._id, {
+  //       'channels.push.error': error.message
+  //     });
+  //   }
+  // }
+
+
   static async sendPushNotification(notification) {
     try {
       // Get user's FCM token
@@ -81,65 +150,54 @@ class NotificationService {
         notification.recipientType
       );
 
+      console.log(`[PUSH-DEBUG] recipientId: ${notification.recipientId} | recipientType: ${notification.recipientType} | fcmToken found: ${!!fcmToken}`);
+
       if (!fcmToken) {
-        console.log('No FCM token found for user');
+        console.log('❌ No FCM token found for user');
+        await Notification.findByIdAndUpdate(notification._id, {
+          'channels.push.error': 'No FCM token found for user'
+        });
         return;
       }
 
-      // Firebase Cloud Messaging API
-      const FCM_SERVER_KEY = process.env.FCM_SERVER_KEY;
-      const FCM_URL = 'https://fcm.googleapis.com/fcm/send';
+      // ✅ FIX: naya firebase-admin SDK use karo (legacy FCM API band ho chuka hai)
+      const { sendNotification: sendFcmPush } = require('../utils/sendNotification');
 
-      const payload = {
-        to: fcmToken,
-        notification: {
-          title: notification.title,
-          body: notification.message,
-          icon: 'ic_notification',
-          sound: 'default',
-          badge: '1',
-          priority: notification.priority === 'urgent' ? 'high' : 'normal'
-        },
-        data: {
-          notificationId: notification._id.toString(),
-          type: notification.type,
-          actionUrl: notification.actionUrl || '',
-          ...notification.data
-        },
-        android: {
-          priority: notification.priority === 'urgent' ? 'high' : 'normal',
-          ttl: 86400 // 24 hours
-        },
-        apns: {
-          headers: {
-            'apns-priority': notification.priority === 'urgent' ? '10' : '5'
-          }
-        }
-      };
-
-      const response = await axios.post(FCM_URL, payload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `key=${FCM_SERVER_KEY}`
-        }
+      const response = await sendFcmPush(fcmToken, {
+        title: notification.title,
+        body: notification.message,
+        notificationId: notification._id.toString(),
+        type: notification.type,
+        actionUrl: notification.actionUrl || '',
+        ...notification.data
       });
+
+      if (!response) {
+        // sendFcmPush apne andar hi error console kar deta hai aur null return karta hai
+        await Notification.findByIdAndUpdate(notification._id, {
+          'channels.push.error': 'FCM send returned null — check token validity / firebase-admin logs above'
+        });
+        console.log('❌ Push notification failed — response was null');
+        return;
+      }
 
       // Update notification
       await Notification.findByIdAndUpdate(notification._id, {
         'channels.push.sent': true,
         'channels.push.sentAt': new Date(),
-        'channels.push.fcmMessageId': response.data.multicast_id
+        'channels.push.fcmMessageId': response
       });
 
-      console.log('✅ Push notification sent:', response.data);
+      console.log('✅ Push notification sent:', response);
 
     } catch (error) {
       console.error('❌ Push notification error:', error.message);
       await Notification.findByIdAndUpdate(notification._id, {
         'channels.push.error': error.message
-      });
+      }).catch(e => console.error('Failed to save push error to DB:', e.message));
     }
   }
+
 
   // ==================== SMS GATEWAY ====================
   static async sendSMS(notification) {
