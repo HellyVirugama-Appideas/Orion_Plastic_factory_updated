@@ -1144,27 +1144,27 @@ exports.updateOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const updates = req.body;
- 
+
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
- 
+
     if (!order.canUpdateOrder()) {
       return res.status(400).json({ success: false, message: 'Order cannot be modified in current status' });
     }
- 
+
     if (req.user.role === 'customer' && order.customerId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
- 
+
     if (req.user.role === 'customer') {
       delete updates.status;
       delete updates.taxPercentage;
       delete updates.shippingCharges;
       delete updates.discount;
     }
- 
+
     if (updates.items) {
       try {
         updates.items = JSON.parse(updates.items);
@@ -1172,115 +1172,115 @@ exports.updateOrder = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid items format' });
       }
     }
- 
+
     // ✅ FIX: deliveryLocation ko MERGE karo, blind overwrite mat karo.
     // Form se coordinates nahi aaye to purane coordinates hi rakho — delete mat karo.
     if (updates.deliveryLocation) {
       const oldLoc = order.deliveryLocation ? order.deliveryLocation.toObject() : {};
       const newLoc = updates.deliveryLocation;
- 
+
       const hasNewCoords =
         newLoc.coordinates &&
         newLoc.coordinates.latitude !== undefined &&
         newLoc.coordinates.latitude !== '' &&
         newLoc.coordinates.longitude !== undefined &&
         newLoc.coordinates.longitude !== '';
- 
+
       order.deliveryLocation = {
         ...oldLoc,
-        address:       newLoc.address       ?? oldLoc.address,
+        address: newLoc.address ?? oldLoc.address,
         contactPerson: newLoc.contactPerson ?? oldLoc.contactPerson,
-        contactPhone:  newLoc.contactPhone  ?? oldLoc.contactPhone,
-        city:          newLoc.city          ?? oldLoc.city,
-        state:         newLoc.state         ?? oldLoc.state,
-        pincode:       newLoc.pincode       ?? oldLoc.pincode,
-        landmark:      newLoc.landmark      ?? oldLoc.landmark,
+        contactPhone: newLoc.contactPhone ?? oldLoc.contactPhone,
+        city: newLoc.city ?? oldLoc.city,
+        state: newLoc.state ?? oldLoc.state,
+        pincode: newLoc.pincode ?? oldLoc.pincode,
+        landmark: newLoc.landmark ?? oldLoc.landmark,
         coordinates: hasNewCoords
           ? {
-              latitude:  Number(newLoc.coordinates.latitude),
-              longitude: Number(newLoc.coordinates.longitude)
-            }
+            latitude: Number(newLoc.coordinates.latitude),
+            longitude: Number(newLoc.coordinates.longitude)
+          }
           : oldLoc.coordinates // naya coordinate nahi aaya → purana hi safe rakho
       };
- 
+
       // isko updates se hata do taaki neeche wala Object.assign dubara
       // isko (bina merge kiye) overwrite na kar de
       delete updates.deliveryLocation;
     }
- 
+
     Object.assign(order, updates);
     await order.save();
- 
+
     // ✅ Delivery collection ko order ke FINAL (merged) deliveryLocation se sync karo
     if (order.deliveryId) {
       try {
         const deliveryUpdate = {
-          'deliveryLocation.address':       order.deliveryLocation.address,
+          'deliveryLocation.address': order.deliveryLocation.address,
           'deliveryLocation.contactPerson': order.deliveryLocation.contactPerson,
-          'deliveryLocation.contactPhone':  order.deliveryLocation.contactPhone,
+          'deliveryLocation.contactPhone': order.deliveryLocation.contactPhone,
         };
- 
+
         if (order.deliveryLocation.coordinates?.latitude && order.deliveryLocation.coordinates?.longitude) {
-          deliveryUpdate['deliveryLocation.coordinates.latitude']  = order.deliveryLocation.coordinates.latitude;
+          deliveryUpdate['deliveryLocation.coordinates.latitude'] = order.deliveryLocation.coordinates.latitude;
           deliveryUpdate['deliveryLocation.coordinates.longitude'] = order.deliveryLocation.coordinates.longitude;
         }
- 
+
         await Delivery.findByIdAndUpdate(order.deliveryId, deliveryUpdate, { new: false });
         console.log(`✅ Delivery location updated for orderId: ${orderId}`);
       } catch (delErr) {
         console.error('❌ Delivery update failed:', delErr.message);
       }
     }
- 
+
     // ✅ Driver ko socket + FCM notification bhejo
     if (order.deliveryId) {
       try {
         const delivery = await Delivery.findById(order.deliveryId).select('driverId');
- 
+
         if (delivery?.driverId) {
           // ⚠️ FIX: room naam ab `driver_<id>` (underscore) hai — updateOrderPriority
           // jaisa hi. Pehle `driver-<id>` (hyphen) tha jo driver app ke join()
           // room se MATCH nahi karta tha, isliye notification kabhi milti hi nahi thi.
           const driverRoom = `driver_${delivery.driverId.toString()}`;
- 
+
           const io = req.app.get('io');
           if (io) {
             io.to(driverRoom).emit('order:updated', {
-              orderId:     order._id.toString(),
+              orderId: order._id.toString(),
               orderNumber: order.orderNumber,
-              message:     `Order ${order.orderNumber} has been updated`,
+              message: `Order ${order.orderNumber} has been updated`,
               updatedFields: {
-                deliveryLocation:     order.deliveryLocation || null,
-                specialInstructions:  updates.specialInstructions || null,
-                priority:             updates.priority || null,
+                deliveryLocation: order.deliveryLocation || null,
+                specialInstructions: updates.specialInstructions || null,
+                priority: updates.priority || null,
               },
               timestamp: new Date().toISOString(),
             });
- 
+
             // Admin room ko bhi broadcast karo
             io.to('admin-room').emit('order:updated', {
-              orderId:     order._id.toString(),
+              orderId: order._id.toString(),
               orderNumber: order.orderNumber,
-              updatedBy:   req.user?.name || 'Admin',
-              timestamp:   new Date().toISOString(),
+              updatedBy: req.user?.name || 'Admin',
+              timestamp: new Date().toISOString(),
             });
- 
+
             console.log(`✅ Socket notification sent to room: ${driverRoom}`);
           } else {
             console.warn('⚠️ Socket.io instance (io) not found on app — check app.set("io", io) setup');
           }
- 
+
           // FCM push notification
           try {
             const Driver = require('../../models/Driver');
             const driver = await Driver.findById(delivery.driverId).select('fcmToken name');
             if (driver?.fcmToken) {
-              const { sendRideNotification } = require('../../utils/sendNotification');
-              await sendRideNotification(driver.fcmToken, {
-                code:        '2',
-                title:       `Order Updated — ${order.orderNumber}`,
-                body:        `Delivery address or details have been updated. Please check the app.`,
-                orderId:     order._id.toString(),
+              // ✅ naya
+              const { sendNotification } = require('../../utils/sendNotification');
+              await sendNotification(driver.fcmToken, {
+                title: `Order Updated — ${order.orderNumber}`,
+                body: `Delivery address or details have been updated. Please check the app.`,
+                orderId: order._id.toString(),
                 orderNumber: order.orderNumber,
               });
               console.log(`✅ FCM notification sent to driver: ${driver.name}`);
@@ -1297,17 +1297,17 @@ exports.updateOrder = async (req, res) => {
         console.warn('Driver notification failed (non-fatal):', notifyErr.message);
       }
     }
- 
+
     req.flash('success', 'Order updated successfully');
     res.redirect(`/admin/orders`);
- 
+
   } catch (error) {
     console.error('Update Order Error:', error);
     req.flash('error', 'Failed to update order');
     res.redirect(`/admin/orders/edit/${req.params.orderId}`);
   }
 };
- 
+
 
 // ============= DELETE ORDER =============
 
@@ -1362,7 +1362,7 @@ exports.deleteOrder = async (req, res) => {
     //   message: 'Order deleted successfully',
     //   deletedOrderId: orderId
     // });
-     res.redirect(`/admin/orders`);
+    res.redirect(`/admin/orders`);
 
   } catch (error) {
     console.error('[DELETE-ORDER] Error:', error);
@@ -1751,7 +1751,7 @@ exports.updateOrderPriority = async (req, res) => {
     // Driver ko Socket + FCM notification bhejo
     try {
       const Delivery = require('../../models/Delivery');   // ← correct relative path
-      const Driver   = require('../../models/Driver');     // ← apne actual model name se match karo
+      const Driver = require('../../models/Driver');     // ← apne actual model name se match karo
 
       if (order.deliveryId) {
         const delivery = await Delivery.findById(order.deliveryId).select('driverId');
@@ -1763,26 +1763,26 @@ exports.updateOrderPriority = async (req, res) => {
           const io = req.app.get('io');
           if (io) {
             io.to(`driver_${delivery.driverId}`).emit('order:priority:changed', {
-              orderId:     order._id,
+              orderId: order._id,
               orderNumber: order.orderNumber,
               oldPriority,
               newPriority: priority,
-              message:     `Order ${order.orderNumber} priority changed to ${priority.toUpperCase()}`
+              message: `Order ${order.orderNumber} priority changed to ${priority.toUpperCase()}`
             });
           }
 
           // 2. FCM push notification (agar driver ka fcmToken hai)
           if (driver?.fcmToken) {
             // apne sendNotification util ka function use karo
-            const { sendRideNotification } = require('../../utils/sendNotification');
-            await sendRideNotification(driver.fcmToken, {
-              code:        '1',
-              title:       `Order Priority: ${priority.toUpperCase()}`,
-              body:        `Order #${order.orderNumber} priority changed from ${oldPriority} to ${priority}.`,
-              orderId:     order._id.toString(),
+            // ✅ naya (sahi)
+            const { sendNotification } = require('../../utils/sendNotification');
+            await sendNotification(driver.fcmToken, {
+              title: `Order Priority: ${priority.toUpperCase()}`,
+              body: `Order #${order.orderNumber} priority changed from ${oldPriority} to ${priority}.`,
+              orderId: order._id.toString(),
               orderNumber: order.orderNumber,
               newPriority: priority,
-              oldPriority,
+              oldPriority: String(oldPriority),
             });
             driverNotified = true;
           }
@@ -1794,8 +1794,8 @@ exports.updateOrderPriority = async (req, res) => {
     }
 
     return res.json({
-      success:         true,
-      message:         `Priority updated to ${priority}`,
+      success: true,
+      message: `Priority updated to ${priority}`,
       priority,
       orderId,
       driverNotified,  // ← frontend toast mein "Driver notified" dikhega
