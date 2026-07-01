@@ -467,6 +467,7 @@ const Customer = require("../../models/Customer")
 const { successResponse, errorResponse } = require("../../utils/responseHelper")
 const Category = require("../../models/Category")
 
+
 // ============= RENDER ORDERS LIST PAGE =============
 exports.renderOrdersList = async (req, res) => {
   try {
@@ -1233,15 +1234,77 @@ exports.updateOrder = async (req, res) => {
     }
 
     // ✅ Driver ko socket + FCM notification bhejo
+    // if (order.deliveryId) {
+    //   try {
+    //     const delivery = await Delivery.findById(order.deliveryId).select('driverId');
+
+    //     if (delivery?.driverId) {
+    //       // ⚠️ FIX: room naam ab `driver_<id>` (underscore) hai — updateOrderPriority
+    //       // jaisa hi. Pehle `driver-<id>` (hyphen) tha jo driver app ke join()
+    //       // room se MATCH nahi karta tha, isliye notification kabhi milti hi nahi thi.
+    //       const driverRoom = `driver_${delivery.driverId.toString()}`;
+
+    //       const io = req.app.get('io');
+    //       if (io) {
+    //         io.to(driverRoom).emit('order:updated', {
+    //           orderId: order._id.toString(),
+    //           orderNumber: order.orderNumber,
+    //           message: `Order ${order.orderNumber} has been updated`,
+    //           updatedFields: {
+    //             deliveryLocation: order.deliveryLocation || null,
+    //             specialInstructions: updates.specialInstructions || null,
+    //             priority: updates.priority || null,
+    //           },
+    //           timestamp: new Date().toISOString(),
+    //         });
+
+    //         // Admin room ko bhi broadcast karo
+    //         io.to('admin-room').emit('order:updated', {
+    //           orderId: order._id.toString(),
+    //           orderNumber: order.orderNumber,
+    //           updatedBy: req.user?.name || 'Admin',
+    //           timestamp: new Date().toISOString(),
+    //         });
+
+    //         console.log(`✅ Socket notification sent to room: ${driverRoom}`);
+    //       } else {
+    //         console.warn('⚠️ Socket.io instance (io) not found on app — check app.set("io", io) setup');
+    //       }
+
+    //       // FCM push notification
+    //       try {
+    //         const Driver = require('../../models/Driver');
+    //         const driver = await Driver.findById(delivery.driverId).select('fcmToken name');
+    //         if (driver?.fcmToken) {
+    //           // ✅ naya
+    //           const { sendNotification } = require('../../utils/sendNotification');
+    //           await sendNotification(driver.fcmToken, {
+    //             title: `Order Updated — ${order.orderNumber}`,
+    //             body: `Delivery address or details have been updated. Please check the app.`,
+    //             orderId: order._id.toString(),
+    //             orderNumber: order.orderNumber,
+    //           });
+    //           console.log(`✅ FCM notification sent to driver: ${driver.name}`);
+    //         } else {
+    //           console.warn('⚠️ Driver has no fcmToken saved — FCM push skipped');
+    //         }
+    //       } catch (fcmErr) {
+    //         console.warn('FCM notification failed (non-fatal):', fcmErr.message);
+    //       }
+    //     } else {
+    //       console.warn('⚠️ No driverId found on delivery — order may not be assigned yet');
+    //     }
+    //   } catch (notifyErr) {
+    //     console.warn('Driver notification failed (non-fatal):', notifyErr.message);
+    //   }
+    // }
+
     if (order.deliveryId) {
       try {
         const delivery = await Delivery.findById(order.deliveryId).select('driverId');
 
         if (delivery?.driverId) {
-          // ⚠️ FIX: room naam ab `driver_<id>` (underscore) hai — updateOrderPriority
-          // jaisa hi. Pehle `driver-<id>` (hyphen) tha jo driver app ke join()
-          // room se MATCH nahi karta tha, isliye notification kabhi milti hi nahi thi.
-          const driverRoom = `driver_${delivery.driverId.toString()}`;
+          const driverRoom = `driver-${delivery.driverId.toString()}`;   // ✅ HYPHEN — driver:connect se match
 
           const io = req.app.get('io');
           if (io) {
@@ -1257,7 +1320,6 @@ exports.updateOrder = async (req, res) => {
               timestamp: new Date().toISOString(),
             });
 
-            // Admin room ko bhi broadcast karo
             io.to('admin-room').emit('order:updated', {
               orderId: order._id.toString(),
               orderNumber: order.orderNumber,
@@ -1267,29 +1329,26 @@ exports.updateOrder = async (req, res) => {
 
             console.log(`✅ Socket notification sent to room: ${driverRoom}`);
           } else {
-            console.warn('⚠️ Socket.io instance (io) not found on app — check app.set("io", io) setup');
+            console.warn('⚠️ Socket.io instance (io) not found on app');
           }
 
-          // FCM push notification
-          try {
-            const Driver = require('../../models/Driver');
-            const driver = await Driver.findById(delivery.driverId).select('fcmToken name');
-            if (driver?.fcmToken) {
-              // ✅ naya
-              const { sendNotification } = require('../../utils/sendNotification');
-              await sendNotification(driver.fcmToken, {
-                title: `Order Updated — ${order.orderNumber}`,
-                body: `Delivery address or details have been updated. Please check the app.`,
-                orderId: order._id.toString(),
-                orderNumber: order.orderNumber,
-              });
-              console.log(`✅ FCM notification sent to driver: ${driver.name}`);
-            } else {
-              console.warn('⚠️ Driver has no fcmToken saved — FCM push skipped');
-            }
-          } catch (fcmErr) {
-            console.warn('FCM notification failed (non-fatal):', fcmErr.message);
-          }
+          // ✅ FIX: NotificationService use karo — DB record + push dono banega
+          const NotificationService = require('../../services/NotificationService');
+          await NotificationService.sendNotification({
+            recipientId: delivery.driverId,
+            recipientType: 'Driver',
+            type: 'delivery_updated',
+            title: `Order Updated — ${order.orderNumber}`,
+            message: `Delivery address or details have been updated. Please check the app.`,
+            data: {
+              orderId: order._id.toString(),
+              orderNumber: order.orderNumber,
+            },
+            channels: ['push'],
+            priority: 'medium',
+          });
+
+          console.log(`✅ Notification saved + push sent for driver: ${delivery.driverId}`);
         } else {
           console.warn('⚠️ No driverId found on delivery — order may not be assigned yet');
         }
@@ -1730,6 +1789,83 @@ exports.updateOrderStatus = async (req, res) => {
   }
 };
 
+// exports.updateOrderPriority = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+//     const { priority } = req.body;
+
+//     if (!['low', 'medium', 'high', 'urgent'].includes(priority)) {
+//       return res.status(400).json({ success: false, message: 'Invalid priority value' });
+//     }
+
+//     const order = await Order.findById(orderId).populate('customerId', 'name companyName');
+//     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+//     const oldPriority = order.priority;
+//     order.priority = priority;
+//     await order.save();
+
+//     let driverNotified = false;
+
+//     // Driver ko Socket + FCM notification bhejo
+//     try {
+//       const Delivery = require('../../models/Delivery');   // ← correct relative path
+//       const Driver = require('../../models/Driver');     // ← apne actual model name se match karo
+
+//       if (order.deliveryId) {
+//         const delivery = await Delivery.findById(order.deliveryId).select('driverId');
+
+//         if (delivery?.driverId) {
+//           const driver = await Driver.findById(delivery.driverId).select('fcmToken');
+
+//           // 1. Socket notification
+//           const io = req.app.get('io');
+//           if (io) {
+//             io.to(`driver_${delivery.driverId}`).emit('order:priority:changed', {
+//               orderId: order._id,
+//               orderNumber: order.orderNumber,
+//               oldPriority,
+//               newPriority: priority,
+//               message: `Order ${order.orderNumber} priority changed to ${priority.toUpperCase()}`
+//             });
+//           }
+
+//           // 2. FCM push notification (agar driver ka fcmToken hai)
+//           if (driver?.fcmToken) {
+//             // apne sendNotification util ka function use karo
+//             // ✅ naya (sahi)
+//             const { sendNotification } = require('../../utils/sendNotification');
+//             await sendNotification(driver.fcmToken, {
+//               title: `Order Priority: ${priority.toUpperCase()}`,
+//               body: `Order #${order.orderNumber} priority changed from ${oldPriority} to ${priority}.`,
+//               orderId: order._id.toString(),
+//               orderNumber: order.orderNumber,
+//               newPriority: priority,
+//               oldPriority: String(oldPriority),
+//             });
+//             driverNotified = true;
+//           }
+//         }
+//       }
+//     } catch (notifyErr) {
+//       // Notification fail hone se main response affect na ho
+//       console.warn('[PRIORITY] Notification failed (non-fatal):', notifyErr.message);
+//     }
+
+//     return res.json({
+//       success: true,
+//       message: `Priority updated to ${priority}`,
+//       priority,
+//       orderId,
+//       driverNotified,  // ← frontend toast mein "Driver notified" dikhega
+//     });
+
+//   } catch (error) {
+//     console.error('[PRIORITY] Update error:', error);
+//     return res.status(500).json({ success: false, message: error.message });
+//   }
+// };
+
 exports.updateOrderPriority = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -1748,48 +1884,52 @@ exports.updateOrderPriority = async (req, res) => {
 
     let driverNotified = false;
 
-    // Driver ko Socket + FCM notification bhejo
     try {
-      const Delivery = require('../../models/Delivery');   // ← correct relative path
-      const Driver = require('../../models/Driver');     // ← apne actual model name se match karo
+      const Delivery = require('../../models/Delivery');
+      const Driver   = require('../../models/Driver');
+      const NotificationService = require('../../services/NotificationService');
 
       if (order.deliveryId) {
         const delivery = await Delivery.findById(order.deliveryId).select('driverId');
 
         if (delivery?.driverId) {
-          const driver = await Driver.findById(delivery.driverId).select('fcmToken');
+          const driverRoom = `driver-${delivery.driverId.toString()}`;   // ✅ HYPHEN
 
           // 1. Socket notification
           const io = req.app.get('io');
           if (io) {
-            io.to(`driver_${delivery.driverId}`).emit('order:priority:changed', {
+            io.to(driverRoom).emit('order:priority:changed', {
               orderId: order._id,
               orderNumber: order.orderNumber,
               oldPriority,
               newPriority: priority,
               message: `Order ${order.orderNumber} priority changed to ${priority.toUpperCase()}`
             });
+            console.log(`✅ Socket notification sent to room: ${driverRoom}`);
           }
 
-          // 2. FCM push notification (agar driver ka fcmToken hai)
-          if (driver?.fcmToken) {
-            // apne sendNotification util ka function use karo
-            // ✅ naya (sahi)
-            const { sendNotification } = require('../../utils/sendNotification');
-            await sendNotification(driver.fcmToken, {
-              title: `Order Priority: ${priority.toUpperCase()}`,
-              body: `Order #${order.orderNumber} priority changed from ${oldPriority} to ${priority}.`,
+          // 2. ✅ FIX: NotificationService — DB save + push dono
+          await NotificationService.sendNotification({
+            recipientId: delivery.driverId,
+            recipientType: 'Driver',
+            type: 'delivery_updated',
+            title: `Order Priority: ${priority.toUpperCase()}`,
+            message: `Order #${order.orderNumber} priority changed from ${oldPriority} to ${priority}.`,
+            data: {
               orderId: order._id.toString(),
               orderNumber: order.orderNumber,
               newPriority: priority,
               oldPriority: String(oldPriority),
-            });
-            driverNotified = true;
-          }
+            },
+            channels: ['push'],
+            priority: 'medium',
+          });
+
+          driverNotified = true;
+          console.log(`✅ Notification saved + push sent for driver: ${delivery.driverId}`);
         }
       }
     } catch (notifyErr) {
-      // Notification fail hone se main response affect na ho
       console.warn('[PRIORITY] Notification failed (non-fatal):', notifyErr.message);
     }
 
@@ -1798,7 +1938,7 @@ exports.updateOrderPriority = async (req, res) => {
       message: `Priority updated to ${priority}`,
       priority,
       orderId,
-      driverNotified,  // ← frontend toast mein "Driver notified" dikhega
+      driverNotified,
     });
 
   } catch (error) {
