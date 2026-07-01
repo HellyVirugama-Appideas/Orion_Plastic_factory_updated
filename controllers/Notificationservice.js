@@ -141,63 +141,103 @@ class NotificationService {
   //   }
   // }
 
+  // services/NotificationService.js — sendPushNotification fix karo
+static async sendPushNotification(notification) {
+  try {
+    const fcmToken = await this.getUserFCMToken(
+      notification.recipientId,
+      notification.recipientType
+    );
 
-  static async sendPushNotification(notification) {
-    try {
-      // Get user's FCM token
-      const fcmToken = await this.getUserFCMToken(
-        notification.recipientId,
-        notification.recipientType
-      );
+    if (!fcmToken) {
+      console.log(`⚠️ No FCM token | recipientId: ${notification.recipientId} | type: ${notification.recipientType}`);
+      return;
+    }
 
-      console.log(`[PUSH-DEBUG] recipientId: ${notification.recipientId} | recipientType: ${notification.recipientType} | fcmToken found: ${!!fcmToken}`);
+    const FCM_SERVER_KEY = process.env.FCM_SERVER_KEY;
+    if (!FCM_SERVER_KEY) {
+      console.warn('⚠️ FCM_SERVER_KEY not set in .env');
+      return;
+    }
 
-      if (!fcmToken) {
-        console.log('❌ No FCM token found for user');
-        await Notification.findByIdAndUpdate(notification._id, {
-          'channels.push.error': 'No FCM token found for user'
+    // ✅ FIX: Map ko plain object me convert karo safely
+    let extraData = {};
+    if (notification.data) {
+      // deliveryId, journeyId etc — direct fields
+      if (notification.data.deliveryId) extraData.deliveryId = notification.data.deliveryId.toString();
+      if (notification.data.journeyId)  extraData.journeyId  = notification.data.journeyId.toString();
+      if (notification.data.expenseId)  extraData.expenseId  = notification.data.expenseId.toString();
+
+      // customData Map — iterate करके plain object banao
+      if (notification.data.customData instanceof Map) {
+        notification.data.customData.forEach((value, key) => {
+          extraData[key] = String(value);
         });
-        return;
+      } else if (notification.data.customData && typeof notification.data.customData === 'object') {
+        // Agar Map nahi toh plain object ke keys iterate karo
+        Object.entries(notification.data.customData).forEach(([key, value]) => {
+          extraData[key] = String(value);
+        });
       }
+    }
 
-      // ✅ FIX: naya firebase-admin SDK use karo (legacy FCM API band ho chuka hai)
-      const { sendNotification: sendFcmPush } = require('../utils/sendNotification');
-
-      const response = await sendFcmPush(fcmToken, {
+    const payload = {
+      to: fcmToken,
+      notification: {
         title: notification.title,
         body: notification.message,
+        icon: 'ic_notification',
+        sound: 'default',
+        badge: '1',
+        priority: notification.priority === 'urgent' ? 'high' : 'normal'
+      },
+      data: {
         notificationId: notification._id.toString(),
         type: notification.type,
         actionUrl: notification.actionUrl || '',
-        ...notification.data
-      });
-
-      if (!response) {
-        // sendFcmPush apne andar hi error console kar deta hai aur null return karta hai
-        await Notification.findByIdAndUpdate(notification._id, {
-          'channels.push.error': 'FCM send returned null — check token validity / firebase-admin logs above'
-        });
-        console.log('❌ Push notification failed — response was null');
-        return;
+        ...extraData   // ✅ safe plain object spread
+      },
+      android: {
+        priority: notification.priority === 'urgent' ? 'high' : 'normal',
+        ttl: 86400
+      },
+      apns: {
+        headers: {
+          'apns-priority': notification.priority === 'urgent' ? '10' : '5'
+        }
       }
+    };
 
-      // Update notification
-      await Notification.findByIdAndUpdate(notification._id, {
-        'channels.push.sent': true,
-        'channels.push.sentAt': new Date(),
-        'channels.push.fcmMessageId': response
-      });
+    console.log(`[FCM-SEND] Sending to token: ${fcmToken.substring(0, 20)}... | title: ${notification.title}`);
 
-      console.log('✅ Push notification sent:', response);
+    const response = await axios.post('https://fcm.googleapis.com/fcm/send', payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `key=${FCM_SERVER_KEY}`
+      }
+    });
 
-    } catch (error) {
-      console.error('❌ Push notification error:', error.message);
-      await Notification.findByIdAndUpdate(notification._id, {
-        'channels.push.error': error.message
-      }).catch(e => console.error('Failed to save push error to DB:', e.message));
+    console.log(`✅ FCM response: success=${response.data.success} | failure=${response.data.failure}`);
+
+    // FCM rejection check (token invalid etc)
+    if (response.data.failure > 0) {
+      const result = response.data.results?.[0];
+      console.error(`❌ FCM delivery failed | error: ${result?.error}`);
     }
-  }
 
+    await Notification.findByIdAndUpdate(notification._id, {
+      'channels.push.sent': response.data.success > 0,
+      'channels.push.sentAt': new Date(),
+      'channels.push.fcmMessageId': response.data.multicast_id?.toString()
+    });
+
+  } catch (error) {
+    console.error('❌ Push notification error:', error.message);
+    await Notification.findByIdAndUpdate(notification._id, {
+      'channels.push.error': error.message
+    }).catch(() => {});
+  }
+}
 
   // ==================== SMS GATEWAY ====================
   static async sendSMS(notification) {
@@ -363,6 +403,26 @@ class NotificationService {
 
   // ==================== HELPER METHODS ====================
 
+  // static async getUserFCMToken(userId, userType) {
+  //   try {
+  //     let model;
+  //     if (userType === 'Driver') {
+  //       model = require('../models/Driver');
+  //     } else if (userType === 'Admin') {
+  //       model = require('../models/Admin');
+  //     } else if (userType === 'Customer') {
+  //       model = require('../models/Customer');
+  //     }
+
+  //     const user = await model.findById(userId).populate('userId');
+  //     return user?.fcmToken || user?.userId?.fcmToken;
+  //   } catch (error) {
+  //     console.error('Get FCM Token Error:', error);
+  //     return null;
+  //   }
+  // }
+
+  // services/NotificationService.js — getUserFCMToken fix karo
   static async getUserFCMToken(userId, userType) {
     try {
       let model;
@@ -374,8 +434,13 @@ class NotificationService {
         model = require('../models/Customer');
       }
 
-      const user = await model.findById(userId).populate('userId');
-      return user?.fcmToken || user?.userId?.fcmToken;
+      if (!model) return null;
+
+      // ✅ FIX: seedha fcmToken fetch karo — userId populate karna galat tha
+      const user = await model.findById(userId).select('fcmToken');
+      console.log(`[FCM-TOKEN] userId: ${userId} | type: ${userType} | token: ${user?.fcmToken ? 'found' : 'NOT FOUND'}`);
+      return user?.fcmToken || null;
+
     } catch (error) {
       console.error('Get FCM Token Error:', error);
       return null;
