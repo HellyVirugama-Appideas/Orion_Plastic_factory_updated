@@ -67,46 +67,92 @@ function setupSocketHandlers(io) {
     // ─────────────────────────────────────────────
     // STEP 2: DRIVER — driver:connect
     // ─────────────────────────────────────────────
+    // socket.on("driver:connect", async (data) => {
+    //   try {
+    //     const { driverId, driverName, vehicleNumber } = data || {};
+
+    //     if (!driverId) {
+    //       log("WARN", `driver:connect — driverId missing | socket: ${socket.id}`);
+    //       return;
+    //     }
+
+    //     activeDrivers.set(driverId, {
+    //       socketId: socket.id,
+    //       driverId,
+    //       driverName: driverName || "Driver",
+    //       vehicleNumber: vehicleNumber || "N/A",
+    //       connectedAt: new Date().toISOString(),
+    //       isOnline: true,
+    //     });
+
+    //     socket.join(`driver-${driverId}`);
+    //     socket.driverId = driverId;
+
+    //     log("DRIVER", `Driver ONLINE | name: ${driverName} | socket: ${socket.id} | total: ${activeDrivers.size}`);
+
+    //     io.to("admin-room").emit("driver:online", {
+    //       driverId,
+    //       driverName,
+    //       vehicleNumber,
+    //       status: "online",
+    //       timestamp: new Date().toISOString(),
+    //     });
+
+    //     socket.emit("driver:connect:ack", {
+    //       success: true,
+    //       message: "Connected to server",
+    //       timestamp: new Date().toISOString(),
+    //     });
+    //   } catch (err) {
+    //     log("ERR", `driver:connect | ${err.message}`);
+    //   }
+    // });
+
     socket.on("driver:connect", async (data) => {
-      try {
-        const { driverId, driverName, vehicleNumber } = data || {};
+  try {
+    const { driverId, driverName, vehicleNumber } = data || {};
+    if (!driverId) return;
 
-        if (!driverId) {
-          log("WARN", `driver:connect — driverId missing | socket: ${socket.id}`);
-          return;
-        }
-
-        activeDrivers.set(driverId, {
-          socketId: socket.id,
-          driverId,
-          driverName: driverName || "Driver",
-          vehicleNumber: vehicleNumber || "N/A",
-          connectedAt: new Date().toISOString(),
-          isOnline: true,
-        });
-
-        socket.join(`driver-${driverId}`);
-        socket.driverId = driverId;
-
-        log("DRIVER", `Driver ONLINE | name: ${driverName} | socket: ${socket.id} | total: ${activeDrivers.size}`);
-
-        io.to("admin-room").emit("driver:online", {
-          driverId,
-          driverName,
-          vehicleNumber,
-          status: "online",
-          timestamp: new Date().toISOString(),
-        });
-
-        socket.emit("driver:connect:ack", {
-          success: true,
-          message: "Connected to server",
-          timestamp: new Date().toISOString(),
-        });
-      } catch (err) {
-        log("ERR", `driver:connect | ${err.message}`);
+    // ✅ FIX: agar isi driverId ka purana socket already connected hai, use disconnect karo
+    const existing = activeDrivers.get(driverId);
+    if (existing && existing.socketId !== socket.id) {
+      const oldSocket = io.sockets.sockets.get(existing.socketId);
+      if (oldSocket) {
+        log("WARN", `Duplicate connection for driverId ${driverId} — disconnecting old socket ${existing.socketId}`);
+        oldSocket.leave(`driver-${driverId}`);
+        oldSocket.disconnect(true);
       }
+    }
+
+    activeDrivers.set(driverId, {
+      socketId: socket.id,
+      driverId,
+      driverName: driverName || "Driver",
+      vehicleNumber: vehicleNumber || "N/A",
+      connectedAt: new Date().toISOString(),
+      isOnline: true,
     });
+
+    socket.join(`driver-${driverId}`);
+    socket.driverId = driverId;
+
+    log("DRIVER", `Driver ONLINE | name: ${driverName} | socket: ${socket.id} | total: ${activeDrivers.size}`);
+
+    io.to("admin-room").emit("driver:online", {
+      driverId,
+      driverName,
+      vehicleNumber,
+      status: "online",
+      timestamp: new Date().toISOString(),
+    });
+
+    socket.emit("driver:connect:ack", {
+      success: true,
+      message: "Connected to server",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) { log("ERR", `driver:connect | ${err.message}`); }
+});
 
     // ─────────────────────────────────────────────
     // STEP 3: DRIVER — driver:journey:started
@@ -384,6 +430,33 @@ function setupSocketHandlers(io) {
         }
       } catch (err) {
         log("ERR", `driver:location | ${err.stack}`);
+      }
+    });
+
+    socket.on("driver:journey:location", async (data) => {
+      try {
+        const { driverId, journeyId, deliveryId, latitude, longitude, speed, heading, status } = data || {};
+        if (!driverId || !latitude || !longitude) return;
+
+        // ✅ FIX: map update missing tha
+        driverLocations.set(driverId, {
+          latitude, longitude, speed: speed || 0, heading: heading || 0,
+          timestamp: new Date().toISOString(), journeyId, deliveryId,
+        });
+
+        const driverInfo = activeDrivers.get(driverId);
+        io.to("admin-room").emit("driver:location:update", {
+          driverId,
+          driverName: driverInfo?.driverName || "Driver",
+          vehicleNumber: driverInfo?.vehicleNumber || "N/A",
+          journeyId, deliveryId,
+          location: { latitude, longitude, speed: speed || 0, heading: heading || 0 },
+          isAvailable: false,
+          status: status || "In_transit",
+          timestamp: new Date().toISOString(),
+        });
+      } catch (err) {
+        log("ERR", `driver:journey:location | ${err.message}`);
       }
     });
 
