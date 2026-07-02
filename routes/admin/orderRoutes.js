@@ -186,4 +186,31 @@ router.delete(
 // ── PRIORITY UPDATE ──
 router.patch('/:orderId/priority', protectAdmin, isAdmin, orderController.updateOrderPriority);
 
+// routes/adminRoutes.js me temporarily add karo
+// test route me ye add karo temporarily
+router.get('/test-fcm/:driverId', async (req, res) => {
+  try {
+    const Driver = require('../../models/Driver');
+    const driver = await Driver.findById(req.params.driverId).select('fcmToken name');
+    
+    if (!driver) return res.json({ step: 'FAILED', error: 'Driver not found' });
+    if (!driver.fcmToken) return res.json({ step: 'FAILED', error: 'FCM token missing', driverName: driver.name });
+    
+    // ✅ ENV check
+    const serverKey = process.env.FCM_SERVER_KEY;
+    if (!serverKey) return res.json({ step: 'FAILED', error: 'FCM_SERVER_KEY not set in .env' });
+    
+    console.log('FCM Key first 10 chars:', serverKey.substring(0, 10));
+    console.log('Token first 20 chars:', driver.fcmToken.substring(0, 20));
+    
+    res.json({
+      step: 'KEYS_FOUND',
+      driverName: driver.name,
+      tokenPreview: driver.fcmToken.substring(0, 20) + '...',
+      keyPreview: serverKey.substring(0, 10) + '...',
+    });
+  } catch (err) {
+    res.json({ error: err.message });
+  }
+});
 module.exports = router;
