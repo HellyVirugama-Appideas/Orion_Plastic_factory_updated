@@ -1,12 +1,15 @@
+const axios = require('axios');
+
+
 // Calculate distance between two coordinates using Haversine formula
 exports.calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371; // Earth's radius in kilometers
   const dLat = toRadians(lat2 - lat1);
   const dLon = toRadians(lon2 - lon1);
   
-  const a = 
+  const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2))
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
@@ -135,4 +138,108 @@ exports.getCenterPoint = (coordinates) => {
     latitude: centralLat * (180 / Math.PI),
     longitude: centralLng * (180 / Math.PI)
   };
+};
+
+// ================================================================
+// GOOGLE MAPS DISTANCE MATRIX — real road distance/duration
+// (Google Maps API key already used in the project — GOOGLE_MAPS_API_KEY)
+// Returns an array (same order as `destinations`) of { distanceKm, durationMin }
+// or `null` if the API/key is unavailable/fails, so callers can fall back
+// to the straight-line Haversine calculation.
+// ================================================================
+exports.getGoogleDistanceMatrix = async (origin, destinations) => {
+  try {
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    if (!apiKey || !origin?.latitude || !origin?.longitude || !destinations || destinations.length === 0) {
+      return null;
+    }
+
+    const originsParam = `${origin.latitude},${origin.longitude}`;
+    const destinationsParam = destinations
+      .map(d => `${d.latitude},${d.longitude}`)
+      .join('|');
+
+    const response = await axios.get('https://maps.googleapis.com/maps/api/distancematrix/json', {
+      params: {
+        origins: originsParam,
+        destinations: destinationsParam,
+        key: apiKey,
+        mode: 'driving',
+        departure_time: 'now',
+        traffic_model: 'best_guess'
+      },
+      timeout: 6000
+    });
+
+    if (response.data.status !== 'OK') return null;
+
+    const elements = response.data.rows?.[0]?.elements || [];
+    if (elements.length !== destinations.length) return null;
+
+    return elements.map(el => {
+      if (el.status !== 'OK') return { distanceKm: null, durationMin: null };
+      return {
+        distanceKm: el.distance?.value ? el.distance.value / 1000 : null,
+        durationMin: el.duration_in_traffic?.value
+          ? Math.round(el.duration_in_traffic.value / 60)
+          : (el.duration?.value ? Math.round(el.duration.value / 60) : null)
+      };
+    });
+  } catch (err) {
+    console.error('[GOOGLE-DISTANCE-MATRIX] Failed:', err.message);
+    return null;
+  }
+};
+
+// ================================================================
+// SORT BY PROXIMITY — nearest-first, chahe delivery kaise bhi assign
+// hui ho (ek-ek karke ya bulk route se). Google Distance Matrix se
+// asli road distance/time use karta hai; agar API/key fail ho jaaye
+// ya driver ki location na ho, seedha Haversine (straight-line) pe
+// fallback kar leta hai — result kabhi empty nahi aata.
+//
+// `items`      : koi bhi array (deliveries, orders, etc.)
+// `getCoords`  : function(item) => {latitude, longitude} | null
+//
+// Returns: [{ item, distanceKm, durationMin, source: 'google'|'haversine' }, ...]
+//          sorted nearest-first.
+// ================================================================
+exports.sortByProximity = async (origin, items, getCoords) => {
+  if (!items || items.length === 0) return [];
+
+  if (!origin?.latitude || !origin?.longitude) {
+    // Driver ki live location hi nahi hai — kuch bhi resort nahi kar sakte,
+    // original order hi wapas bhejo (distance unknown).
+    return items.map(item => ({ item, distanceKm: Infinity, durationMin: null, source: 'none' }));
+  }
+
+  const destinations = items.map(item => getCoords(item));
+  const allCoordsValid = destinations.every(d => d?.latitude && d?.longitude);
+
+  let googleResults = null;
+  if (allCoordsValid) {
+    googleResults = await exports.getGoogleDistanceMatrix(origin, destinations);
+  }
+
+  let ranked;
+  if (googleResults) {
+    ranked = items.map((item, idx) => ({
+      item,
+      distanceKm: googleResults[idx]?.distanceKm ?? Infinity,
+      durationMin: googleResults[idx]?.durationMin ?? null,
+      source: 'google'
+    }));
+  } else {
+    // Fallback: Haversine straight-line distance
+    ranked = items.map((item, idx) => {
+      const coords = destinations[idx];
+      const distanceKm = coords
+        ? exports.calculateDistance(origin.latitude, origin.longitude, coords.latitude, coords.longitude)
+        : Infinity;
+      return { item, distanceKm, durationMin: null, source: 'haversine' };
+    });
+  }
+
+  ranked.sort((a, b) => a.distanceKm - b.distanceKm);
+  return ranked;
 };

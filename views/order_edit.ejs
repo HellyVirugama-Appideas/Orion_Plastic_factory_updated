@@ -5,7 +5,7 @@
     <%- include('_layouts/head') %>
     <title>Edit Order - <%= order.orderNumber %> | <%= title %></title>
 
-    <!-- Google Maps API key for front-end geocoding -->
+    <!-- Google Maps API key -->
     <script>
         const GMAPS_KEY = '<%= process.env.GOOGLE_MAPS_API_KEY || "" %>';
     </script>
@@ -49,7 +49,7 @@
             background: linear-gradient(45deg, #667eea, #764ba2) !important;
         }
 
-        /* ===== MAPS LINK PASTE WIDGET ===== */
+        /* Maps Link Widget */
         .maps-link-box {
             background: #f3f0ff;
             border: 1px dashed #9c7ee8;
@@ -70,7 +70,6 @@
             color: #424242;
             height: 32px;
             box-shadow: none !important;
-            margin: 0 !important;
         }
 
         .maps-link-box .parse-btn {
@@ -82,11 +81,6 @@
             font-size: 0.8rem;
             cursor: pointer;
             white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        .maps-link-box .parse-btn:hover {
-            background: #5569d4;
         }
 
         .maps-link-status {
@@ -94,20 +88,31 @@
             margin-top: 4px;
             padding: 0 2px;
         }
+        .maps-link-status.success { color: #2e7d32; }
+        .maps-link-status.error { color: #c62828; }
 
-        .maps-link-status.success {
-            color: #2e7d32;
-        }
-
-        .maps-link-status.error {
-            color: #c62828;
-        }
-
-        /* Delivery address fields wrapper — highlight when auto-filled */
         .autofill-highlight input,
         .autofill-highlight textarea {
             border-bottom: 2px solid #667eea !important;
-            transition: border-color 0.3s;
+        }
+
+        /* Lock Banner */
+        #orderLockBanner {
+            display: none;
+            background: #ffebee;
+            border: 1px solid #ef9a9a;
+            color: #c62828;
+            padding: 14px 20px;
+            border-radius: 8px;
+            margin: 0 16px 16px;
+            font-weight: 600;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #editOrderForm.form-locked {
+            opacity: 0.6;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -137,11 +142,18 @@
 
             <%- include('messages', { messages: messages }) %>
 
+            <!-- ORDER LOCK BANNER -->
+            <div id="orderLockBanner">
+                <i class="material-icons" style="vertical-align:middle;">lock</i>
+                <span id="orderLockMessage"></span>
+            </div>
+
             <div class="col s12">
                 <div class="container">
                     <div class="card-panel" style="padding: 0; border-radius: 8px; overflow: hidden;">
                         <div class="card-content" style="padding: 30px;">
-                            <form id="editOrderForm" method="POST" action="/admin/orders/edit/<%= order._id %>?_method=PUT">
+
+                            <form id="editOrderForm">
                                 <div class="row">
 
                                     <!-- Customer Selection -->
@@ -182,7 +194,7 @@
                                         <h5 class="section-title mt-5">Delivery Information</h5>
                                     </div>
 
-                                    <!-- GOOGLE MAPS LINK PASTE (DELIVERY) -->
+                                    <!-- GOOGLE MAPS LINK -->
                                     <div class="col s12 m8 l7" style="margin-bottom:8px;">
                                         <div class="maps-link-box">
                                             <i class="material-icons" style="color:#667eea; font-size:20px;">location_on</i>
@@ -196,7 +208,6 @@
                                         <div class="maps-link-status" id="deliveryLinkStatus"></div>
                                     </div>
 
-                                    <!-- Hidden lat/lng for delivery — pre-filled with existing coordinates -->
                                     <input type="hidden" name="deliveryLocation[coordinates][latitude]" id="delLat"
                                            value="<%= order.deliveryLocation?.coordinates?.latitude || '' %>">
                                     <input type="hidden" name="deliveryLocation[coordinates][longitude]" id="delLng"
@@ -273,13 +284,11 @@
                                     <div class="input-field col s12 m6">
                                         <input type="datetime-local" name="scheduledPickupDate"
                                                value="<%= order.scheduledPickupDate ? new Date(order.scheduledPickupDate).toISOString().slice(0,16) : '' %>">
-                                       
                                     </div>
 
                                     <div class="input-field col s12 m6">
                                         <input type="datetime-local" name="scheduledDeliveryDate"
                                                value="<%= order.scheduledDeliveryDate ? new Date(order.scheduledDeliveryDate).toISOString().slice(0,16) : '' %>">
-                                       
                                     </div>
 
                                     <!-- Special Instructions -->
@@ -297,12 +306,11 @@
                                         <label class="active">Packaging Instructions (Optional)</label>
                                     </div>
 
-                                    <!-- Hidden Items JSON -->
                                     <input type="hidden" name="items" id="itemsJSON">
 
-                                    <!-- Submit Buttons -->
+                                    <!-- Submit -->
                                     <div class="col s12 right-align mt-5">
-                                        <button type="submit" class="btn btn-gradient waves-effect waves-light">
+                                        <button type="submit" id="submitOrderBtn" class="btn btn-gradient waves-effect waves-light">
                                             <i class="material-icons left">save</i> Update Order
                                         </button>
                                         <a href="/admin/orders" class="btn grey waves-effect waves-light ml-2">
@@ -316,12 +324,58 @@
                 </div>
             </div>
         </div>
+    </div>
 
     <%- include('_layouts/commonJs') %>
+    <script src="/socket.io/socket.io.js"></script>
 
     <script>
-        let itemCounter = 0;
+        const socket = window.socket && window.socket.connected !== undefined ? window.socket : io();
+        if (!window.socket) window.socket = socket;
 
+        const ORDER_ID = '<%= order._id %>';
+        const ORDER_STATUS = '<%= (order.status || "pending").toLowerCase() %>';
+
+        // ==================== UPDATED CONDITION ====================
+        const EDITABLE_STATUSES = ['pending', 'confirmed', 'assigned', 'processing', 'ready_for_pickup'];
+        let isOrderEditable = EDITABLE_STATUSES.includes(ORDER_STATUS);
+
+        function lockOrderForm(message) {
+            isOrderEditable = false;
+            const banner = document.getElementById('orderLockBanner');
+            const bannerMsg = document.getElementById('orderLockMessage');
+            banner.style.display = 'flex';
+            bannerMsg.textContent = message;
+
+            const form = document.getElementById('editOrderForm');
+            form.classList.add('form-locked');
+            form.querySelectorAll('input, select, textarea, button').forEach(el => {
+                el.disabled = true;
+            });
+        }
+
+        // Page load pe check
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!isOrderEditable) {
+                lockOrderForm(`This order is currently "${ORDER_STATUS.toUpperCase()}" and cannot be edited.`);
+            }
+        });
+
+        // Socket Events
+        socket.on('connect', () => console.log('Socket connected'));
+        socket.on('order:locked', function (data) {
+            if (data.orderId === ORDER_ID) {
+                lockOrderForm(data.message || 'This order can no longer be edited.');
+            }
+        });
+
+        socket.on('order:updated', function (data) {
+            if (data.orderId === ORDER_ID) {
+                M.toast({ html: 'Order was updated by someone else. Refresh page.', classes: 'orange rounded' });
+            }
+        });
+
+        // ==================== GOOGLE MAPS PARSER ====================
         // ================================================================
         //  GOOGLE MAPS LINK PARSER (same logic as order_create.ejs)
         // ================================================================
@@ -448,10 +502,10 @@
             return await forwardGeocode(input);
         }
 
-        // ================================================================
-        //  DELIVERY ADDRESS AUTO-FILL
-        // ================================================================
+
         async function parseDeliveryLink() {
+            if (!isOrderEditable) return;
+
             const raw    = document.getElementById('deliveryMapsLink').value.trim();
             const status = document.getElementById('deliveryLinkStatus');
 
@@ -489,20 +543,21 @@
             }
         }
 
-        // Helper: set input/textarea value + trigger Materialize label float
+
         function setFieldValue(id, value) {
             const el = document.getElementById(id);
-            if (!el || value === undefined) return;
-            el.value = value || '';
-            el.dispatchEvent(new Event('input'));
+            if (el) {
+                el.value = value || '';
+                el.dispatchEvent(new Event('input'));
+            }
         }
 
-        // ================================================================
-        // ORDER ITEMS
-        // ================================================================
+        // ==================== ITEMS MANAGEMENT ====================
+        let itemCounter = 0;
 
-        // Add new item
-        document.getElementById('addItemBtn').addEventListener('click', function() {
+              document.getElementById('addItemBtn').addEventListener('click', function() {
+            if (!isOrderEditable) return;
+
             itemCounter++;
             const itemId = `item-${itemCounter}`;
 
@@ -619,20 +674,26 @@
             M.updateTextFields();
         }
 
-        // Safe form submission
-        document.getElementById('editOrderForm').addEventListener('submit', function(e) {
+
+        // ==================== FORM SUBMIT ====================
+        document.getElementById('editOrderForm').addEventListener('submit', function (e) {
             e.preventDefault();
 
+            if (!isOrderEditable) {
+                M.toast({ html: '🔒 This order cannot be edited anymore.', classes: 'red rounded' });
+                return;
+            }
+
+            // ── Items collect karo ──
             const items = [];
             document.querySelectorAll('.item-card').forEach(card => {
-                const productName = card.querySelector('input[id^="productName-"]');
-                const productCode = card.querySelector('input[id^="productCode-"]');
-                const category = card.querySelector('select[id^="category-"]');
-                const quantity = card.querySelector('input[id^="quantity-"]');
-                const description = card.querySelector('input[id^="description-"]');
+                const productName  = card.querySelector('input[id^="productName-"]');
+                const productCode  = card.querySelector('input[id^="productCode-"]');
+                const category     = card.querySelector('select[id^="category-"]');
+                const quantity     = card.querySelector('input[id^="quantity-"]');
+                const description  = card.querySelector('input[id^="description-"]');
 
                 if (!productName || !quantity || !category) return;
-
                 if (productName.value.trim() === '') return;
 
                 items.push({
@@ -645,15 +706,85 @@
             });
 
             if (items.length === 0) {
-                M.toast({html: 'Please add at least one item', classes: 'red rounded'});
+                M.toast({ html: 'Please add at least one item', classes: 'red rounded' });
                 return;
             }
 
+            // Debug/reference field
             document.getElementById('itemsJSON').value = JSON.stringify(items);
-            this.submit();
+
+            // ── Socket connected hai ya nahi check karo ──
+            if (!socket.connected) {
+                M.toast({ html: '⚠️ Not connected to server. Please wait and retry.', classes: 'orange rounded' });
+                return;
+            }
+
+            // ── Submit button disable karo ──
+            const submitBtn = document.getElementById('submitOrderBtn');
+            const originalBtnHTML = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="material-icons left">hourglass_empty</i> Updating...';
+
+            // ── Poora payload banao ──
+            const payload = {
+                orderId: ORDER_ID,
+                customerId: document.getElementById('customerId').value,
+                items: items,
+                deliveryLocation: {
+                    address: document.getElementById('delAddress').value.trim(),
+                    city: document.getElementById('city').value.trim(),
+                    state: document.getElementById('state').value.trim(),
+                    pincode: document.getElementById('pincode').value.trim(),
+                    contactPerson: document.getElementById('contactPerson').value.trim(),
+                    contactPhone: document.getElementById('contactPhone').value.trim(),
+                    landmark: document.getElementById('landmark').value.trim(),
+                    coordinates: {
+                        latitude: document.getElementById('delLat').value,
+                        longitude: document.getElementById('delLng').value
+                    }
+                },
+                orderType: document.querySelector('select[name="orderType"]').value,
+                priority: document.querySelector('select[name="priority"]').value,
+                scheduledPickupDate: document.querySelector('input[name="scheduledPickupDate"]').value || null,
+                scheduledDeliveryDate: document.querySelector('input[name="scheduledDeliveryDate"]').value || null,
+                specialInstructions: document.querySelector('textarea[name="specialInstructions"]').value.trim(),
+                packagingInstructions: document.querySelector('textarea[name="packagingInstructions"]').value.trim(),
+                updatedByName: '<%= typeof user !== "undefined" && user ? user.name : "Admin" %>'
+            };
+
+            // ── Timeout fallback — agar server 10 sec me response na de ──
+            let ackReceived = false;
+            const ackTimeout = setTimeout(() => {
+                if (!ackReceived) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnHTML;
+                    M.toast({ html: '⚠️ Server did not respond. Check connection and try again.', classes: 'orange rounded' });
+                }
+            }, 10000);
+
+            // ── Socket emit — REST API call NAHI, ye sabse important line hai ──
+            socket.emit('admin:order:update', payload, function (response) {
+                ackReceived = true;
+                clearTimeout(ackTimeout);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHTML;
+
+                if (response && response.success) {
+                    M.toast({ html: '✅ Order updated! Driver notified instantly.', classes: 'green rounded' });
+                    setTimeout(() => {
+                        window.location.href = '/admin/orders';
+                    }, 1200);
+                } else {
+                    M.toast({ html: (response && response.message) || 'Failed to update order', classes: 'red rounded' });
+                    // Agar backend ne "order cannot be edited" bola to form lock karo
+                    if (response && response.orderLocked) {
+                        lockOrderForm(response.message);
+                    }
+                }
+            });
         });
 
-        // Initialize on page load
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             M.FormSelect.init(document.querySelectorAll('select'));
             M.updateTextFields();

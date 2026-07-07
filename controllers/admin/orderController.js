@@ -1,105 +1,102 @@
 // const Order = require('../../models/Order');
+// const { PickupLocation } = require('../../models/Order');
 // const OrderStatusHistory = require('../../models/OrderStatusHistory');
 // const Delivery = require('../../models/Delivery');
-// const User = require('../../models/User');
-// const { successResponse, errorResponse } = require('../../utils/responseHelper');
+// const mongoose = require('mongoose');
+// const Customer = require("../../models/Customer")
+// const { successResponse, errorResponse } = require("../../utils/responseHelper")
+// const Category = require("../../models/Category")
+
+// const { getSortedDeliveryQueueForDriver } = require('../../utils/deliveryQueueHelper');
 
 
-// // Admin creates order
+// const Notification = require('../../models/Notification');
+// const { sendNotification } = require('../../utils/sendNotification');
+// const Driver = require('../../models/Driver');
 
-// exports.createOrderByAdmin = async (req, res) => {
+// // ============= RENDER ORDERS LIST PAGE =============
+// exports.renderOrdersList = async (req, res) => {
 //   try {
 //     const {
-//       customerId,
-//       items,
-//       deliveryLocation,
-//       pickupLocation,
-//       scheduledPickupDate,
-//       scheduledDeliveryDate,
-//       specialInstructions,
-//       packagingInstructions = '', 
-//       priority = 'medium',
-//       status = 'pending'
-//     } = req.body;
+//       page = 1,
+//       limit = 20,
+//       status,
+//       priority,
+//       search,
+//       startDate,
+//       endDate
+//     } = req.query;
 
-//     // 1. Customer check
-//     if (!customerId) return errorResponse(res, 'customerId is required', 400);
-
-//     const customer = await User.findById(customerId);
-//     if (!customer) return errorResponse(res, 'Customer not found', 404);
-
-//     // 2. Items validation 
-//     if (!items || !Array.isArray(items) || items.length === 0) {
-//       return errorResponse(res, 'At least one item is required', 400);
+//     const query = {};
+//     if (status) query.status = status;
+//     if (priority) query.priority = priority;
+//     if (search) query.orderNumber = { $regex: search, $options: 'i' };
+//     if (startDate || endDate) {
+//       query.createdAt = {};
+//       if (startDate) query.createdAt.$gte = new Date(startDate);
+//       if (endDate) query.createdAt.$lte = new Date(endDate);
 //     }
 
-//     // 3. Process items — 
-//     const processedItems = items.map(item => ({
-//       productName: item.productName?.trim(),
-//       productCode: item.productCode || null,
-//       category: item.category || 'other',
-//       quantity: Number(item.quantity) || 1,
-//       description: item.description || '',
-//       specifications: item.specifications || {}
-//     }));
+//     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-//     // 4. Generate order number
-//     const orderNumber = await Order.generateOrderNumber();
+//     // Fetch orders with full population (customerId must be ObjectId reference)
+//     const orders = await Order.find(query)
+//       .populate('customerId', 'name email phone companyName')  // Now works correctly
+//       .populate({
+//         path: 'deliveryId',
+//         populate: { path: 'driverId', select: 'name phone' }
+//       })
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(parseInt(limit));
 
-//     // 5. Pickup location
-//     const finalPickupLocation = pickupLocation && pickupLocation.address
-//       ? pickupLocation
-//       : {
-//         address: 'Orion Plastic Factory, Plot 45, GIDC Vatva, Ahmedabad',
-//         coordinates: { latitude: 22.9871, longitude: 72.6369 },
-//         contactPerson: 'Factory Manager',
-//         contactPhone: '9876543200'
-//       };
+//     const total = await Order.countDocuments(query);
 
-//     // 6. Admin info (SAFE)
-//     const adminId = req.user?._id || null;
-//     const adminName = req.user?.name || 'System Admin';
-
-//     const order = await Order.create({
-//       orderNumber,
-//       customerId,
-//       orderType: 'retail',
-//       items: processedItems,
-//       pickupLocation: finalPickupLocation,
-//       deliveryLocation,
-//       scheduledPickupDate: scheduledPickupDate ? new Date(scheduledPickupDate) : null,
-//       scheduledDeliveryDate: scheduledDeliveryDate ? new Date(scheduledDeliveryDate) : null,
-//       specialInstructions: specialInstructions || '',
-//       packagingInstructions,
-//       priority,
-//       status,
-//       createdBy: adminId,
-//       confirmedBy: status === 'confirmed' ? adminId : null,
-//       confirmedAt: status === 'confirmed' ? new Date() : null
-//     });
-
-//     // 8. Status History
-//     await OrderStatusHistory.create({
-//       orderId: order._id,
-//       status: order.status,
-//       remarks: `Order created by ${adminName}`,
-//       updatedBy: {
-//         userId: adminId,
-//         userRole: 'admin',
-//         userName: adminName
+//     // Statistics calculation
+//     const stats = await Order.aggregate([
+//       {
+//         $facet: {
+//           total: [{ $count: 'count' }],
+//           delivered: [{ $match: { status: 'delivered' } }, { $count: 'count' }],
+//           inTransit: [
+//             { $match: { status: { $in: ['in_transit', 'assigned', 'ready_for_pickup'] } } },
+//             { $count: 'count' }
+//           ],
+//           pending: [
+//             { $match: { status: { $in: ['pending', 'confirmed', 'processing'] } } },
+//             { $count: 'count' }
+//           ]
+//         }
 //       }
+//     ]);
+
+//     const statistics = {
+//       total: stats[0].total[0]?.count || 0,
+//       delivered: stats[0].delivered[0]?.count || 0,
+//       inTransit: stats[0].inTransit[0]?.count || 0,
+//       pending: stats[0].pending[0]?.count || 0
+//     };
+
+//     res.render('order_list', {
+//       title: 'Orders Management',
+//       user: req.user,
+//       orders,                    // customerId is now populated object
+//       stats: statistics,
+//       pagination: {
+//         total,
+//         page: parseInt(page),
+//         pages: Math.ceil(total / parseInt(limit)),
+//         limit: parseInt(limit)
+//       },
+//       filters: { status, priority, search, startDate, endDate },
+//       url: req.originalUrl,
+//       messages: req.flash()
 //     });
-
-//     // 9. Populate customer
-//     await order.populate('customerId', 'name email phone companyName');
-
-//     return successResponse(res, 'Order created successfully!', { order }, 201);
-//     // res.redirect(`/admin/orders/${order._id}?success=Order created successfully`)
 
 //   } catch (error) {
-//     console.error('Create Order Error:', error.message);
-//     return errorResponse(res, error.message || 'Failed to create order', 500);
-//     // res.redirect('/admin/orders/create?error=Failed to create order');
+//     console.error('[ORDERS-LIST] Error:', error);
+//     req.flash('error', 'Failed to load orders');
+//     res.redirect('/admin/dashboard');
 //   }
 // };
 
@@ -208,76 +205,628 @@
 //     return errorResponse(res, error.message || 'Failed to retrieve order details', 500);
 //   }
 // };
-// // Render edit order page
-// exports.renderEditOrder = async (req, res) => {
+
+
+// exports.renderCreateOrder = async (req, res) => {
 //   try {
-//     const order = await Order.findById(req.params.id)
-//       .populate('customerId', 'name email phone');
+//     const customers = await Customer.find({}).select('name companyName phone').lean();
+//     const categories = await Category.find({ isActive: true }).sort({ displayOrder: 1, name: 1 }).lean();
 
-//     if (!order) {
-//       return res.redirect('/admin/orders?error=Order not found');
-//     }
+//     // DB se active pickup locations fetch karo
+//     const pickupLocations = await PickupLocation.find({ isActive: true })
+//       .sort({ isDefault: -1, name: 1 })
+//       .lean();
 
-//     const customers = await User.find({ role: 'customer' })
-//       .select('name email phone')
-//       .sort({ name: 1 });
-
-//     res.render('admin/orders/edit', {
-//       title: 'Edit Order',
-//       user: req.user,
-//       order,
-//       customers
+//     res.render('order_create', {
+//       title: 'Create New Order',
+//       customers,
+//       categories,
+//       pickupLocations,
+//       messages: req.flash(),
+//       admin: req.user,
+//       url: req.originalUrl,
 //     });
-//   } catch (error) {
-//     console.error('Render Edit Order Error:', error);
-//     res.redirect('/admin/orders?error=Failed to load edit order page');
+//   } catch (err) {
+//     console.error(err);
+//     req.flash('error', 'Failed to load create order page');
+//     res.redirect('/admin/orders');
 //   }
 // };
-// // Update order (Admin or Customer if pending)
-// exports.updateOrder = async (req, res) => {
+
+// exports.createOrder = async (req, res) => {
+//   try {
+//     const {
+//       customerId,
+//       pickupLocationId,
+//       items,
+//       deliveryLocation,
+//       scheduledPickupDate,
+//       scheduledDeliveryDate,
+//       specialInstructions,
+//       packagingInstructions = '',
+//       priority = 'medium',
+//       status = 'pending'
+//     } = req.body;
+
+//     if (!customerId) return errorResponse(res, 'customerId is required', 400);
+//     const customer = await Customer.findById(customerId);
+//     if (!customer) return errorResponse(res, 'Customer not found', 404);
+
+//     // Pickup location — DB se fetch
+//     if (!pickupLocationId) return errorResponse(res, 'Pickup location is required', 400);
+//     const pickupDoc = await PickupLocation.findById(pickupLocationId);
+//     if (!pickupDoc) return errorResponse(res, 'Selected pickup location not found', 404);
+
+//     const finalPickupLocation = {
+//       name: pickupDoc.name,
+//       address: pickupDoc.address,
+//       coordinates: {
+//         latitude: pickupDoc.coordinates.latitude,
+//         longitude: pickupDoc.coordinates.longitude
+//       },
+//       contactPerson: pickupDoc.contactPerson || '',
+//       contactPhone: pickupDoc.contactPhone || ''
+//     };
+
+//     // Parse items
+//     let parsedItems = items;
+//     if (typeof items === 'string') {
+//       try { parsedItems = JSON.parse(items); }
+//       catch (e) { return errorResponse(res, 'Invalid items data format', 400); }
+//     }
+
+//     if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
+//       return errorResponse(res, 'At least one valid item is required', 400);
+//     }
+
+//     const processedItems = parsedItems.map(item => ({
+//       productName: item.productName?.trim() || '',
+//       productCode: item.productCode || null,
+//       category: item.category || 'other',
+//       quantity: Number(item.quantity) || 1,
+//       description: item.description || '',
+//       specifications: item.specifications || {}
+//     }));
+
+//     const orderNumber = await Order.generateOrderNumber();
+//     const adminId = req.user?._id || null;
+//     const adminName = req.user?.name || 'System Admin';
+
+//     const order = await Order.create({
+//       orderNumber,
+//       customerId,
+//       orderType: req.body.orderType || 'retail',
+//       items: processedItems,
+//       pickupLocation: finalPickupLocation,
+//       deliveryLocation,
+//       scheduledPickupDate: scheduledPickupDate ? new Date(scheduledPickupDate) : null,
+//       scheduledDeliveryDate: scheduledDeliveryDate ? new Date(scheduledDeliveryDate) : null,
+//       specialInstructions: specialInstructions || '',
+//       packagingInstructions,
+//       priority,
+//       status,
+//       createdBy: adminId,
+//       confirmedBy: status === 'confirmed' ? adminId : null,
+//       confirmedAt: status === 'confirmed' ? new Date() : null
+//     });
+
+//     await OrderStatusHistory.create({
+//       orderId: order._id,
+//       status: order.status,
+//       remarks: `Order created by ${adminName}`,
+//       updatedBy: { userId: adminId, userRole: 'admin', userName: adminName }
+//     });
+
+//     res.redirect("/admin/orders");
+
+//   } catch (error) {
+//     console.error('Create Order Error:', error);
+//     return errorResponse(res, error.message || 'Failed to create order', 500);
+//   }
+// };
+
+// // exports.renderOrderDetails = async (req, res) => {
+// //   try {
+// //     const { orderId } = req.params;
+
+// //     if (!mongoose.Types.ObjectId.isValid(orderId)) {
+// //       req.flash('error', 'Invalid order ID');
+// //       return res.redirect('/admin/orders');
+// //     }
+
+// //     const order = await Order.findById(orderId)
+// //       .populate('customerId', 'name email phone companyName')
+// //       .populate({
+// //         path: 'deliveryId',
+// //         populate: {
+// //           path: 'driverId',
+// //           select: 'name phone email'
+// //         }
+// //       })
+// //       .populate('createdBy', 'name email')
+// //       .populate('confirmedBy', 'name email')
+// //       .lean();
+
+// //     if (!order) {
+// //       req.flash('error', 'Order not found');
+// //       return res.redirect('/admin/orders');
+// //     }
+
+// //     // Get status history
+// //     const statusHistory = await OrderStatusHistory.find({ orderId: order._id })
+// //       .sort({ timestamp: -1 })
+// //       .populate('updatedBy.userId', 'name email')
+// //       .lean();
+
+// //     res.render('order_details', {
+// //       title: `Order ${order.orderNumber}`,
+// //       user: req.user,
+// //       order,
+// //       statusHistory,
+// //       url: req.originalUrl,
+// //       messages: req.flash()
+// //     });
+
+// //   } catch (error) {
+// //     console.error('[ORDER-DETAILS] Error:', error);
+// //     req.flash('error', 'Failed to load order details');
+// //     res.redirect('/admin/orders');
+// //   }
+// // };
+
+// // ============= RENDER EDIT ORDER PAGE =============
+
+// exports.renderOrderDetails = async (req, res) => {
 //   try {
 //     const { orderId } = req.params;
-//     const updates = req.body;
 
+//     if (!mongoose.Types.ObjectId.isValid(orderId)) {
+//       req.flash('error', 'Invalid order ID');
+//       return res.redirect('/admin/orders');
+//     }
+
+//     const order = await Order.findById(orderId)
+//       .populate('customerId', 'name email phone companyName')
+//       .populate({ path: 'deliveryId', populate: { path: 'driverId', select: 'name phone email' } })
+//       .populate('createdBy', 'name email')
+//       .populate('confirmedBy', 'name email')
+//       .lean();
+
+//     if (!order) {
+//       req.flash('error', 'Order not found');
+//       return res.redirect('/admin/orders');
+//     }
+
+//     const statusHistory = await OrderStatusHistory.find({ orderId: order._id })
+//       .sort({ timestamp: -1 })
+//       .populate('updatedBy.userId', 'name email')
+//       .lean();
+
+//     res.render('order_details', {
+//       title: `Order ${order.orderNumber}`,
+//       user: req.user,
+//       order,
+//       statusHistory,
+//       url: req.originalUrl,
+//       messages: req.flash()
+//     });
+
+//   } catch (error) {
+//     console.error('[ORDER-DETAILS] Error:', error);
+//     req.flash('error', 'Failed to load order details');
+//     res.redirect('/admin/orders');
+//   }
+// };
+
+// exports.renderEditOrder = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+
+//     if (!mongoose.Types.ObjectId.isValid(orderId)) {
+//       req.flash('error', 'Invalid order ID');
+//       return res.redirect('/admin/orders');
+//     }
+
+//     // Fetch order with populated customer details
+//     const order = await Order.findById(orderId)
+//       .populate('customerId', 'name email phone companyName')
+//       .lean();
+
+//     if (!order) {
+//       req.flash('error', 'Order not found');
+//       return res.redirect('/admin/orders');
+//     }
+
+//     const customers = await Customer.find()
+//       .select('name email phone companyName')
+//       .sort({ name: 1 })
+//       .lean();
+
+//     console.log(`Found ${customers.length} customers for edit dropdown`);
+
+//     res.render('order_edit', {
+//       title: `Edit Order - ${order.orderNumber}`,
+//       user: req.user,
+//       order,
+//       customers,
+//       url: req.originalUrl,
+//       messages: req.flash()
+//     });
+
+//   } catch (error) {
+//     console.error('[EDIT-ORDER-PAGE] Error:', error);
+//     req.flash('error', 'Failed to load edit order page');
+//     res.redirect('/admin/orders');
+//   }
+// };
+
+// // exports.updateOrder = async (req, res) => {
+// //   try {
+// //     const { orderId } = req.params;
+// //     const updates = req.body;
+
+// //     // Fetch order
+// //     const order = await Order.findById(orderId);
+// //     if (!order) {
+// //       return res.status(404).json({ success: false, message: 'Order not found' });
+// //     }
+
+// //     // Check if order can be modified (assuming you have this method in model)
+// //     if (!order.canUpdateOrder()) {
+// //       return res.status(400).json({ success: false, message: 'Order cannot be modified in current status' });
+// //     }
+
+// //     // Check authorization
+// //     if (req.user.role === 'customer' && order.customerId.toString() !== req.user._id.toString()) {
+// //       return res.status(403).json({ success: false, message: 'Access denied' });
+// //     }
+
+// //     // Restricted fields for customers
+// //     if (req.user.role === 'customer') {
+// //       delete updates.status;
+// //       delete updates.taxPercentage;
+// //       delete updates.shippingCharges;
+// //       delete updates.discount;
+// //     }
+
+// //     // Handle items if updated (parse from JSON string)
+// //     if (updates.items) {
+// //       try {
+// //         updates.items = JSON.parse(updates.items);
+// //       } catch (err) {
+// //         return res.status(400).json({ success: false, message: 'Invalid items format' });
+// //       }
+// //     }
+
+// //     // Update order
+// //     Object.assign(order, updates);
+// //     await order.save();
+
+// //     // Optional: Re-populate for response
+// //     const updatedOrder = await Order.findById(order._id)
+// //       .populate('customerId', 'name email phone companyName');
+
+// //     res.redirect(`/admin/orders`);
+
+// //   } catch (error) {
+// //     console.error('Update Order Error:', error);
+// //     req.flash('error', 'Failed to update order');
+// //     res.redirect(`/admin/orders/${orderId}/edit`);
+// //   }
+// // };
+
+
+// exports.updateOrder = async (req, res) => {
+//   const { orderId } = req.params;
+
+//   console.log('\n========== UPDATE ORDER START ==========');
+//   console.log('[UPDATE-ORDER] orderId:', orderId);
+//   console.log('[UPDATE-ORDER] user:', req.user?.name, '| role:', req.user?.role);
+
+//   try {
+//     // ── Step 1: Order fetch ──
 //     const order = await Order.findById(orderId);
 //     if (!order) {
-//       return errorResponse(res, 'Order not found', 404);
+//       console.log('[UPDATE-ORDER] ❌ Order not found');
+//       return res.status(404).json({ success: false, message: 'Order not found' });
+//     }
+//     console.log('[UPDATE-ORDER] ✅ Order found | orderNumber:', order.orderNumber, '| status:', order.status, '| deliveryId:', order.deliveryId || 'NONE');
+
+//     // ── Step 2: canUpdateOrder check ──
+//     if (!order.canUpdateOrder()) {
+//       console.log('[UPDATE-ORDER] ❌ Cannot update | status:', order.status);
+//       req.flash('error', `Order cannot be edited — delivery is already ${order.status}. Only Pending/Confirmed orders can be updated.`);
+//       return res.redirect('/admin/orders');
 //     }
 
-//     // Check if order can be modified
-//     if (!order.canBeModified()) {
-//       return errorResponse(res, 'Order cannot be modified in current status', 400);
-//     }
-
-//     // Check authorization
+//     // ── Step 3: Authorization ──
 //     if (req.user.role === 'customer' && order.customerId.toString() !== req.user._id.toString()) {
-//       return errorResponse(res, 'Access denied', 403);
+//       console.log('[UPDATE-ORDER] ❌ Access denied');
+//       req.flash('error', 'Access denied');
+//       return res.redirect('/admin/orders');
 //     }
 
-//     // Restricted fields for customers
+//     const updates = req.body;
+//     console.log('[UPDATE-ORDER] incoming fields:', Object.keys(updates).join(', '));
+
+//     // ── Step 4: Customer restricted fields ──
 //     if (req.user.role === 'customer') {
 //       delete updates.status;
 //       delete updates.taxPercentage;
 //       delete updates.shippingCharges;
 //       delete updates.discount;
+//       console.log('[UPDATE-ORDER] Customer role — restricted fields removed');
 //     }
 
-//     // Update order
+//     // ── Step 5: Items parse ──
+//     if (updates.items) {
+//       try {
+//         updates.items = JSON.parse(updates.items);
+//         console.log('[UPDATE-ORDER] ✅ Items parsed | count:', updates.items.length);
+//       } catch (err) {
+//         console.log('[UPDATE-ORDER] ❌ Items parse failed:', err.message);
+//         return res.status(400).json({ success: false, message: 'Invalid items format' });
+//       }
+//     }
+
+//     // ── Step 6: deliveryLocation merge ──
+//     if (updates.deliveryLocation) {
+//       console.log('[UPDATE-ORDER] deliveryLocation received — merging...');
+
+//       const oldLoc = order.deliveryLocation ? order.deliveryLocation.toObject() : {};
+//       const newLoc = updates.deliveryLocation;
+
+//       const hasNewCoords =
+//         newLoc.coordinates?.latitude !== undefined &&
+//         newLoc.coordinates?.latitude !== '' &&
+//         newLoc.coordinates?.longitude !== undefined &&
+//         newLoc.coordinates?.longitude !== '';
+
+//       console.log('[UPDATE-ORDER] hasNewCoords:', hasNewCoords);
+//       console.log('[UPDATE-ORDER] old address:', oldLoc.address);
+//       console.log('[UPDATE-ORDER] new address:', newLoc.address);
+
+//       order.deliveryLocation = {
+//         ...oldLoc,
+//         address: newLoc.address ?? oldLoc.address,
+//         contactPerson: newLoc.contactPerson ?? oldLoc.contactPerson,
+//         contactPhone: newLoc.contactPhone ?? oldLoc.contactPhone,
+//         city: newLoc.city ?? oldLoc.city,
+//         state: newLoc.state ?? oldLoc.state,
+//         pincode: newLoc.pincode ?? oldLoc.pincode,
+//         landmark: newLoc.landmark ?? oldLoc.landmark,
+//         coordinates: hasNewCoords
+//           ? {
+//             latitude: Number(newLoc.coordinates.latitude),
+//             longitude: Number(newLoc.coordinates.longitude)
+//           }
+//           : oldLoc.coordinates
+//       };
+
+//       console.log('[UPDATE-ORDER] ✅ deliveryLocation merged | final address:', order.deliveryLocation.address);
+//       delete updates.deliveryLocation;
+//     }
+
+//     // ── Step 7: Save order ──
 //     Object.assign(order, updates);
 //     await order.save();
+//     console.log('[UPDATE-ORDER] ✅ Order saved | deliveryId:', order.deliveryId || 'NONE');
 
-//     // return successResponse(res, 'Order updated successfully', { order });
-//     res.redirect(`/admin/orders/${order._id}?success=Order updated successfully`);
+//     // ── Step 8: Delivery collection sync ──
+//     if (order.deliveryId) {
+//       try {
+//         const deliveryUpdate = {
+//           'deliveryLocation.address': order.deliveryLocation.address,
+//           'deliveryLocation.contactPerson': order.deliveryLocation.contactPerson,
+//           'deliveryLocation.contactPhone': order.deliveryLocation.contactPhone,
+//         };
+
+//         if (order.deliveryLocation?.coordinates?.latitude &&
+//           order.deliveryLocation?.coordinates?.longitude) {
+//           deliveryUpdate['deliveryLocation.coordinates.latitude'] = order.deliveryLocation.coordinates.latitude;
+//           deliveryUpdate['deliveryLocation.coordinates.longitude'] = order.deliveryLocation.coordinates.longitude;
+//         }
+
+//         await Delivery.findByIdAndUpdate(order.deliveryId, deliveryUpdate, { new: false });
+//         console.log('[UPDATE-ORDER] ✅ Delivery document synced');
+//       } catch (delErr) {
+//         console.error('[UPDATE-ORDER] ❌ Delivery sync failed:', delErr.message);
+//       }
+//     }
+
+//     // ── Step 9: Driver notification ──
+//     if (!order.deliveryId) {
+//       console.log('[UPDATE-ORDER] ⚠️ No deliveryId — notification skipped');
+//     } else {
+//       console.log('\n[UPDATE-ORDER] --- NOTIFICATION BLOCK START ---');
+//       try {
+//         const delivery = await Delivery.findById(order.deliveryId);
+//         console.log('[UPDATE-ORDER] delivery found:', !!delivery);
+//         console.log('[UPDATE-ORDER] delivery.driverId:', delivery?.driverId || 'NULL');
+//         console.log('[UPDATE-ORDER] delivery.status:', delivery?.status);
+
+//         if (!delivery?.driverId) {
+//           console.warn('[UPDATE-ORDER] ⚠️ No driverId — driver not assigned yet');
+//         } else {
+//           const driverId = delivery.driverId.toString();
+//           console.log('[UPDATE-ORDER] driverId:', driverId);
+
+//           const driver = await Driver.findById(driverId).select('fcmToken name');
+//           console.log('[UPDATE-ORDER] driver name:', driver?.name || 'NOT FOUND');
+//           console.log('[UPDATE-ORDER] fcmToken:', driver?.fcmToken
+//             ? driver.fcmToken.substring(0, 25) + '...'
+//             : 'MISSING'
+//           );
+
+//           const notifTitle = `Order Updated — ${order.orderNumber}`;
+//           const notifMessage = `Delivery address has been updated. Please check the app.`;
+
+//           // ── Step 9a: Notification DB record create karo ──
+//           // (Same pattern as working delivery_assigned)
+//           try {
+//             await Notification.create({
+//               recipientId: driverId,
+//               recipientType: 'Driver',
+//               type: 'delivery_updated',
+//               title: notifTitle,
+//               message: notifMessage,
+//               data: {
+//                 deliveryId: order.deliveryId,
+//               },
+//               channels: {
+//                 push: {
+//                   sent: !!driver?.fcmToken,
+//                   sentAt: driver?.fcmToken ? new Date() : undefined,
+//                 }
+//               },
+//               priority: 'high',
+//               isRead: false,
+//             });
+//             console.log('[UPDATE-ORDER] ✅ Notification saved to DB');
+//           } catch (dbErr) {
+//             console.error('[UPDATE-ORDER] ❌ Notification DB save failed:', dbErr.message);
+//           }
+
+//           // ── Step 9b: FCM push (same sendNotification utility jo working hai) ──
+//           if (driver?.fcmToken) {
+//             try {
+//               const fcmResult = await sendNotification(driver.fcmToken, {
+//                 title: notifTitle,
+//                 body: notifMessage,
+//                 type: 'order_updated',
+//                 orderId: order._id.toString(),
+//                 orderNumber: order.orderNumber,
+//                 deliveryId: order.deliveryId.toString(),
+//                 address: order.deliveryLocation?.address || '',
+//               });
+//               console.log('[UPDATE-ORDER] ✅ FCM push result:', fcmResult ? 'sent' : 'failed');
+//             } catch (fcmErr) {
+//               console.error('[UPDATE-ORDER] ❌ FCM push error:', fcmErr.message);
+//             }
+//           } else {
+//             console.warn('[UPDATE-ORDER] ⚠️ FCM skipped — no token');
+//           }
+
+//           // ── Step 9c: Socket emit ──
+//           const io = req.app.get('io');
+//           if (io) {
+//             const room = `driver-${driverId}`;
+//             const roomSockets = await io.in(room).allSockets();
+//             console.log(`[UPDATE-ORDER] Socket room "${room}" connections: ${roomSockets.size}`);
+
+//             io.to(room).emit('order:updated', {
+//               orderId: order._id.toString(),
+//               orderNumber: order.orderNumber,
+//               message: notifMessage,
+//               updatedFields: {
+//                 deliveryLocation: order.deliveryLocation || null,
+//                 specialInstructions: order.specialInstructions || null,
+//                 priority: order.priority || null,
+//               },
+//               timestamp: new Date().toISOString(),
+//             });
+//             console.log('[UPDATE-ORDER] ✅ Socket emitted to room:', room);
+//           } else {
+//             console.warn('[UPDATE-ORDER] ⚠️ io not found on req.app');
+//           }
+//         }
+//       } catch (notifyErr) {
+//         console.error('[UPDATE-ORDER] ❌ Notification block error:', notifyErr.message);
+//         console.error(notifyErr.stack);
+//       }
+//       console.log('[UPDATE-ORDER] --- NOTIFICATION BLOCK END ---\n');
+//     }
+
+//     // ── Step 10: Admin room broadcast ──
+//     const io = req.app.get('io');
+//     if (io) {
+//       io.to('admin-room').emit('order:updated', {
+//         orderId: order._id.toString(),
+//         orderNumber: order.orderNumber,
+//         updatedBy: req.user?.name || 'Admin',
+//         timestamp: new Date().toISOString(),
+//       });
+//       console.log('[UPDATE-ORDER] ✅ Admin room broadcast done');
+//     }
+
+//     console.log('========== UPDATE ORDER DONE ==========\n');
+//     req.flash('success', 'Order updated successfully');
+//     res.redirect('/admin/orders');
 
 //   } catch (error) {
-//     console.error('Update Order Error:', error);
-//     // return errorResponse(res, error.message || 'Failed to update order', 500);
-//     res.redirect(`/admin/orders/${req.params.id}/edit?error=Failed to update order`);
-
+//     console.error('[UPDATE-ORDER] ❌ FATAL ERROR:', error.message);
+//     console.error(error.stack);
+//     req.flash('error', 'Failed to update order');
+//     res.redirect(`/admin/orders/edit/${orderId}`);
 //   }
 // };
 
-// // Confirm order (Admin)
+
+// // ============= DELETE ORDER =============
+
+// exports.deleteOrder = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+
+//     // 1. Validate ObjectId
+//     if (!mongoose.Types.ObjectId.isValid(orderId)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Invalid order ID'
+//       });
+//     }
+
+//     // 2. Find the order
+//     const order = await Order.findById(orderId);
+//     if (!order) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Order not found'
+//       });
+//     }
+
+//     const nonDeletableStatuses = ['delivered', 'in_transit', 'processing'];
+//     if (nonDeletableStatuses.includes(order.status)) {
+//       return res.status(403).json({
+//         success: false,
+//         message: `Cannot delete order in status: ${order.status}`
+//       });
+//     }
+
+//     // 4. Optional: Authorization check (only admin or order creator)
+//     if (req.user.role !== 'admin' && order.createdBy?.toString() !== req.user._id.toString()) {
+//       return res.status(403).json({ success: false, message: 'Unauthorized' });
+//     }
+
+//     // 5. Delete related records (cascade delete)
+//     // Delete all status history entries
+//     await OrderStatusHistory.deleteMany({ orderId: order._id });
+
+//     // Delete related delivery if exists
+//     if (order.deliveryId) {
+//       await Delivery.findByIdAndDelete(order.deliveryId);
+//     }
+
+//     // 6. Finally delete the order
+//     await Order.findByIdAndDelete(order._id);
+
+//     // return res.status(200).json({
+//     //   success: true,
+//     //   message: 'Order deleted successfully',
+//     //   deletedOrderId: orderId
+//     // });
+//     res.redirect(`/admin/orders`);
+
+//   } catch (error) {
+//     console.error('[DELETE-ORDER] Error:', error);
+//     return res.status(500).json({
+//       success: false,
+//       message: 'Failed to delete order',
+//       error: error.message
+//     });
+//   }
+// };
+
 // exports.confirmOrder = async (req, res) => {
 //   try {
 //     const { orderId } = req.params;
@@ -324,6 +873,386 @@
 //   }
 // };
 
+// // ============= RENDER CREATE DELIVERY FROM ORDER =============
+// exports.renderCreateDeliveryFromOrder = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+
+//     if (!mongoose.Types.ObjectId.isValid(orderId)) {
+//       req.flash('error', 'Invalid order ID');
+//       return res.redirect('/admin/orders');
+//     }
+
+//     const order = await Order.findById(orderId)
+//       .populate('customerId', 'name email phone companyName')
+//       .lean();
+
+//     if (!order) {
+//       req.flash('error', 'Order not found');
+//       return res.redirect('/admin/orders');
+//     }
+
+//     if (order.deliveryId) {
+//       req.flash('error', 'Delivery already exists for this order');
+//       return res.redirect(`/admin/orders/view/${orderId}`);
+//     }
+
+//     // Get available drivers
+//     const drivers = await User.find({
+//       role: 'driver',
+//       isActive: true,
+//       isAvailable: true
+//     })
+//       .select('name phone email')
+//       .sort({ name: 1 })
+//       .lean();
+
+//     res.render('create-delivery-from-order', {
+//       title: `Create Delivery - ${order.orderNumber}`,
+//       user: req.user,
+//       order,
+//       drivers,
+//       url: req.originalUrl,
+//       messages: req.flash()
+//     });
+
+//   } catch (error) {
+//     console.error('[CREATE-DELIVERY-PAGE] Error:', error);
+//     req.flash('error', 'Failed to load create delivery page');
+//     res.redirect('/admin/orders');
+//   }
+// };
+
+// // exports.createDeliveryFromOrder = async (req, res) => {
+// //   try {
+// //     const { orderId } = req.params;
+// //     const { driverId, scheduledPickupTime, scheduledDeliveryTime, priority } = req.body;
+
+// //     const order = await Order.findById(orderId).populate('customerId');
+// //     if (!order) {
+// //       return errorResponse(res, 'Order not found', 404);
+// //     }
+
+// //     if (order.deliveryId) {
+// //       return errorResponse(res, 'Delivery already created for this order', 400);
+// //     }
+
+// //     if (order.status !== 'confirmed' && order.status !== 'processing' && order.status !== 'ready_for_pickup') {
+// //       return errorResponse(res, 'Order must be confirmed before creating delivery', 400);
+// //     }
+
+// //     // Prepare package details from order items
+// //     const packageDescription = order.items.map(item =>
+// //       `${item.productName} (${item.quantity} units)`
+// //     ).join(', ');
+
+// //     const totalWeight = order.items.reduce((sum, item) =>
+// //       sum + ((item.specifications?.weight || 0) * item.quantity), 0
+// //     );
+
+// //     const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+// //     // Create delivery
+// //     const delivery = await Delivery.create({
+// //       orderId: order.orderNumber,
+// //       customerId: order.customerId._id,
+// //       driverId: driverId || null,
+// //       pickupLocation: order.pickupLocation,
+// //       deliveryLocation: order.deliveryLocation,
+// //       packageDetails: {
+// //         description: packageDescription,
+// //         weight: totalWeight,
+// //         quantity: totalQuantity,
+// //         value: order.totalAmount,
+// //         fragile: false
+// //       },
+// //       scheduledPickupTime: scheduledPickupTime || order.scheduledPickupDate,
+// //       scheduledDeliveryTime: scheduledDeliveryTime || order.scheduledDeliveryDate,
+// //       priority: priority || order.priority,
+// //       instructions: order.specialInstructions,
+// //       status: driverId ? 'assigned' : 'pending',
+// //       createdBy: req.user._id
+// //     });
+
+// //     // Link delivery to order
+// //     order.deliveryId = delivery._id;
+// //     order.status = 'assigned';
+// //     await order.save();
+
+// //     // Create order status history
+// //     await OrderStatusHistory.create({
+// //       orderId: order._id,
+// //       status: 'assigned',
+// //       previousStatus: order.status,
+// //       remarks: `Delivery created: ${delivery.trackingNumber}`,
+// //       updatedBy: {
+// //         userId: req.user._id,
+// //         userRole: req.user.role,
+// //         userName: req.user.name
+// //       }
+// //     });
+
+// //     await delivery.populate('driverId customerId');
+
+// //     return successResponse(res, 'Delivery created from order successfully', {
+// //       order,
+// //       delivery,
+// //       trackingUrl: `${process.env.FRONTEND_URL}/track/${delivery.trackingNumber}`
+// //     }, 201);
+
+// //   } catch (error) {
+// //     console.error('Create Delivery From Order Error:', error);
+// //     return errorResponse(res, error.message || 'Failed to create delivery from order', 500);
+// //   }
+// // };
+
+// // Top pe import add karo
+
+
+// exports.createDeliveryFromOrder = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+//     const { driverId, scheduledPickupTime, scheduledDeliveryTime, priority } = req.body;
+
+//     const order = await Order.findById(orderId).populate('customerId');
+//     if (!order) {
+//       return errorResponse(res, 'Order not found', 404);
+//     }
+
+//     if (order.deliveryId) {
+//       return errorResponse(res, 'Delivery already created for this order', 400);
+//     }
+
+//     if (order.status !== 'confirmed' && order.status !== 'processing' && order.status !== 'ready_for_pickup') {
+//       return errorResponse(res, 'Order must be confirmed before creating delivery', 400);
+//     }
+
+//     const packageDescription = order.items.map(item =>
+//       `${item.productName} (${item.quantity} units)`
+//     ).join(', ');
+
+//     const totalWeight = order.items.reduce((sum, item) =>
+//       sum + ((item.specifications?.weight || 0) * item.quantity), 0
+//     );
+
+//     const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+//     const delivery = await Delivery.create({
+//       orderId: order.orderNumber,
+//       customerId: order.customerId._id,
+//       driverId: driverId || null,
+//       pickupLocation: order.pickupLocation,
+//       deliveryLocation: order.deliveryLocation,
+//       packageDetails: {
+//         description: packageDescription,
+//         weight: totalWeight,
+//         quantity: totalQuantity,
+//         value: order.totalAmount,
+//         fragile: false
+//       },
+//       scheduledPickupTime: scheduledPickupTime || order.scheduledPickupDate,
+//       scheduledDeliveryTime: scheduledDeliveryTime || order.scheduledDeliveryDate,
+//       priority: priority || order.priority,
+//       instructions: order.specialInstructions,
+//       status: driverId ? 'assigned' : 'pending',
+//       createdBy: req.user._id
+//     });
+
+//     order.deliveryId = delivery._id;
+//     order.status = 'assigned';
+//     await order.save();
+
+//     await OrderStatusHistory.create({
+//       orderId: order._id,
+//       status: 'assigned',
+//       previousStatus: order.status,
+//       remarks: `Delivery created: ${delivery.trackingNumber}`,
+//       updatedBy: {
+//         userId: req.user._id,
+//         userRole: req.user.role,
+//         userName: req.user.name
+//       }
+//     });
+
+//     await delivery.populate('driverId customerId');
+
+//     // ============================================================
+//     // ✅ NAYA: Driver ko turant proximity-sorted queue push karo
+//     // Taaki agar driver already kisi doosri delivery pe ja raha ho,
+//     // to nayi closest delivery turant list mein sahi jagah pe aa jaye
+//     // ============================================================
+//     if (driverId) {
+//       try {
+//         const io = req.app.get('io');
+//         if (io) {
+//           // In-memory live location try karo (socketHandlers.js se set hota hai)
+//           const liveLoc = io.driverLocations?.get(driverId.toString());
+//           const sortedQueue = await getSortedDeliveryQueueForDriver(
+//             driverId,
+//             liveLoc ? { latitude: liveLoc.latitude, longitude: liveLoc.longitude } : null
+//           );
+
+//           io.to(`driver-${driverId}`).emit('driver:queue:updated', {
+//             nextDelivery: sortedQueue[0] || null,
+//             queue: sortedQueue,
+//             reason: 'new_delivery_assigned',
+//             newDeliveryId: delivery._id.toString(),
+//             timestamp: new Date().toISOString(),
+//           });
+
+//           console.log(`[QUEUE] driver:queue:updated pushed to driver-${driverId} | queueSize: ${sortedQueue.length}`);
+//         }
+//       } catch (queueErr) {
+//         console.error('[QUEUE] Failed to push updated queue:', queueErr.message);
+//         // Ye fail hone se main delivery-creation flow fail nahi hona chahiye
+//       }
+//     }
+
+//     return successResponse(res, 'Delivery created from order successfully', {
+//       order,
+//       delivery,
+//       trackingUrl: `${process.env.FRONTEND_URL}/track/${delivery.trackingNumber}`
+//     }, 201);
+
+//   } catch (error) {
+//     console.error('Create Delivery From Order Error:', error);
+//     return errorResponse(res, error.message || 'Failed to create delivery from order', 500);
+//   }
+// };
+
+// // ============= GET ORDER STATISTICS (API) =============
+// exports.getOrderStatistics = async (req, res) => {
+//   try {
+//     const { startDate, endDate, customerId } = req.query;
+
+//     const dateFilter = {};
+//     if (startDate || endDate) {
+//       dateFilter.createdAt = {};
+//       if (startDate) dateFilter.createdAt.$gte = new Date(startDate);
+//       if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
+//     }
+
+//     if (customerId) {
+//       dateFilter.customerId = mongoose.Types.ObjectId(customerId);
+//     }
+
+//     const stats = await Order.aggregate([
+//       { $match: dateFilter },
+//       {
+//         $facet: {
+//           statusCounts: [
+//             { $group: { _id: '$status', count: { $sum: 1 } } }
+//           ],
+//           priorityCounts: [
+//             { $group: { _id: '$priority', count: { $sum: 1 } } }
+//           ],
+//           orderTypeCounts: [
+//             { $group: { _id: '$orderType', count: { $sum: 1 } } }
+//           ],
+//           totalOrders: [
+//             { $count: 'count' }
+//           ]
+//         }
+//       }
+//     ]);
+
+//     res.json({
+//       success: true,
+//       data: {
+//         total: stats[0].totalOrders[0]?.count || 0,
+//         byStatus: stats[0].statusCounts,
+//         byPriority: stats[0].priorityCounts,
+//         byType: stats[0].orderTypeCounts
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error('[ORDER-STATS] Error:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Failed to fetch statistics'
+//     });
+//   }
+// };
+
+
+// // ================================================================
+// // PICKUP LOCATION CRUD — AJAX (JSON response, no redirect)
+// // Used directly from order_create.ejs modal
+// // ================================================================
+
+// // POST /admin/pickup-locations/create  → JSON
+// exports.createPickupLocation = async (req, res) => {
+//   try {
+//     const { name, address, city, state, pincode, latitude, longitude, contactPerson, contactPhone, isDefault } = req.body;
+
+//     if (!name || !address || !latitude || !longitude) {
+//       return res.status(400).json({ success: false, message: 'Name, address, latitude & longitude are required' });
+//     }
+
+//     // Agar isDefault true hai to baaki sab false karo
+//     if (isDefault) await PickupLocation.updateMany({}, { isDefault: false });
+
+//     const location = await PickupLocation.create({
+//       name, address, city, state, pincode,
+//       coordinates: { latitude: parseFloat(latitude), longitude: parseFloat(longitude) },
+//       contactPerson, contactPhone, isDefault: !!isDefault
+//     });
+
+//     return res.status(201).json({ success: true, location });
+//   } catch (error) {
+//     console.error('[CREATE-PICKUP] Error:', error);
+//     return res.status(500).json({ success: false, message: error.message || 'Failed to create pickup location' });
+//   }
+// };
+
+// // POST /admin/pickup-locations/:locationId/update  → JSON
+// exports.updatePickupLocation = async (req, res) => {
+//   try {
+//     const { locationId } = req.params;
+//     const { name, address, city, state, pincode, latitude, longitude, contactPerson, contactPhone, isDefault, isActive } = req.body;
+
+//     if (!name || !address || !latitude || !longitude) {
+//       return res.status(400).json({ success: false, message: 'Name, address, latitude & longitude are required' });
+//     }
+
+//     const doc = await PickupLocation.findById(locationId);
+//     if (!doc) return res.status(404).json({ success: false, message: 'Location not found' });
+
+//     // Agar isDefault true hai to baaki sab false karo
+//     if (isDefault) await PickupLocation.updateMany({ _id: { $ne: locationId } }, { isDefault: false });
+
+//     doc.name = name;
+//     doc.address = address;
+//     doc.city = city;
+//     doc.state = state;
+//     doc.pincode = pincode;
+//     doc.coordinates = { latitude: parseFloat(latitude), longitude: parseFloat(longitude) };
+//     doc.contactPerson = contactPerson;
+//     doc.contactPhone = contactPhone;
+//     doc.isDefault = !!isDefault;
+//     doc.isActive = isActive !== false && isActive !== 'false';
+
+//     await doc.save();
+//     return res.json({ success: true, location: doc });
+//   } catch (error) {
+//     console.error('[UPDATE-PICKUP] Error:', error);
+//     return res.status(500).json({ success: false, message: error.message || 'Failed to update pickup location' });
+//   }
+// };
+
+// // DELETE /admin/pickup-locations/:locationId/delete  → JSON
+// exports.deletePickupLocation = async (req, res) => {
+//   try {
+//     const { locationId } = req.params;
+//     await PickupLocation.findByIdAndDelete(locationId);
+//     return res.json({ success: true, message: 'Pickup location deleted' });
+//   } catch (error) {
+//     console.error('[DELETE-PICKUP] Error:', error);
+//     return res.status(500).json({ success: false, message: 'Failed to delete pickup location' });
+//   }
+// };
+
 // // Update order status (Admin)
 // exports.updateOrderStatus = async (req, res) => {
 //   try {
@@ -336,7 +1265,7 @@
 //     }
 
 //     const previousStatus = order.status;
-//     order.status = status;  
+//     order.status = status;
 
 //     // Update specific fields based on status
 //     if (status === 'confirmed' && !order.confirmedBy) {
@@ -367,96 +1296,225 @@
 //   }
 // };
 
-// // List all orders
-// exports.listOrders = async (req, res) => {
-//   try {
-//     const page = parseInt(req.query.page) || 1;
-//     const limit = parseInt(req.query.limit) || 20;
-//     const skip = (page - 1) * limit;
+// // exports.updateOrderPriority = async (req, res) => {
+// //   try {
+// //     const { orderId } = req.params;
+// //     const { priority } = req.body;
 
-//     const query = {};
-//     if (req.query.status) query.status = req.query.status;
-//     if (req.query.search) {
-//       query.$or = [
-//         { orderNumber: { $regex: req.query.search, $options: 'i' } }
-//       ];
+// //     if (!['low', 'medium', 'high', 'urgent'].includes(priority)) {
+// //       return res.status(400).json({ success: false, message: 'Invalid priority value' });
+// //     }
+
+// //     const order = await Order.findById(orderId).populate('customerId', 'name companyName');
+// //     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+// //     const oldPriority = order.priority;
+// //     order.priority = priority;
+// //     await order.save();
+
+// //     let driverNotified = false;
+
+// //     // Driver ko Socket + FCM notification bhejo
+// //     try {
+// //       const Delivery = require('../../models/Delivery');   // ← correct relative path
+// //       const Driver = require('../../models/Driver');     // ← apne actual model name se match karo
+
+// //       if (order.deliveryId) {
+// //         const delivery = await Delivery.findById(order.deliveryId).select('driverId');
+
+// //         if (delivery?.driverId) {
+// //           const driver = await Driver.findById(delivery.driverId).select('fcmToken');
+
+// //           // 1. Socket notification
+// //           const io = req.app.get('io');
+// //           if (io) {
+// //             io.to(`driver_${delivery.driverId}`).emit('order:priority:changed', {
+// //               orderId: order._id,
+// //               orderNumber: order.orderNumber,
+// //               oldPriority,
+// //               newPriority: priority,
+// //               message: `Order ${order.orderNumber} priority changed to ${priority.toUpperCase()}`
+// //             });
+// //           }
+
+// //           // 2. FCM push notification (agar driver ka fcmToken hai)
+// //           if (driver?.fcmToken) {
+// //             // apne sendNotification util ka function use karo
+// //             // ✅ naya (sahi)
+// //             const { sendNotification } = require('../../utils/sendNotification');
+// //             await sendNotification(driver.fcmToken, {
+// //               title: `Order Priority: ${priority.toUpperCase()}`,
+// //               body: `Order #${order.orderNumber} priority changed from ${oldPriority} to ${priority}.`,
+// //               orderId: order._id.toString(),
+// //               orderNumber: order.orderNumber,
+// //               newPriority: priority,
+// //               oldPriority: String(oldPriority),
+// //             });
+// //             driverNotified = true;
+// //           }
+// //         }
+// //       }
+// //     } catch (notifyErr) {
+// //       // Notification fail hone se main response affect na ho
+// //       console.warn('[PRIORITY] Notification failed (non-fatal):', notifyErr.message);
+// //     }
+
+// //     return res.json({
+// //       success: true,
+// //       message: `Priority updated to ${priority}`,
+// //       priority,
+// //       orderId,
+// //       driverNotified,  // ← frontend toast mein "Driver notified" dikhega
+// //     });
+
+// //   } catch (error) {
+// //     console.error('[PRIORITY] Update error:', error);
+// //     return res.status(500).json({ success: false, message: error.message });
+// //   }
+// // };
+
+// exports.updateOrderPriority = async (req, res) => {
+//   const { orderId } = req.params;
+//   const { priority } = req.body;
+
+//   console.log('\n========== UPDATE PRIORITY START ==========');
+//   console.log('[PRIORITY] orderId:', orderId, '| newPriority:', priority);
+
+//   try {
+//     if (!['low', 'medium', 'high', 'urgent'].includes(priority)) {
+//       return res.status(400).json({ success: false, message: 'Invalid priority value' });
 //     }
 
-//     const [orders, total] = await Promise.all([
-//       Order.find(query)
-//         .populate('customerId', 'name email phone')
-//         .populate('deliveryId', 'trackingNumber status')
-//         .sort({ createdAt: -1 })
-//         .skip(skip)
-//         .limit(limit),
-//       Order.countDocuments(query)
-//     ]);
+//     const order = await Order.findById(orderId).populate('customerId', 'name companyName');
+//     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
-//     res.render('admin/orders/list', {
-//       title: 'Orders',
-//       user: req.user,
-//       orders,
-//       currentPage: page,
-//       totalPages: Math.ceil(total / limit),
-//       filters: req.query,
-//       success: req.query.success,
-//       error: req.query.error
-//     });
-//   } catch (error) {
-//     console.error('List Orders Error:', error);
-//     res.redirect('/admin/dashboard?error=Failed to load orders');
-//   }
-// };
+//     const oldPriority = order.priority;
+//     console.log('[PRIORITY] orderNumber:', order.orderNumber, '| change:', oldPriority, '→', priority);
+//     console.log('[PRIORITY] deliveryId:', order.deliveryId || 'NONE');
 
-// // Render create order page
-// exports.renderCreateOrder = async (req, res) => {
-//   try {
-//     const customers = await User.find({ role: 'customer' })
-//       .select('name email phone')
-//       .sort({ name: 1 });
+//     order.priority = priority;
+//     await order.save();
+//     console.log('[PRIORITY] ✅ Priority saved to DB');
 
-//     res.render('admin/orders/create', {
-//       title: 'Create Order',
-//       user: req.user,
-//       customers
-//     });
-//   } catch (error) {
-//     console.error('Render Create Order Error:', error);
-//     res.redirect('/admin/orders?error=Failed to load create order page');
-//   }
-// };
+//     let driverNotified = false;
 
-// // View order details
-// exports.viewOrder = async (req, res) => {
-//   try {
-//     const order = await Order.findById(req.params.id)
-//       .populate('customerId', 'name email phone')
-//       .populate('deliveryId')
-//       .populate('createdBy', 'name email')
-//       .populate('confirmedBy', 'name email');
+//     if (!order.deliveryId) {
+//       console.log('[PRIORITY] ⚠️ No deliveryId — notification skipped');
+//     } else {
+//       console.log('\n[PRIORITY] --- NOTIFICATION BLOCK START ---');
+//       try {
+//         const delivery = await Delivery.findById(order.deliveryId);
+//         console.log('[PRIORITY] delivery found:', !!delivery);
+//         console.log('[PRIORITY] delivery.driverId:', delivery?.driverId || 'NULL');
 
-//     if (!order) {
-//       return res.redirect('/admin/orders?error=Order not found');
+//         if (!delivery?.driverId) {
+//           console.warn('[PRIORITY] ⚠️ No driverId on delivery');
+//         } else {
+//           const driverId = delivery.driverId.toString();
+//           console.log('[PRIORITY] driverId:', driverId);
+
+//           const driver = await Driver.findById(driverId).select('fcmToken name');
+//           console.log('[PRIORITY] driver name:', driver?.name || 'NOT FOUND');
+//           console.log('[PRIORITY] fcmToken:', driver?.fcmToken
+//             ? driver.fcmToken.substring(0, 25) + '...'
+//             : 'MISSING'
+//           );
+
+//           const notifTitle = `Priority: ${priority.toUpperCase()} — ${order.orderNumber}`;
+//           const notifMessage = `Order priority changed from ${oldPriority} to ${priority}`;
+
+//           // ── Notification DB record ──
+//           try {
+//             await Notification.create({
+//               recipientId: driverId,
+//               recipientType: 'Driver',
+//               type: 'delivery_updated',
+//               title: notifTitle,
+//               message: notifMessage,
+//               data: {
+//                 deliveryId: order.deliveryId,
+//               },
+//               channels: {
+//                 push: {
+//                   sent: !!driver?.fcmToken,
+//                   sentAt: driver?.fcmToken ? new Date() : undefined,
+//                 }
+//               },
+//               priority: priority === 'urgent' ? 'urgent' : 'high',
+//               isRead: false,
+//             });
+//             console.log('[PRIORITY] ✅ Notification saved to DB');
+//           } catch (dbErr) {
+//             console.error('[PRIORITY] ❌ Notification DB save failed:', dbErr.message);
+//           }
+
+//           // ── FCM push ──
+//           if (driver?.fcmToken) {
+//             try {
+//               const fcmResult = await sendNotification(driver.fcmToken, {
+//                 title: notifTitle,
+//                 body: notifMessage,
+//                 type: 'priority_changed',
+//                 orderId: order._id.toString(),
+//                 orderNumber: order.orderNumber,
+//                 oldPriority: String(oldPriority),
+//                 newPriority: String(priority),
+//                 deliveryId: order.deliveryId.toString(),
+//               });
+//               console.log('[PRIORITY] ✅ FCM push result:', fcmResult ? 'sent' : 'failed');
+//               driverNotified = !!fcmResult;
+//             } catch (fcmErr) {
+//               console.error('[PRIORITY] ❌ FCM error:', fcmErr.message);
+//             }
+//           } else {
+//             console.warn('[PRIORITY] ⚠️ FCM skipped — no token');
+//           }
+
+//           // ── Socket ──
+//           const io = req.app.get('io');
+//           if (io) {
+//             const room = `driver-${driverId}`;
+//             const roomSockets = await io.in(room).allSockets();
+//             console.log(`[PRIORITY] Socket room "${room}" connections: ${roomSockets.size}`);
+
+//             io.to(room).emit('order:priority:changed', {
+//               orderId: order._id.toString(),
+//               orderNumber: order.orderNumber,
+//               oldPriority,
+//               newPriority: priority,
+//               message: notifMessage,
+//             });
+//             console.log('[PRIORITY] ✅ Socket emitted to room:', room);
+//           }
+//         }
+//       } catch (notifyErr) {
+//         console.error('[PRIORITY] ❌ Notification block error:', notifyErr.message);
+//         console.error(notifyErr.stack);
+//       }
+//       console.log('[PRIORITY] --- NOTIFICATION BLOCK END ---\n');
 //     }
 
-//     const statusHistory = await OrderStatusHistory.find({ orderId: order._id })
-//       .sort({ timestamp: 1 })
-//       .populate('updatedBy.userId', 'name email');
+//     console.log('========== UPDATE PRIORITY DONE ==========\n');
 
-//     res.render('admin/orders/details', {
-//       title: `Order ${order.orderNumber}`,
-//       user: req.user,
-//       order,
-//       statusHistory,
-//       success: req.query.success,
-//       error: req.query.error
+//     return res.json({
+//       success: true,
+//       message: `Priority updated to ${priority}`,
+//       priority,
+//       orderId,
+//       driverNotified,
 //     });
+
 //   } catch (error) {
-//     console.error('View Order Error:', error);
-//     res.redirect('/admin/orders?error=Failed to load order details');
+//     console.error('[PRIORITY] ❌ FATAL ERROR:', error.message);
+//     console.error(error.stack);
+//     return res.status(500).json({ success: false, message: error.message });
 //   }
 // };
+
+
 // module.exports = exports;
+
+
 
 const Order = require('../../models/Order');
 const { PickupLocation } = require('../../models/Order');
@@ -471,6 +1529,8 @@ const Category = require("../../models/Category")
 const Notification = require('../../models/Notification');
 const { sendNotification } = require('../../utils/sendNotification');
 const Driver = require('../../models/Driver');
+const { calculateDistance } = require('../../utils/geoHelper');
+const crypto = require('crypto');
 
 // ============= RENDER ORDERS LIST PAGE =============
 exports.renderOrdersList = async (req, res) => {
@@ -535,11 +1595,18 @@ exports.renderOrdersList = async (req, res) => {
       pending: stats[0].pending[0]?.count || 0
     };
 
+    // ✅ Active drivers list — used by the "Assign Optimized Route" modal
+    const drivers = await Driver.find({ isActive: { $ne: false } })
+      .select('name phone vehicleNumber isAvailable')
+      .sort({ name: 1 })
+      .lean();
+
     res.render('order_list', {
       title: 'Orders Management',
       user: req.user,
       orders,                    // customerId is now populated object
       stats: statistics,
+      drivers,
       pagination: {
         total,
         page: parseInt(page),
@@ -991,7 +2058,7 @@ exports.updateOrder = async (req, res) => {
     console.log('[UPDATE-ORDER] ✅ Order found | orderNumber:', order.orderNumber, '| status:', order.status, '| deliveryId:', order.deliveryId || 'NONE');
 
     // ── Step 2: canUpdateOrder check ──
-    if (!order.canBeModified()) {
+    if (!order.canUpdateOrder()) {
       console.log('[UPDATE-ORDER] ❌ Cannot update | status:', order.status);
       req.flash('error', `Order cannot be edited — delivery is already ${order.status}. Only Pending/Confirmed orders can be updated.`);
       return res.redirect('/admin/orders');
@@ -1381,6 +2448,200 @@ exports.renderCreateDeliveryFromOrder = async (req, res) => {
   }
 };
 
+// exports.createDeliveryFromOrder = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+//     const { driverId, scheduledPickupTime, scheduledDeliveryTime, priority } = req.body;
+
+//     const order = await Order.findById(orderId).populate('customerId');
+//     if (!order) {
+//       return errorResponse(res, 'Order not found', 404);
+//     }
+
+//     if (order.deliveryId) {
+//       return errorResponse(res, 'Delivery already created for this order', 400);
+//     }
+
+//     if (order.status !== 'confirmed' && order.status !== 'processing' && order.status !== 'ready_for_pickup') {
+//       return errorResponse(res, 'Order must be confirmed before creating delivery', 400);
+//     }
+
+//     // Prepare package details from order items
+//     const packageDescription = order.items.map(item =>
+//       `${item.productName} (${item.quantity} units)`
+//     ).join(', ');
+
+//     const totalWeight = order.items.reduce((sum, item) =>
+//       sum + ((item.specifications?.weight || 0) * item.quantity), 0
+//     );
+
+//     const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+//     // Create delivery
+//     const delivery = await Delivery.create({
+//       orderId: order.orderNumber,
+//       customerId: order.customerId._id,
+//       driverId: driverId || null,
+//       pickupLocation: order.pickupLocation,
+//       deliveryLocation: order.deliveryLocation,
+//       packageDetails: {
+//         description: packageDescription,
+//         weight: totalWeight,
+//         quantity: totalQuantity,
+//         value: order.totalAmount,
+//         fragile: false
+//       },
+//       scheduledPickupTime: scheduledPickupTime || order.scheduledPickupDate,
+//       scheduledDeliveryTime: scheduledDeliveryTime || order.scheduledDeliveryDate,
+//       priority: priority || order.priority,
+//       instructions: order.specialInstructions,
+//       status: driverId ? 'assigned' : 'Pending',
+//       createdBy: req.user._id
+//     });
+
+//     // Link delivery to order
+//     order.deliveryId = delivery._id;
+//     order.status = 'assigned';
+//     await order.save();
+
+//     // Create order status history
+//     await OrderStatusHistory.create({
+//       orderId: order._id,
+//       status: 'assigned',
+//       previousStatus: order.status,
+//       remarks: `Delivery created: ${delivery.trackingNumber}`,
+//       updatedBy: {
+//         userId: req.user._id,
+//         userRole: req.user.role,
+//         userName: req.user.name
+//       }
+//     });
+
+//     await delivery.populate('driverId customerId');
+
+//     // ================================================================
+//     // ✅ PROXIMITY ADVISORY: agar isi driver ke paas pehle se koi
+//     // active/pending delivery hai, to naye delivery ki distance
+//     // compare karo driver ki current location se. Agar naya delivery
+//     // zyada nazdik hai, driver ko turant advisory notification bhejo
+//     // ki "yeh wala pehle karo — zyada nazdik hai".
+//     // (Yeh sirf suggestion hai — currently chal rahi journey force
+//     // se change nahi hoti, driver decide karta hai.)
+//     // ================================================================
+//     if (driverId && delivery.deliveryLocation?.coordinates?.latitude) {
+//       try {
+//         const driverDoc = await Driver.findById(driverId).select('name fcmToken currentLocation');
+
+//         // Driver ki reference location: uski live location, warna is delivery ka pickup point
+//         const refLat = driverDoc?.currentLocation?.latitude || delivery.pickupLocation?.coordinates?.latitude;
+//         const refLng = driverDoc?.currentLocation?.longitude || delivery.pickupLocation?.coordinates?.longitude;
+
+//         if (refLat && refLng) {
+//           // Driver ki baaki active/pending deliveries dhundo (naya delivery chhodkar)
+//           const otherDeliveries = await Delivery.find({
+//             driverId,
+//             _id: { $ne: delivery._id },
+//             status: { $in: ['assigned', 'Picked_up', 'In_transit', 'Pending'] }
+//           }).select('deliveryLocation trackingNumber status');
+
+//           const newDist = calculateDistance(
+//             refLat, refLng,
+//             delivery.deliveryLocation.coordinates.latitude,
+//             delivery.deliveryLocation.coordinates.longitude
+//           );
+
+//           let closestOther = null;
+//           let closestOtherDist = Infinity;
+//           otherDeliveries.forEach(od => {
+//             if (!od.deliveryLocation?.coordinates?.latitude) return;
+//             const d = calculateDistance(
+//               refLat, refLng,
+//               od.deliveryLocation.coordinates.latitude,
+//               od.deliveryLocation.coordinates.longitude
+//             );
+//             if (d < closestOtherDist) {
+//               closestOtherDist = d;
+//               closestOther = od;
+//             }
+//           });
+
+//           const io = req.app.get('io');
+
+//           // Case A: naya delivery sabse nazdik hai (existing sab se closer)
+//           if (closestOther && newDist < closestOtherDist) {
+//             const msg = `New delivery "${delivery.trackingNumber}" is closer (${newDist.toFixed(1)} km) than your current stop "${closestOther.trackingNumber}" (${closestOtherDist.toFixed(1)} km). Consider prioritizing it.`;
+//             console.log(`[PROXIMITY] ${msg}`);
+
+//             if (io) {
+//               io.to(`driver-${driverId}`).emit('delivery:proximity-advisory', {
+//                 newDeliveryId: delivery._id.toString(),
+//                 newDeliveryDistanceKm: Number(newDist.toFixed(2)),
+//                 comparedToDeliveryId: closestOther._id.toString(),
+//                 comparedToDistanceKm: Number(closestOtherDist.toFixed(2)),
+//                 recommendation: 'new_delivery_is_closer',
+//                 message: msg,
+//                 timestamp: new Date().toISOString()
+//               });
+//             }
+
+//             try {
+//               await Notification.create({
+//                 recipientId: driverId,
+//                 recipientType: 'Driver',
+//                 type: 'delivery_assigned',
+//                 title: 'Closer Delivery Assigned',
+//                 message: msg,
+//                 data: { deliveryId: delivery._id },
+//                 channels: { push: { sent: !!driverDoc?.fcmToken, sentAt: driverDoc?.fcmToken ? new Date() : undefined } },
+//                 priority: 'high',
+//                 isRead: false
+//               });
+//               if (driverDoc?.fcmToken) {
+//                 await sendNotification(driverDoc.fcmToken, {
+//                   title: 'Closer Delivery Assigned',
+//                   body: msg,
+//                   type: 'proximity_advisory',
+//                   deliveryId: delivery._id.toString(),
+//                   newDeliveryDistanceKm: newDist.toFixed(2),
+//                 });
+//               }
+//             } catch (notifyErr) {
+//               console.error('[PROXIMITY] Notification failed (non-fatal):', notifyErr.message);
+//             }
+//           } else {
+//             // Case B: existing delivery hi closer hai — sirf info bhejo, koi urgency nahi
+//             if (io) {
+//               io.to(`driver-${driverId}`).emit('delivery:assigned', {
+//                 deliveryId: delivery._id.toString(),
+//                 trackingNumber: delivery.trackingNumber,
+//                 distanceKm: Number(newDist.toFixed(2)),
+//                 message: `New delivery "${delivery.trackingNumber}" assigned (${newDist.toFixed(1)} km away).`,
+//                 timestamp: new Date().toISOString()
+//               });
+//             }
+//           }
+//         }
+//       } catch (proxErr) {
+//         console.error('[PROXIMITY] Advisory check failed (non-fatal):', proxErr.message);
+//       }
+//     }
+
+//     return successResponse(res, 'Delivery created from order successfully', {
+//       order,
+//       delivery,
+//       trackingUrl: `${process.env.FRONTEND_URL}/track/${delivery.trackingNumber}`
+//     }, 201);
+
+//   } catch (error) {
+//     console.error('Create Delivery From Order Error:', error);
+//     return errorResponse(res, error.message || 'Failed to create delivery from order', 500);
+//   }
+// };
+
+
+// ============= GET ORDER STATISTICS (API) =============
+
+
 exports.createDeliveryFromOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -1452,6 +2713,18 @@ exports.createDeliveryFromOrder = async (req, res) => {
 
     await delivery.populate('driverId customerId');
 
+    // NAYA: Agar driver assign hua hai, route optimize karo (background me,
+    // isse existing notification/response flow bilkul affect nahi hota - agar
+    // ye fail bhi ho jaye, poora delivery-creation response fir bhi normal jayega)
+    if (driverId) {
+      try {
+        const io = req.app.get('io');
+        await exports._optimizeDriverRouteAndNotify(driverId, io);
+      } catch (routeErr) {
+        console.warn('[ROUTE-OPT] Failed after delivery creation (non-fatal):', routeErr.message);
+      }
+    }
+
     return successResponse(res, 'Delivery created from order successfully', {
       order,
       delivery,
@@ -1465,7 +2738,7 @@ exports.createDeliveryFromOrder = async (req, res) => {
 };
 
 
-// ============= GET ORDER STATISTICS (API) =============
+
 exports.getOrderStatistics = async (req, res) => {
   try {
     const { startDate, endDate, customerId } = req.query;
@@ -1853,6 +3126,248 @@ exports.updateOrderPriority = async (req, res) => {
     console.error('[PRIORITY] ❌ FATAL ERROR:', error.message);
     console.error(error.stack);
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+// ================================================================
+// BULK ASSIGN — Route Optimization (Nearest-Neighbor)
+// Ek driver ko multiple orders assign karo, sequence automatically
+// nearest-first set hoga. Pehli delivery ka pickup = factory (Orion
+// Plastic), uske baad har delivery ka pickup = pichli delivery ka
+// destination. Driver ko sirf pehla stop "assigned" milta hai; baaki
+// stops queue me rehte hain aur previous delivery complete hote hi
+// khud-ba-khud activate ho jaate hain (dekho journeyController.js →
+// uploadProofSignature ka chaining block).
+// ================================================================
+exports.bulkAssignDeliveryOptimized = async (req, res) => {
+  try {
+    const { orderIds, driverId, scheduledPickupTime } = req.body;
+
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      return errorResponse(res, 'orderIds array is required', 400);
+    }
+    if (!driverId) {
+      return errorResponse(res, 'driverId is required', 400);
+    }
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) return errorResponse(res, 'Driver not found', 404);
+
+    const orders = await Order.find({ _id: { $in: orderIds } }).populate('customerId');
+    if (orders.length === 0) return errorResponse(res, 'No valid orders found', 404);
+
+    // Validate: sab orders confirmed/processing/ready hone chahiye
+    const invalidOrders = orders.filter(o => !['confirmed', 'processing', 'ready_for_pickup'].includes(o.status));
+    if (invalidOrders.length > 0) {
+      return errorResponse(res, `Orders must be confirmed before assigning: ${invalidOrders.map(o => o.orderNumber).join(', ')}`, 400);
+    }
+
+    // Validate: har order ke paas valid pickup + delivery coordinates hone chahiye
+    const missingCoords = orders.filter(o =>
+      !o.pickupLocation?.coordinates?.latitude || !o.pickupLocation?.coordinates?.longitude ||
+      !o.deliveryLocation?.coordinates?.latitude || !o.deliveryLocation?.coordinates?.longitude
+    );
+    if (missingCoords.length > 0) {
+      return errorResponse(res, `Missing pickup/delivery coordinates: ${missingCoords.map(o => o.orderNumber).join(', ')}`, 400);
+    }
+
+    // ── NEAREST-NEIGHBOR ROUTE OPTIMIZATION ──
+    // Start point = pehle order ka pickup location (Orion Plastic factory)
+    let currentPoint = {
+      latitude: orders[0].pickupLocation.coordinates.latitude,
+      longitude: orders[0].pickupLocation.coordinates.longitude
+    };
+
+    const remaining = [...orders];
+    const optimizedOrders = [];
+
+    while (remaining.length > 0) {
+      let nearestIdx = 0;
+      let nearestDist = Infinity;
+
+      remaining.forEach((ord, idx) => {
+        const dist = calculateDistance(
+          currentPoint.latitude,
+          currentPoint.longitude,
+          ord.deliveryLocation.coordinates.latitude,
+          ord.deliveryLocation.coordinates.longitude
+        );
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          nearestIdx = idx;
+        }
+      });
+
+      const nearest = remaining.splice(nearestIdx, 1)[0];
+      optimizedOrders.push(nearest);
+
+      // Agla comparison ab isi delivery point se hoga (chaining ka base)
+      currentPoint = {
+        latitude: nearest.deliveryLocation.coordinates.latitude,
+        longitude: nearest.deliveryLocation.coordinates.longitude
+      };
+    }
+
+    // ── Deliveries create karo — chained pickup ke saath ──
+    const routeGroupId = crypto.randomUUID();
+    const createdDeliveries = [];
+    let previousDeliveryLocation = null;
+    let previousDeliveryDoc = null;
+
+    for (let i = 0; i < optimizedOrders.length; i++) {
+      const order = optimizedOrders[i];
+
+      // Pehli delivery: pickup = factory. Baaki sab: pickup = pichli delivery ka destination
+      const pickupForThis = i === 0 ? order.pickupLocation : previousDeliveryLocation;
+
+      const packageDescription = order.items.map(it => `${it.productName} (${it.quantity} units)`).join(', ');
+      const totalQuantity = order.items.reduce((sum, it) => sum + it.quantity, 0);
+      const totalWeight = order.items.reduce((sum, it) => sum + ((it.specifications?.weight || 0) * it.quantity), 0);
+
+      const delivery = await Delivery.create({
+        orderId: order.orderNumber,
+        customerId: order.customerId._id,
+        driverId,
+        pickupLocation: pickupForThis,
+        deliveryLocation: order.deliveryLocation,
+        packageDetails: {
+          description: packageDescription,
+          weight: totalWeight,
+          quantity: totalQuantity,
+          fragile: false
+        },
+        routeGroupId,
+        routeSequence: i + 1,
+        // ✅ Sirf pehli delivery abhi "assigned" (active), baaki "Pending" (queue me)
+        status: i === 0 ? 'assigned' : 'Pending',
+        scheduledPickupTime: i === 0 ? (scheduledPickupTime || order.scheduledPickupDate) : null,
+        priority: order.priority,
+        instructions: order.specialInstructions,
+        createdBy: req.user._id
+      });
+
+      // ── Chaining: pichli delivery ka nextDeliveryId set karo ──
+      if (previousDeliveryDoc) {
+        previousDeliveryDoc.nextDeliveryId = delivery._id;
+        await previousDeliveryDoc.save();
+        delivery.previousDeliveryId = previousDeliveryDoc._id;
+        await delivery.save();
+      }
+
+      order.deliveryId = delivery._id;
+      order.status = i === 0 ? 'assigned' : 'ready_for_pickup';
+      await order.save();
+
+      await OrderStatusHistory.create({
+        orderId: order._id,
+        status: order.status,
+        remarks: `Assigned in optimized route (stop ${i + 1} of ${optimizedOrders.length})`,
+        updatedBy: { userId: req.user._id, userRole: req.user.role, userName: req.user.name }
+      });
+
+      createdDeliveries.push(delivery);
+      previousDeliveryLocation = order.deliveryLocation;
+      previousDeliveryDoc = delivery;
+    }
+
+    // ── Driver ko socket se poora route + turant notification bhejo ──
+    const io = req.app.get('io');
+    const firstStop = createdDeliveries[0];
+
+    if (io) {
+      io.to(`driver-${driverId}`).emit('route:assigned', {
+        routeGroupId,
+        totalStops: createdDeliveries.length,
+        firstDelivery: {
+          deliveryId: firstStop._id,
+          pickupLocation: firstStop.pickupLocation,
+          deliveryLocation: firstStop.deliveryLocation,
+          sequence: 1
+        },
+        fullSequence: createdDeliveries.map(d => ({
+          deliveryId: d._id,
+          sequence: d.routeSequence,
+          deliveryAddress: d.deliveryLocation.address,
+          status: d.status
+        })),
+        message: `New optimized route assigned — ${createdDeliveries.length} stop(s). Start with: ${firstStop.deliveryLocation.address}`,
+        timestamp: new Date().toISOString()
+      });
+
+      io.to('admin-room').emit('route:created', {
+        routeGroupId,
+        driverId,
+        driverName: driver.name,
+        totalStops: createdDeliveries.length,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // ── DB Notification record + FCM push (nearest-stop-first ka turant alert) ──
+    try {
+      await Notification.create({
+        recipientId: driverId,
+        recipientType: 'Driver',
+        type: 'delivery_updated',
+        title: `New Route Assigned (${createdDeliveries.length} stops)`,
+        message: `Nearest stop first: ${firstStop.deliveryLocation.address}`,
+        data: { deliveryId: firstStop._id },
+        channels: { push: { sent: !!driver.fcmToken, sentAt: driver.fcmToken ? new Date() : undefined } },
+        priority: 'high',
+        isRead: false
+      });
+
+      if (driver.fcmToken) {
+        await sendNotification(driver.fcmToken, {
+          title: `New Route Assigned — ${createdDeliveries.length} Stops`,
+          body: `Start with nearest delivery: ${firstStop.deliveryLocation.address}`,
+          type: 'route_assigned',
+          routeGroupId,
+          deliveryId: firstStop._id.toString(),
+          totalStops: String(createdDeliveries.length),
+        });
+      }
+    } catch (notifyErr) {
+      console.error('[BULK-ASSIGN] Notification failed (non-fatal):', notifyErr.message);
+    }
+
+    return successResponse(res, 'Optimized route created successfully', {
+      routeGroupId,
+      driverId,
+      totalStops: createdDeliveries.length,
+      sequence: createdDeliveries.map(d => ({
+        deliveryId: d._id,
+        sequence: d.routeSequence,
+        orderId: d.orderId,
+        pickupAddress: d.pickupLocation.address,
+        deliveryAddress: d.deliveryLocation.address,
+        status: d.status
+      }))
+    }, 201);
+
+  } catch (error) {
+    console.error('Bulk Assign Optimized Route Error:', error);
+    return errorResponse(res, error.message || 'Failed to create optimized route', 500);
+  }
+};
+
+// ================================================================
+// GET ROUTE — ek driver ka poora route sequence dekhne ke liye
+// ================================================================
+exports.getRouteByGroupId = async (req, res) => {
+  try {
+    const { routeGroupId } = req.params;
+    const deliveries = await Delivery.find({ routeGroupId })
+      .populate('orderId')
+      .populate('driverId', 'name phone')
+      .sort({ routeSequence: 1 });
+
+    if (deliveries.length === 0) return errorResponse(res, 'Route not found', 404);
+
+    return successResponse(res, 'Route retrieved successfully', { deliveries });
+  } catch (error) {
+    return errorResponse(res, error.message || 'Failed to get route', 500);
   }
 };
 
