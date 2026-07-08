@@ -914,15 +914,10 @@ exports.getSortedUpcomingForDriver = async (driverId) => {
   }
 
   // ================================================================
-  // ✅ APP-COMPATIBILITY FIX (backend-only, no frontend change needed):
-  // App ki UI abhi "item.distance" field ko hi render kar rahi hai
-  // (purana static pickup→delivery route length), "distanceFromDriver"
-  // (naya, driver-se-live-distance) field ko nahi. Chunki app developer
-  // abhi available nahi hai, hum yahin "distance" field ke andar hi
-  // naya proximity-distance daal denge — app bina kisi code-change ke
-  // sahi (driver-se) distance dikhayegi. Jab app developer available ho
-  // aur "distanceFromDriver" field use karna shuru kare, tab yeh override
-  // hata sakte hain agar original static route-distance wapas chahiye ho.
+  // APP-COMPATIBILITY: App ki UI abhi "item.distance" field render karti
+  // hai, "distanceFromDriver" nahi. Hum "distance" field ke andar hi
+  // naya proximity-distance daal dete hain — app bina code-change ke
+  // sahi (driver-se) distance dikhati hai.
   // ================================================================
   const buildItem = (d, idx) => {
     const hasProximityDistance = d.__distanceKm !== undefined && d.__distanceKm !== Infinity;
@@ -941,13 +936,10 @@ exports.getSortedUpcomingForDriver = async (driverId) => {
         : null,
       deliveryAddress: d.deliveryLocation.address.split(',')[0] || d.deliveryLocation.address,
       pickupAddress: d.pickupLocation.address.split(',')[0] || d.pickupLocation.address,
-      // ✅ App isi field ko render karti hai — ab yahan driver-se-distance jaayega (agar available hai)
       distance: hasProximityDistance
         ? `${d.__distanceKm.toFixed(1)} km`
         : (d.distance ? `${d.distance.toFixed(1)} km` : 'N/A'),
       nearestRank: idx !== undefined ? idx + 1 : null,
-      // Naya field bhi bhej rahe hain — jab app developer available ho aur
-      // isko use karna chahe to yahi authoritative/correct field hai
       distanceFromDriver: hasProximityDistance ? `${d.__distanceKm.toFixed(1)} km` : null,
       etaFromDriver: d.__etaMin ? `${d.__etaMin} min` : null,
       packageInfo: d.packageDetails.description ? `${d.packageDetails.quantity || 1}x ${d.packageDetails.description}` : 'Package',
@@ -1006,8 +998,18 @@ exports.getDriverDeliveries = async (req, res) => {
   }
 };
 
+// ================================================================
 // GET /driver/delivery/:deliveryId/details
-// GET /admin/delivery/:deliveryId OR /driver/delivery/:deliveryId/details
+// ================================================================
+// ✅ FIX: pehle yeh seedha DB se raw pickupLocation dikhata tha — jo
+// (chaining apply na hone ki wajah se) hamesha factory/pehli-delivery
+// wala address hota tha, chahe list me yeh delivery kahin bhi ho.
+// Ab isi delivery ki proximity-ranking (jo /my-delivery list me use
+// hoti hai, wahi) dobara nikaalte hain, aur agar yeh apni driver ki
+// list me #1 nahi hai, to "mujhse pehle wala stop" ka deliveryLocation
+// hi iska pickup point maan lete hain — list aur detail page ab hamesha
+// consistent rahenge.
+// ================================================================
 exports.getDeliveryDetails = async (req, res) => {
   try {
     const { deliveryId } = req.params;
@@ -1020,6 +1022,37 @@ exports.getDeliveryDetails = async (req, res) => {
       .lean();
 
     if (!delivery) return errorResponse(res, 'Delivery not found', 404);
+
+    // ── Effective pickup nikaalo (list ki proximity-ranking se) ──
+    let effectivePickupLocation = delivery.pickupLocation;
+
+    if (delivery.driverId) {
+      try {
+        const driverIdForSort = delivery.driverId._id || delivery.driverId;
+        const sorted = await exports.getSortedUpcomingForDriver(driverIdForSort);
+        const myIndex = sorted.upcoming.findIndex(u => u.id === delivery._id.toString());
+
+        console.log(`[DELIVERY-DETAILS] deliveryId: ${deliveryId} | myRank: ${myIndex >= 0 ? myIndex + 1 : 'not in upcoming list'} of ${sorted.upcoming.length}`);
+
+        if (myIndex > 0) {
+          const previousItem = sorted.upcoming[myIndex - 1];
+          const previousDeliveryDoc = await Delivery.findById(previousItem.id)
+            .select('deliveryLocation trackingNumber')
+            .lean();
+
+          if (previousDeliveryDoc?.deliveryLocation?.coordinates?.latitude) {
+            effectivePickupLocation = previousDeliveryDoc.deliveryLocation;
+            console.log(`[DELIVERY-DETAILS] ✅ Pickup overridden — using "${previousDeliveryDoc.trackingNumber}" destination as pickup: ${previousDeliveryDoc.deliveryLocation.address}`);
+          }
+        } else if (myIndex === 0) {
+          console.log('[DELIVERY-DETAILS] Yeh delivery hi rank #1 (sabse nazdik) hai — original pickupLocation use hoga');
+        }
+      } catch (sortErr) {
+        console.error('[DELIVERY-DETAILS] Proximity pickup resolution failed (non-fatal):', sortErr.message);
+      }
+    }
+
+    delivery.pickupLocation = effectivePickupLocation;
 
     // Calculate Times (Exact Image Jaisa)
     const formatTime = (date) => date ? new Date(date).toLocaleTimeString('en-US', {
