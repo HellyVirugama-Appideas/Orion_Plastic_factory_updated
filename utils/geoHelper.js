@@ -243,3 +243,35 @@ exports.sortByProximity = async (origin, items, getCoords) => {
   ranked.sort((a, b) => a.distanceKm - b.distanceKm);
   return ranked;
 };
+
+
+exports.geocodeAddress = async (addressText) => {
+  try {
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+      console.warn('[GEOCODE] GOOGLE_MAPS_API_KEY not set in env — skipping geocode');
+      return null;
+    }
+    if (!addressText || typeof addressText !== 'string' || addressText.trim().length < 3) {
+      console.warn('[GEOCODE] Address text missing/too short — skipping geocode');
+      return null;
+    }
+ 
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addressText)}&key=${apiKey}`;
+    const res = await fetch(url);
+    const data = await res.json();
+ 
+    if (data.status !== 'OK' || !data.results?.length) {
+      console.warn(`[GEOCODE] Failed for "${addressText}" — status: ${data.status}`);
+      return null;
+    }
+ 
+    const loc = data.results[0].geometry.location;
+    return { latitude: loc.lat, longitude: loc.lng };
+ 
+  } catch (err) {
+    console.error('[GEOCODE] Error:', err.message);
+    return null;
+  }
+};
+ 
