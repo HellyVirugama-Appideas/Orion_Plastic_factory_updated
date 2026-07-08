@@ -913,32 +913,52 @@ exports.getSortedUpcomingForDriver = async (driverId) => {
     }));
   }
 
-  const buildItem = (d, idx) => ({
-    id: d._id.toString(),
-    trackingNumber: d.trackingNumber,
-    companyName: d.customerId?.companyName || d.customerId?.name || 'Unknown Customer',
-    status: d.status,
-    priority: d.priority,
-    time: d.scheduledDeliveryTime
-      ? new Date(d.scheduledDeliveryTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).replace(' ', '')
-      : 'Not Scheduled',
-    date: d.scheduledDeliveryTime
-      ? new Date(d.scheduledDeliveryTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).replace(' ', ' ')
-      : null,
-    deliveryAddress: d.deliveryLocation.address.split(',')[0] || d.deliveryLocation.address,
-    pickupAddress: d.pickupLocation.address.split(',')[0] || d.pickupLocation.address,
-    distance: d.distance ? `${d.distance.toFixed(1)} km` : 'N/A',
-    nearestRank: idx !== undefined ? idx + 1 : null,
-    distanceFromDriver: (d.__distanceKm !== undefined && d.__distanceKm !== Infinity) ? `${d.__distanceKm.toFixed(1)} km` : null,
-    etaFromDriver: d.__etaMin ? `${d.__etaMin} min` : null,
-    packageInfo: d.packageDetails.description ? `${d.packageDetails.quantity || 1}x ${d.packageDetails.description}` : 'Package',
-    remarks: d.remarks?.length > 0
-      ? d.remarks.map(r => ({
-        text: r.remarkText, category: r.category, severity: r.severity, color: r.color || '#666',
-        time: new Date(r.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-      }))
-      : []
-  });
+  // ================================================================
+  // ✅ APP-COMPATIBILITY FIX (backend-only, no frontend change needed):
+  // App ki UI abhi "item.distance" field ko hi render kar rahi hai
+  // (purana static pickup→delivery route length), "distanceFromDriver"
+  // (naya, driver-se-live-distance) field ko nahi. Chunki app developer
+  // abhi available nahi hai, hum yahin "distance" field ke andar hi
+  // naya proximity-distance daal denge — app bina kisi code-change ke
+  // sahi (driver-se) distance dikhayegi. Jab app developer available ho
+  // aur "distanceFromDriver" field use karna shuru kare, tab yeh override
+  // hata sakte hain agar original static route-distance wapas chahiye ho.
+  // ================================================================
+  const buildItem = (d, idx) => {
+    const hasProximityDistance = d.__distanceKm !== undefined && d.__distanceKm !== Infinity;
+
+    return {
+      id: d._id.toString(),
+      trackingNumber: d.trackingNumber,
+      companyName: d.customerId?.companyName || d.customerId?.name || 'Unknown Customer',
+      status: d.status,
+      priority: d.priority,
+      time: d.scheduledDeliveryTime
+        ? new Date(d.scheduledDeliveryTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).replace(' ', '')
+        : 'Not Scheduled',
+      date: d.scheduledDeliveryTime
+        ? new Date(d.scheduledDeliveryTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).replace(' ', ' ')
+        : null,
+      deliveryAddress: d.deliveryLocation.address.split(',')[0] || d.deliveryLocation.address,
+      pickupAddress: d.pickupLocation.address.split(',')[0] || d.pickupLocation.address,
+      // ✅ App isi field ko render karti hai — ab yahan driver-se-distance jaayega (agar available hai)
+      distance: hasProximityDistance
+        ? `${d.__distanceKm.toFixed(1)} km`
+        : (d.distance ? `${d.distance.toFixed(1)} km` : 'N/A'),
+      nearestRank: idx !== undefined ? idx + 1 : null,
+      // Naya field bhi bhej rahe hain — jab app developer available ho aur
+      // isko use karna chahe to yahi authoritative/correct field hai
+      distanceFromDriver: hasProximityDistance ? `${d.__distanceKm.toFixed(1)} km` : null,
+      etaFromDriver: d.__etaMin ? `${d.__etaMin} min` : null,
+      packageInfo: d.packageDetails.description ? `${d.packageDetails.quantity || 1}x ${d.packageDetails.description}` : 'Package',
+      remarks: d.remarks?.length > 0
+        ? d.remarks.map(r => ({
+          text: r.remarkText, category: r.category, severity: r.severity, color: r.color || '#666',
+          time: new Date(r.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+        }))
+        : []
+    };
+  };
 
   return {
     upcoming: orderedUpcoming.map((d, idx) => buildItem(d, idx)),
@@ -966,7 +986,7 @@ exports.getDriverDeliveries = async (req, res) => {
     console.log('[DELIVERY-LIST] sortedByProximity:', result.sortedByProximity);
     console.log('[DELIVERY-LIST] upcoming count:', result.upcoming.length, '| completed count:', result.completed.length);
     result.upcoming.forEach(u => {
-      console.log(`  #${u.nearestRank} → ${u.trackingNumber} | priority: ${u.priority} | distanceFromDriver: ${u.distanceFromDriver}`);
+      console.log(`  #${u.nearestRank} → ${u.trackingNumber} | priority: ${u.priority} | distance (shown in app): ${u.distance} | distanceFromDriver: ${u.distanceFromDriver}`);
     });
     console.log('========== [DELIVERY-LIST] END ==========\n');
 
