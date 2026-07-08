@@ -3969,11 +3969,69 @@ function setupSocketHandlers(io) {
         const { driverId, journeyId, deliveryId, latitude, longitude, speed, heading, status } = data || {};
         if (!driverId || !latitude || !longitude) return;
 
-        // ✅ FIX: map update missing tha
+        // ✅ In-memory map update (existing behavior kept)
         driverLocations.set(driverId, {
           latitude, longitude, speed: speed || 0, heading: heading || 0,
           timestamp: new Date().toISOString(), journeyId, deliveryId,
         });
+
+        // ✅ FIX: yeh event pehle sirf in-memory update karta tha, DB me
+        // currentLocation kabhi save hi nahi hota tha — isi wajah se
+        // proximity-sorting (getDriverDeliveries) hamesha "sortedByProximity:false"
+        // deti thi. Ab DB save + journey waypoint track + auto-push sab hoga.
+        try {
+          await Driver.findByIdAndUpdate(
+            driverId,
+            {
+              "currentLocation.latitude": latitude,
+              "currentLocation.longitude": longitude,
+              "currentLocation.speed": speed || 0,
+              "currentLocation.heading": heading || 0,
+              "currentLocation.timestamp": new Date(),
+              lastLocationUpdate: new Date(),
+            },
+            { new: false }
+          );
+          log("INFO", `DB location saved (via driver:journey:location) for driver ${driverId}`);
+
+          // ✅ ACTUAL-TRAVELED-PATH: is location ping ko active Journey ke
+          // waypoints me bhi jod do, taaki delivery details page pe driver
+          // ka ASLI chala hua route dikhaya ja sake (predicted route nahi).
+          if (journeyId) {
+            try {
+              await Journey.findByIdAndUpdate(journeyId, {
+                $push: {
+                  waypoints: {
+                    location: {
+                      coordinates: { latitude: Number(latitude), longitude: Number(longitude) },
+                      address: 'Live GPS'
+                    },
+                    timestamp: new Date(),
+                    activity: 'checkpoint'
+                  }
+                }
+              });
+            } catch (wpErr) {
+              log("ERR", `Journey waypoint push failed | ${wpErr.message}`);
+            }
+          }
+
+          // ✅ AUTO-PUSH: naya sorted list turant driver ko bhej do
+          try {
+            const sorted = await getSortedUpcomingForDriver(driverId);
+            io.to(`driver-${driverId}`).emit("driver:deliveries:updated", {
+              upcoming: sorted.upcoming,
+              completed: sorted.completed,
+              sortedByProximity: sorted.sortedByProximity,
+              timestamp: new Date().toISOString(),
+            });
+            log("EMIT", `driver:deliveries:updated pushed (via journey:location) | sortedByProximity: ${sorted.sortedByProximity}`);
+          } catch (sortErr) {
+            log("ERR", `Auto-push sorted deliveries failed | ${sortErr.message}`);
+          }
+        } catch (dbErr) {
+          log("ERR", `DB location save failed (driver:journey:location) | ${dbErr.message}`);
+        }
 
         const driverInfo = activeDrivers.get(driverId);
         io.to("admin-room").emit("driver:location:update", {
@@ -3986,6 +4044,23 @@ function setupSocketHandlers(io) {
           status: status || "In_transit",
           timestamp: new Date().toISOString(),
         });
+
+        // Delivery/Journey-specific rooms ko bhi bhejo (map live-tracking ke liye)
+        if (deliveryId) {
+          io.to(`delivery-${deliveryId}`).emit("delivery:location:update", {
+            deliveryId, driverId,
+            location: { latitude, longitude },
+            speed, heading,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        if (journeyId) {
+          io.to(`journey-${journeyId}`).emit("journey:location:update", {
+            journeyId, driverId,
+            location: { latitude, longitude, speed, heading },
+            timestamp: new Date().toISOString(),
+          });
+        }
       } catch (err) {
         log("ERR", `driver:journey:location | ${err.message}`);
       }
@@ -4606,28 +4681,11 @@ function setupSocketHandlers(io) {
       });
     });
 
-    // driver:journey:location (alternative location event)
-    socket.on("driver:journey:location", async (data) => {
-      try {
-        const { driverId, journeyId, deliveryId, latitude, longitude, speed, heading, status } = data || {};
-        if (!driverId || !latitude || !longitude) return;
-
-        const driverInfo = activeDrivers.get(driverId);
-        io.to("admin-room").emit("driver:location:update", {
-          driverId,
-          driverName: driverInfo?.driverName || "Driver",
-          vehicleNumber: driverInfo?.vehicleNumber || "N/A",
-          journeyId,
-          deliveryId,
-          location: { latitude, longitude, speed: speed || 0, heading: heading || 0 },
-          isAvailable: false,
-          status: status || "In_transit",
-          timestamp: new Date().toISOString(),
-        });
-      } catch (err) {
-        log("ERR", `driver:journey:location | ${err.message}`);
-      }
-    });
+    // NOTE: duplicate "driver:journey:location" handler yahan pehle tha —
+    // hata diya gaya hai kyunki wahi event upar (DB-save + waypoint-track
+    // wala) already properly handle ho raha hai. Do listeners same event
+    // pe hone se DB me double writes aur Journey me duplicate waypoints
+    // ban rahe the.
 
     // CHAT
     socket.on("chat:join", (data) => {

@@ -398,8 +398,9 @@
         console.log('🚛 Pickup Address  :', pickupAddress);
         console.log('📦 Delivery Address:', deliveryAddress);
 
-        let map, directionsService, directionsRenderer;
-        let pickupMarker, deliveryMarker, driverMarker, driverPolyline;
+        let map, driverMarker, driverPolyline;
+        let pickupMarker, deliveryMarker;
+        let traveledPolyline = null;
 
         function initMap() {
             // Generic default center (Dubai - UAE business hub). No Ahmedabad hardcoding.
@@ -410,13 +411,6 @@
                 streetViewControl: false,
                 fullscreenControl: true,
                 styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }]
-            });
-
-            directionsService  = new google.maps.DirectionsService();
-            directionsRenderer = new google.maps.DirectionsRenderer({
-                map: map,
-                suppressMarkers: true,
-                polylineOptions: { strokeColor: '#2196F3', strokeWeight: 6, strokeOpacity: 0.8 }
             });
 
             // Pickup Marker (Green) - uses coordinates
@@ -448,8 +442,10 @@
                 });
             }
 
-            // ROUTE = 100% ADDRESS BASED (Naroda → exact delivery address)
-            drawRouteUsingAddress();
+            // ✅ Ab sirf driver ka ASLI chala hua route dikhega — Google
+            // Directions se "predicted" route nahi. Agar driver ne journey
+            // start hi nahi ki, koi route line nahi dikhegi.
+            drawActualTraveledRoute();
 
             // Live tracking
             const activeStatuses = ['assigned', 'picked_up', 'in_transit', 'In_transit', 'out_for_delivery'];
@@ -459,27 +455,51 @@
             }
         }
 
-        // ==================== PURE ADDRESS ROUTE ====================
-        function drawRouteUsingAddress() {
-            if (!pickupAddress || !deliveryAddress) return;
+        // ==================== ACTUAL TRAVELED ROUTE (not predicted) ====================
+        // Journey.waypoints se banta hai (driver:journey:location socket event
+        // har location ping ko waypoint ke roop me save karta hai). Agar
+        // driver ne abhi tak journey start/travel nahi ki, path empty aayega
+        // aur koi route line nahi dikhayenge.
+        async function drawActualTraveledRoute() {
+            try {
+                const res = await fetch(`/admin/deliveries/${deliveryId}/journey-route`);
+                const data = await res.json();
 
-            directionsService.route({
-                origin: pickupAddress,      // exact Naroda / pickup address
-                destination: deliveryAddress, // exact delivery address
-                travelMode: google.maps.TravelMode.DRIVING,
-                unitSystem: google.maps.UnitSystem.METRIC
-            }, (result, status) => {
-                if (status === 'OK') {
-                    directionsRenderer.setDirections(result);
-                    const leg = result.routes[0].legs[0];
-                    document.getElementById('totalDistance').innerHTML = 
-                        `${leg.distance.text} <small class="grey-text">(via address)</small>`;
-                    document.getElementById('totalDuration').innerHTML = 
-                        `${leg.duration.text} <small class="grey-text">(ETA)</small>`;
-                } else {
-                    console.error('Directions failed:', status);
+                if (!data.success || !data.data.path || data.data.path.length < 2) {
+                    document.getElementById('totalDistance').textContent = 'Not started yet';
+                    document.getElementById('totalDuration').textContent = 'Not started yet';
+                    console.log('ℹ️ Koi traveled route nahi mila — driver ne abhi is delivery ki journey shuru nahi ki.');
+                    return;
                 }
-            });
+
+                const path = data.data.path.map(p => ({ lat: p.lat, lng: p.lng }));
+
+                if (traveledPolyline) traveledPolyline.setMap(null);
+                traveledPolyline = new google.maps.Polyline({
+                    path,
+                    geodesic: true,
+                    strokeColor: '#2196F3',
+                    strokeOpacity: 0.9,
+                    strokeWeight: 6,
+                    map: map
+                });
+
+                document.getElementById('totalDistance').innerHTML =
+                    `${data.data.stats.totalDistance} <small class="grey-text">(actual traveled)</small>`;
+                document.getElementById('totalDuration').innerHTML =
+                    `${data.data.stats.totalDuration} <small class="grey-text">(actual)</small>`;
+
+                // Map ko poore traveled path pe fit karo
+                const bounds = new google.maps.LatLngBounds();
+                path.forEach(p => bounds.extend(p));
+                if (pickupLat && pickupLng) bounds.extend({ lat: pickupLat, lng: pickupLng });
+                map.fitBounds(bounds);
+
+            } catch (err) {
+                console.error('Failed to load traveled route:', err);
+                document.getElementById('totalDistance').textContent = 'N/A';
+                document.getElementById('totalDuration').textContent = 'N/A';
+            }
         }
 
         // Rest of your existing functions (fetchDriverLocation, updateDriverMarker, socket etc.)
