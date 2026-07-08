@@ -114,109 +114,26 @@ router.post(
   deliveryController.addDeliveryRemark
 );
 
-router.get('/:deliveryId/journey-route', 
+router.get('/:deliveryId/journey-route',
   protectAdmin,
   isAdmin,
   deliveryController.getCompletedJourneyRoute
 );
-
-// ── PRIORITY UPDATE ──
-router.patch('/:deliveryId/priority', protectAdmin, isAdmin, async (req, res) => {
-  try {
-    const { deliveryId } = req.params;
-    const { priority } = req.body;
-
-    console.log(`[PRIORITY-UPDATE] Request received for deliveryId: ${deliveryId}, new priority: ${priority}`);
-
-    if (!['low', 'medium', 'high', 'urgent'].includes(priority)) {
-      console.log(`[PRIORITY-UPDATE] Invalid priority: ${priority}`);
-      return res.status(400).json({ success: false, message: 'Invalid priority value' });
-    }
-
-    const Delivery = require('../../models/Delivery');
-
-    const delivery = await Delivery.findByIdAndUpdate(
-      deliveryId,
-      { priority },
-      { new: true }
-    ).populate('driverId', 'name _id');
-
-    if (!delivery) {
-      console.log(`[PRIORITY-UPDATE] Delivery not found: ${deliveryId}`);
-      return res.status(404).json({ success: false, message: 'Delivery not found' });
-    }
-
-    console.log(`[PRIORITY-UPDATE] Success - Delivery: ${delivery.trackingNumber}, Driver: ${delivery.driverId ? delivery.driverId.name : 'None'}`);
-
-    // Frontend ko turant response
-    res.json({ success: true, priority });
-
-    // ── 1. Socket Notification (Real-time) ──
-    try {
-      const io = req.app.get('io');
-      if (io && delivery.driverId) {
-        const roomName = `driver_${delivery.driverId._id}`;
-        
-        io.to(roomName).emit('delivery:priority:changed', {
-          deliveryId: delivery._id,
-          trackingNumber: delivery.trackingNumber,
-          priority,
-          message: `Your delivery #${delivery.trackingNumber} priority changed to ${priority.toUpperCase()}`
-        });
-
-        console.log(`[SOCKET] Priority notification emitted to room: ${roomName}`);
-      } else {
-        console.log(`[SOCKET] Skipped - No driver assigned or socket.io not available`);
-      }
-    } catch (socketErr) {
-      console.error(`[SOCKET ERROR] Priority notification failed:`, socketErr.message);
-    }
-
-    // ── 2. Save to Notification Collection (Persistent) ──
-    if (delivery.driverId) {
-      try {
-        const newNotification = new Notification({
-          recipientId: delivery.driverId._id,
-          recipientType: 'Driver',
-          type: 'delivery_updated',
-          title: 'Priority Updated',
-          message: `Your delivery #${delivery.trackingNumber} priority has been changed to ${priority.toUpperCase()}`,
-          priority: priority,
-          data: {
-            deliveryId: delivery._id
-          },
-          channels: {
-            push: { sent: false }   // agar FCM integration hai to yahan true kar sakte ho
-          },
-          actionUrl: `/driver/deliveries/${delivery._id}`
-        });
-
-        await newNotification.save();
-        console.log(`[NOTIFICATION-SAVED] New notification created for driver ${delivery.driverId._id}`);
-      } catch (notifErr) {
-        console.error(`[NOTIFICATION ERROR] Failed to save notification:`, notifErr.message);
-      }
-    }
-
-  } catch (error) {
-    console.error(`[PRIORITY-UPDATE ERROR]`, error);
-    return res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
+router.patch('/:deliveryId/priority', protectAdmin, isAdmin, deliveryController.updateDeliveryPriority);
 
 // ── ASSIGN DRIVER ──
 router.patch('/:deliveryId/assign', protectAdmin, isAdmin, async (req, res) => {
   try {
     const { deliveryId } = req.params;
     const { driverId } = req.body;
-    if (!driverId) return res.status(400).json({ success:false, message:'driverId required' });
+    if (!driverId) return res.status(400).json({ success: false, message: 'driverId required' });
     const Delivery = require('../../models/Delivery');
     const delivery = await Delivery.findByIdAndUpdate(
       deliveryId,
-      { driverId, status:'assigned', assignedAt: new Date() },
-      { new:true }
+      { driverId, status: 'assigned', assignedAt: new Date() },
+      { new: true }
     );
-    if (!delivery) return res.status(404).json({ success:false, message:'Delivery not found' });
+    if (!delivery) return res.status(404).json({ success: false, message: 'Delivery not found' });
     try {
       const io = req.app.get('io');
       if (io) {
@@ -225,10 +142,10 @@ router.patch('/:deliveryId/assign', protectAdmin, isAdmin, async (req, res) => {
           message: `New delivery assigned: ${delivery.trackingNumber}`
         });
       }
-    } catch(e) {}
-    return res.json({ success:true, message:'Driver assigned' });
-  } catch(error) {
-    return res.status(500).json({ success:false, message:error.message });
+    } catch (e) { }
+    return res.json({ success: true, message: 'Driver assigned' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -237,13 +154,13 @@ router.patch('/:deliveryId/change-address', protectAdmin, isAdmin, async (req, r
   try {
     const { deliveryId } = req.params;
     const { address, latitude, longitude } = req.body;
-    if (!address) return res.status(400).json({ success:false, message:'Address required' });
+    if (!address) return res.status(400).json({ success: false, message: 'Address required' });
     const Delivery = require('../../models/Delivery');
     const updateObj = { 'deliveryLocation.address': address };
-    if (latitude)  updateObj['deliveryLocation.latitude']  = parseFloat(latitude);
+    if (latitude) updateObj['deliveryLocation.latitude'] = parseFloat(latitude);
     if (longitude) updateObj['deliveryLocation.longitude'] = parseFloat(longitude);
-    const delivery = await Delivery.findByIdAndUpdate(deliveryId, { $set: updateObj }, { new:true });
-    if (!delivery) return res.status(404).json({ success:false, message:'Delivery not found' });
+    const delivery = await Delivery.findByIdAndUpdate(deliveryId, { $set: updateObj }, { new: true });
+    if (!delivery) return res.status(404).json({ success: false, message: 'Delivery not found' });
     // Notify driver
     try {
       const io = req.app.get('io');
@@ -255,10 +172,10 @@ router.patch('/:deliveryId/change-address', protectAdmin, isAdmin, async (req, r
           message: `Delivery address updated for ${delivery.trackingNumber}`
         });
       }
-    } catch(e) {}
-    return res.json({ success:true, message:'Address updated', address });
-  } catch(error) {
-    return res.status(500).json({ success:false, message:error.message });
+    } catch (e) { }
+    return res.json({ success: true, message: 'Address updated', address });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 

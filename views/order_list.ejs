@@ -135,7 +135,6 @@
                                   <th>Customer</th>
                                   <th>Items</th>
                                   <th>Status</th>
-                                  <th>Priority</th>
                                   <th>Created</th>
                                   <th>Actions</th>
                                 </tr>
@@ -144,10 +143,10 @@
                                 <% if (orders && orders.length > 0) { %>
                                   <% orders.forEach((order, index) => { 
                                     const st = (order.status || 'pending').toLowerCase();
-                                    const priority = order.priority || 'medium';
+                                    
 
                                     // Updated condition: Allow edit until delivery is completed
-                                    const canEdit = !['completed', 'delivered', 'cancelled'].includes(st);
+                                     const canEdit = !['completed', 'delivered', 'cancelled', 'assigned'].includes(st);
                                   %>
                                     <tr class="order-row" data-href="/admin/orders/view/<%= order._id %>" data-status="<%= st %>">
                                       <td><%= index + 1 %></td>
@@ -165,15 +164,7 @@
                                           <%= st.replace(/_/g,' ').toUpperCase() %>
                                         </span>
                                       </td>
-                                      <td class="priority-column">
-                                        <select class="priority-select" data-id="<%= order._id %>" 
-                                          <%= ['completed','delivered','cancelled'].includes(st) ? 'disabled' : '' %>>
-                                          <option value="low" <%= priority==='low' ? 'selected' : '' %>>LOW</option>
-                                          <option value="medium" <%= priority==='medium' ? 'selected' : '' %>>MEDIUM</option>
-                                          <option value="high" <%= priority==='high' ? 'selected' : '' %>>HIGH</option>
-                                          <option value="urgent" <%= priority==='urgent' ? 'selected' : '' %>>URGENT</option>
-                                        </select>
-                                      </td>
+                                     
                                       <td>
                                         <% let fd = '-'; 
                                            if (order.createdAt) { 
@@ -270,8 +261,7 @@
       document.getElementById('ord-cnt-approved').textContent = cAppr;
       document.getElementById('ord-cnt-cancelled').textContent = cCanc;
 
-      // Tab functionality and other scripts remain same...
-      // (You can keep your previous tab and priority JS)
+  
     });
 
     function confirmOrder(orderId) {

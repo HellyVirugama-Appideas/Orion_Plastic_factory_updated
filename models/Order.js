@@ -110,8 +110,7 @@ pickupLocationSchema.pre('save', async function (next) {
   if (this.isDefault) {
     await this.constructor.updateMany(
       { _id: { $ne: this._id } },
-      { isDefault: false }
-    );
+      { isDefault: false });
   }
   next();
 });
