@@ -753,19 +753,86 @@ const COMPLETED_STATUSES = ['Delivered', 'Failed', 'Cancelled', "Completed"];
 // liye reference point apna destination hoga, warna pickup point hoga.
 const EN_ROUTE_TO_DESTINATION_STATUSES = ['Picked_up', 'In_transit', 'Out_for_delivery', 'Arrived', 'Proof_uploaded'];
 
+// ✅ Priority tiers — number jitna chhota, priority utni upar
+const PRIORITY_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 };
+
+// ================================================================
+// Helper: given a starting point and a pool of deliveries, find the
+// SINGLE nearest one (Google Distance Matrix, Haversine fallback).
+// Missing/invalid coordinates → distanceKm: Infinity (never crashes,
+// bas end me chala jaata hai, aur reason console me clearly log hota hai).
+// ================================================================
+async function findNearestFromPool(currentPoint, pool, getCoords) {
+  const withCoords = pool.map(d => ({ delivery: d, coords: getCoords(d) }));
+  const validEntries = withCoords.filter(e => e.coords);
+  const invalidEntries = withCoords.filter(e => !e.coords);
+
+  if (invalidEntries.length > 0) {
+    invalidEntries.forEach(e => {
+      console.warn(
+        `[PROXIMITY] ⚠️ Coordinates missing for ${e.delivery.trackingNumber} | status: ${e.delivery.status} | ` +
+        `pickupLocation.coords: ${JSON.stringify(e.delivery.pickupLocation?.coordinates || null)} | ` +
+        `deliveryLocation.coords: ${JSON.stringify(e.delivery.deliveryLocation?.coordinates || null)}`
+      );
+    });
+  }
+
+  if (validEntries.length === 0) {
+    // Sab invalid — pehla wala hi utha lo (distance unknown rahegi)
+    const chosen = pool[0];
+    return { chosen, distanceKm: Infinity, durationMin: null, source: 'none' };
+  }
+
+  const destinations = validEntries.map(e => e.coords);
+
+  let googleDistances = null;
+  try {
+    googleDistances = await getGoogleDistanceMatrix(currentPoint, destinations);
+  } catch (e) {
+    googleDistances = null;
+  }
+
+  let nearestIdxInValid = 0;
+  let nearestDist = Infinity;
+  let nearestDuration = null;
+  let source = 'haversine';
+
+  if (googleDistances) {
+    source = 'google';
+    googleDistances.forEach((r, idx) => {
+      const v = r?.distanceKm ?? Infinity;
+      if (v < nearestDist) {
+        nearestDist = v;
+        nearestDuration = r?.durationMin ?? null;
+        nearestIdxInValid = idx;
+      }
+    });
+  } else {
+    validEntries.forEach((e, idx) => {
+      const dist = calculateDistance(currentPoint.latitude, currentPoint.longitude, e.coords.latitude, e.coords.longitude);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestIdxInValid = idx;
+      }
+    });
+  }
+
+  const chosen = validEntries[nearestIdxInValid].delivery;
+  return { chosen, distanceKm: nearestDist, durationMin: nearestDuration, source };
+}
+
 // ================================================================
 // REUSABLE HELPER — same logic REST endpoint (getDriverDeliveries) aur
-// socket handler (driver:location event) dono use karte hain, taaki jaise
-// hi driver ki location update ho, socket se turant naya sorted list bhi
-// push kiya ja sake — REST call ka wait nahi karna padta.
+// socket handler (driver:location event) dono use karte hain.
 //
-// FIX: pehle yeh saari deliveries ki distance EK HI POINT (driver ki
-// current location) se measure karta tha (sortByProximity) — isi wajah
-// se do deliveries jo driver se coincidentally same distance pe thi
-// (lekin ek dusre se bahut dur), dono same/galat distance dikha rahi
-// thi. Ab CHAINED nearest-neighbor hai: Stop 1 driver se sabse nazdik,
-// Stop 2 STOP-1 SE sabse nazdik jo bacha hai, Stop 3 STOP-2 SE sabse
-// nazdik jo bacha hai — waise hi jaise ek asli route banta hai.
+// ✅ SORTING RULE (priority + distance dono):
+// 1) Pehle priority tier ke hisaab se group hota hai: urgent → high →
+//    medium → low. Ek tier jab tak khatam na ho, agli tier shuru nahi
+//    hoti — matlab "urgent" deliveries hamesha sabse pehle aayengi,
+//    chahe woh thodi door kyun na ho.
+// 2) HAR TIER KE ANDAR chained nearest-neighbor chalta hai: pehla stop
+//    us tier me driver (ya pichle tier ke last stop) se sabse nazdik,
+//    dusra stop PEHLE stop se sabse nazdik jo bacha hai, waise hi aage.
 // ================================================================
 exports.getSortedUpcomingForDriver = async (driverId) => {
   const driverDoc = await Driver.findById(driverId).select('currentLocation');
@@ -795,71 +862,54 @@ exports.getSortedUpcomingForDriver = async (driverId) => {
         : null;
     };
 
-    // ── CHAINED nearest-neighbor ──
-    const remaining = [...upcomingRaw];
+    // ── Step 1: priority ke hisaab se tiers banao ──
+    const tiers = {};
+    upcomingRaw.forEach(d => {
+      const p = (d.priority || 'medium').toLowerCase();
+      const tierKey = PRIORITY_ORDER.hasOwnProperty(p) ? p : 'medium';
+      if (!tiers[tierKey]) tiers[tierKey] = [];
+      tiers[tierKey].push(d);
+    });
+
+    const tierKeysInOrder = Object.keys(PRIORITY_ORDER)
+      .sort((a, b) => PRIORITY_ORDER[a] - PRIORITY_ORDER[b])
+      .filter(k => tiers[k]?.length > 0);
+
+    console.log(`[PROXIMITY] Priority tiers found: ${tierKeysInOrder.map(k => `${k}(${tiers[k].length})`).join(', ')}`);
+
+    // ── Step 2: har tier ke andar chained nearest-neighbor ──
     const chainResult = [];
     let currentPoint = driverLocation;
 
-    while (remaining.length > 0) {
-      const withCoords = remaining.map(d => ({ delivery: d, coords: getCoords(d) }));
-      const validEntries = withCoords.filter(e => e.coords);
+    for (const tierKey of tierKeysInOrder) {
+      let remaining = [...tiers[tierKey]];
+      console.log(`[PROXIMITY] Processing tier "${tierKey}" — ${remaining.length} delivery(ies)`);
 
-      if (validEntries.length === 0) {
-        // Baaki sab ke coordinates missing hain — jaise hain waise hi push kar do
-        remaining.forEach(d => chainResult.push({ item: d, distanceKm: Infinity, durationMin: null, source: 'none' }));
-        break;
-      }
-
-      const destinations = validEntries.map(e => e.coords);
-
-      let googleDistances = null;
-      try {
-        googleDistances = await getGoogleDistanceMatrix(currentPoint, destinations);
-      } catch (e) {
-        googleDistances = null;
-      }
-
-      let nearestIdxInValid = 0;
-      let nearestDist = Infinity;
-      let nearestDuration = null;
-      let source = 'haversine';
-
-      if (googleDistances) {
-        source = 'google';
-        googleDistances.forEach((r, idx) => {
-          const v = r?.distanceKm ?? Infinity;
-          if (v < nearestDist) {
-            nearestDist = v;
-            nearestDuration = r?.durationMin ?? null;
-            nearestIdxInValid = idx;
-          }
+      while (remaining.length > 0) {
+        const result = await findNearestFromPool(currentPoint, remaining, getCoords);
+        chainResult.push({
+          item: result.chosen,
+          distanceKm: result.distanceKm,
+          durationMin: result.durationMin,
+          source: result.source,
+          tier: tierKey
         });
-      } else {
-        validEntries.forEach((e, idx) => {
-          const dist = calculateDistance(currentPoint.latitude, currentPoint.longitude, e.coords.latitude, e.coords.longitude);
-          if (dist < nearestDist) {
-            nearestDist = dist;
-            nearestIdxInValid = idx;
-          }
-        });
+
+        // Agla comparison ab isi chosen stop ki location se hoga
+        const chosenCoords = getCoords(result.chosen);
+        if (chosenCoords) currentPoint = chosenCoords;
+
+        const removeIdx = remaining.findIndex(d => d._id.toString() === result.chosen._id.toString());
+        if (removeIdx > -1) remaining.splice(removeIdx, 1);
       }
-
-      const chosen = validEntries[nearestIdxInValid].delivery;
-      chainResult.push({ item: chosen, distanceKm: nearestDist, durationMin: nearestDuration, source });
-
-      // Ab currentPoint ko is chosen stop ki location pe move karo — agla
-      // comparison yahi se hoga (chain ka core idea)
-      currentPoint = getCoords(chosen);
-
-      const removeIdx = remaining.findIndex(d => d._id.toString() === chosen._id.toString());
-      if (removeIdx > -1) remaining.splice(removeIdx, 1);
     }
 
     orderedUpcoming = chainResult.map(r => ({
       ...r.item,
       __distanceKm: r.distanceKm,
       __etaMin: r.durationMin,
-      __distanceSource: r.source
+      __distanceSource: r.source,
+      __tier: r.tier
     }));
   }
 
@@ -916,7 +966,7 @@ exports.getDriverDeliveries = async (req, res) => {
     console.log('[DELIVERY-LIST] sortedByProximity:', result.sortedByProximity);
     console.log('[DELIVERY-LIST] upcoming count:', result.upcoming.length, '| completed count:', result.completed.length);
     result.upcoming.forEach(u => {
-      console.log(`  #${u.nearestRank} → ${u.trackingNumber} | distanceFromDriver: ${u.distanceFromDriver}`);
+      console.log(`  #${u.nearestRank} → ${u.trackingNumber} | priority: ${u.priority} | distanceFromDriver: ${u.distanceFromDriver}`);
     });
     console.log('========== [DELIVERY-LIST] END ==========\n');
 
