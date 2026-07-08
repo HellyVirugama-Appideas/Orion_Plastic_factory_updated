@@ -512,6 +512,20 @@
                                     value="<%= order.scheduledDeliveryDate ? new Date(order.scheduledDeliveryDate).toISOString().slice(0, 16) : '' %>">
                             </div>
                         </div>
+                        <div class="row" style="margin-top: 10px;">
+                            <div class="col s12">
+                                <label>
+                                    <input type="checkbox" name="chainPickup" value="on" />
+                                    <span>
+                                        <i class="material-icons tiny">link</i>
+                                        Is driver ki pichli delivery ke drop point ko hi is delivery ka pickup banao (chaining)
+                                    </span>
+                                </label>
+                                <p class="grey-text" style="margin-top: -8px; font-size: 12.5px;">
+                                    Agar ye tick nahi karoge, toh order mein diya gaya asli pickup address hi use hoga.
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- ===== INSTRUCTIONS ===== -->
