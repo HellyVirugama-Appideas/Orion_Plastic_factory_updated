@@ -735,10 +735,8 @@
 //   }
 // };
 
-
-
 console.log('🔥🔥🔥 [FILE-LOAD-CHECK] deliveryController.js LOADED at:', new Date().toISOString());
- 
+
 const Delivery = require('../../models/Delivery');
 const Route = require('../../models/Route');
 const Driver = require('../../models/Driver');
@@ -748,17 +746,30 @@ const { generateOTP } = require('../../utils/otpHelper');
 const { sendSMS } = require('../../utils/smsHelper');
 const Remark = require('../../models/Remark');
 const { getGoogleDistanceMatrix, calculateDistance, geocodeAddress } = require('../../utils/geoHelper');
- 
+
 // Statuses jo "upcoming" maane jaate hain
 const UPCOMING_STATUSES = ['Pending_acceptance', 'Assigned', 'Picked_up', 'In_transit', 'Out_for_delivery', 'Arrived', 'assigned', "Proof_uploaded"];
 const COMPLETED_STATUSES = ['Delivered', 'Failed', 'Cancelled', "Completed"];
-// In statuses me driver already package uthake nikal chuka hota hai — uske
-// liye reference point apna destination hoga, warna pickup point hoga.
-const EN_ROUTE_TO_DESTINATION_STATUSES = ['Picked_up', 'In_transit', 'Out_for_delivery', 'Arrived', 'Proof_uploaded'];
- 
+
 // ✅ Priority tiers — number jitna chhota, priority utni upar
 const PRIORITY_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 };
- 
+
+// ================================================================
+// ✅ ROOT-CAUSE FIX: proximity ranking ke liye reference point HAMESHA
+// deliveryLocation (destination) hona chahiye — pickupLocation nahi.
+// Wajah: agar sab deliveries ka pickup EK HI factory hai (jaisa aksar
+// hota hai), to pickupLocation se ranking karne par sab "same distance"
+// (factory se factory = 0 km) dikhengi — jo bilkul galat/useless hai.
+// Driver ke liye jo maayne rakhta hai woh hai "yeh delivery kis jagah
+// JAANI hai" (deliveryLocation), na ki "kahan se uthani hai".
+// ================================================================
+function getRankingCoords(d) {
+  const loc = d.deliveryLocation;
+  return (loc?.coordinates?.latitude && loc?.coordinates?.longitude)
+    ? { latitude: loc.coordinates.latitude, longitude: loc.coordinates.longitude }
+    : null;
+}
+
 // ================================================================
 // Helper: given a starting point and a pool of deliveries, find the
 // SINGLE nearest one (Google Distance Matrix, Haversine fallback).
@@ -769,40 +780,33 @@ async function findNearestFromPool(currentPoint, pool, getCoords) {
   const withCoords = pool.map(d => ({ delivery: d, coords: getCoords(d) }));
   const validEntries = withCoords.filter(e => e.coords);
   const invalidEntries = withCoords.filter(e => !e.coords);
- 
+
   if (invalidEntries.length > 0) {
     invalidEntries.forEach(e => {
       console.warn(
         `[PROXIMITY] ⚠️ Coordinates missing for ${e.delivery.trackingNumber} | status: ${e.delivery.status} | ` +
-        `pickupLocation.coords: ${JSON.stringify(e.delivery.pickupLocation?.coordinates || null)} | ` +
         `deliveryLocation.coords: ${JSON.stringify(e.delivery.deliveryLocation?.coordinates || null)}`
       );
     });
   }
- 
+
   if (validEntries.length === 0) {
-    // Sab invalid — pehla wala hi utha lo (distance unknown rahegi)
     const chosen = pool[0];
     return { chosen, distanceKm: Infinity, durationMin: null, source: 'none' };
   }
- 
+
   const destinations = validEntries.map(e => e.coords);
- 
+
   let googleDistances = null;
   try {
     googleDistances = await getGoogleDistanceMatrix(currentPoint, destinations);
   } catch (e) {
     googleDistances = null;
   }
- 
-  // ✅ FIX (v3): Har entry ke liye final distance nikaalo — Google se milta hai
-  // toh wahi use karo, warna SIRF us specific point ke liye Haversine fallback
-  // karo (poore result ko Infinity mat bana do jaise pehle ho raha tha).
-  // Purana bug: nearestDist Infinity se init hota tha, aur agar Google kisi
-  // single-item pool ke liye status!=='OK' de deta (jaisa identical-coordinate
-  // origin/destination ke case mein hota hai), toh `v < nearestDist` kabhi
-  // true nahi hota (Infinity < Infinity === false) — result: sahi delivery
-  // chun toh li jaati thi, par uski distance galat Infinity report hoti thi.
+
+  // Har entry ke liye final distance nikaalo — Google se milta hai toh
+  // wahi use karo, warna SIRF us specific point ke liye Haversine
+  // fallback karo (poore result ko Infinity mat bana do).
   const distances = validEntries.map((e, idx) => {
     const g = googleDistances?.[idx];
     if (g && g.distanceKm !== null && g.distanceKm !== undefined) {
@@ -814,12 +818,12 @@ async function findNearestFromPool(currentPoint, pool, getCoords) {
     );
     return { distanceKm, durationMin: null, source: 'haversine' };
   });
- 
+
   let nearestIdxInValid = 0;
   let nearestDist = distances[0].distanceKm;
   let nearestDuration = distances[0].durationMin;
   let source = distances[0].source;
- 
+
   distances.forEach((d, idx) => {
     if (d.distanceKm < nearestDist) {
       nearestDist = d.distanceKm;
@@ -828,11 +832,11 @@ async function findNearestFromPool(currentPoint, pool, getCoords) {
       source = d.source;
     }
   });
- 
+
   const chosen = validEntries[nearestIdxInValid].delivery;
   return { chosen, distanceKm: nearestDist, durationMin: nearestDuration, source };
 }
- 
+
 // ================================================================
 // REUSABLE HELPER — same logic REST endpoint (getDriverDeliveries) aur
 // socket handler (driver:location event) dono use karte hain.
@@ -840,18 +844,17 @@ async function findNearestFromPool(currentPoint, pool, getCoords) {
 // ✅ SORTING RULE (priority + distance dono):
 // 1) Pehle priority tier ke hisaab se group hota hai: urgent → high →
 //    medium → low. Ek tier jab tak khatam na ho, agli tier shuru nahi
-//    hoti — matlab "urgent" deliveries hamesha sabse pehle aayengi,
-//    chahe woh thodi door kyun na ho.
-// 2) HAR TIER KE ANDAR chained nearest-neighbor chalta hai: pehla stop
-//    us tier me driver (ya pichle tier ke last stop) se sabse nazdik,
-//    dusra stop PEHLE stop se sabse nazdik jo bacha hai, waise hi aage.
+//    hoti.
+// 2) HAR TIER KE ANDAR chained nearest-neighbor chalta hai — HAMESHA
+//    deliveryLocation (destination) coordinates use karke, kyunki
+//    pickupLocation sabke liye same factory ho sakta hai.
 // ================================================================
 exports.getSortedUpcomingForDriver = async (driverId) => {
   const driverDoc = await Driver.findById(driverId).select('currentLocation');
   const driverLocation = (driverDoc?.currentLocation?.latitude && driverDoc?.currentLocation?.longitude)
     ? { latitude: driverDoc.currentLocation.latitude, longitude: driverDoc.currentLocation.longitude }
     : null;
- 
+
   const deliveries = await Delivery.find({ driverId })
     .populate('customerId', 'name phone companyName')
     .populate('remarks', 'remarkText category severity color createdAt')
@@ -860,39 +863,33 @@ exports.getSortedUpcomingForDriver = async (driverId) => {
     )
     .sort({ scheduledDeliveryTime: 1 })
     .lean();
- 
+
   const upcomingRaw = deliveries.filter(d => UPCOMING_STATUSES.includes(d.status));
   const completedRaw = deliveries.filter(d => COMPLETED_STATUSES.includes(d.status));
- 
-  // ✅ FIX (v2): Coordinates-repair pass — agar kisi delivery ke relevant
-  // location (status ke hisaab se pickup ya delivery) ke coordinates
-  // missing/invalid hain, to address text se turant geocode karke
-  // fill karo, aur DB me bhi save karo (taaki agli baar fast/cached ho).
-  // Ab har case (valid / repaired / address-bhi-missing) clearly log
-  // hoti hai — koi bhi case silently skip nahi hoti.
+
+  // ── Coordinates-repair pass: agar deliveryLocation ke coordinates
+  // missing/invalid hain, address se turant geocode karke fill karo,
+  // DB me bhi save karo (agli baar fast/cached ho). ──
   for (const d of upcomingRaw) {
-    const isEnRoute = EN_ROUTE_TO_DESTINATION_STATUSES.includes(d.status);
-    const targetField = isEnRoute ? 'deliveryLocation' : 'pickupLocation';
-    const loc = d[targetField];
- 
+    const loc = d.deliveryLocation;
     const hasValidCoords = loc?.coordinates?.latitude && loc?.coordinates?.longitude;
- 
+
     if (!hasValidCoords) {
       if (loc?.address) {
-        console.warn(`[PROXIMITY] ${d.trackingNumber} — ${targetField}.coordinates missing, attempting live geocode from address: "${loc.address}"`);
- 
+        console.warn(`[PROXIMITY] ${d.trackingNumber} — deliveryLocation.coordinates missing, attempting live geocode from address: "${loc.address}"`);
+
         const geocoded = await geocodeAddress(loc.address);
- 
+
         if (geocoded) {
-          d[targetField] = {
+          d.deliveryLocation = {
             ...loc,
             coordinates: { latitude: geocoded.latitude, longitude: geocoded.longitude }
           };
- 
+
           try {
             await Delivery.findByIdAndUpdate(d._id, {
-              [`${targetField}.coordinates.latitude`]: geocoded.latitude,
-              [`${targetField}.coordinates.longitude`]: geocoded.longitude
+              'deliveryLocation.coordinates.latitude': geocoded.latitude,
+              'deliveryLocation.coordinates.longitude': geocoded.longitude
             });
             console.log(`[PROXIMITY] ✅ ${d.trackingNumber} — coordinates repaired & saved: ${geocoded.latitude}, ${geocoded.longitude}`);
           } catch (saveErr) {
@@ -902,24 +899,16 @@ exports.getSortedUpcomingForDriver = async (driverId) => {
           console.error(`[PROXIMITY] ❌ ${d.trackingNumber} — geocode bhi fail ho gaya, ye delivery distance-unknown rahegi`);
         }
       } else {
-        // ✅ NAYA (v2 fix): address bhi nahi hai — pehle ye case silently skip ho jata tha
-        console.error(`[PROXIMITY] ❌❌ ${d.trackingNumber} — ${targetField} me address AUR coordinates DONO missing hain! Raw ${targetField}: ${JSON.stringify(loc)}`);
+        console.error(`[PROXIMITY] ❌❌ ${d.trackingNumber} — deliveryLocation me address AUR coordinates DONO missing hain! Raw: ${JSON.stringify(loc)}`);
       }
     } else {
-      console.log(`[PROXIMITY] ✓ ${d.trackingNumber} — ${targetField} coordinates already valid: ${loc.coordinates.latitude}, ${loc.coordinates.longitude}`);
+      console.log(`[PROXIMITY] ✓ ${d.trackingNumber} — deliveryLocation coordinates valid: ${loc.coordinates.latitude}, ${loc.coordinates.longitude}`);
     }
   }
- 
+
   let orderedUpcoming = upcomingRaw;
- 
+
   if (driverLocation && upcomingRaw.length > 1) {
-    const getCoords = (d) => {
-      const loc = EN_ROUTE_TO_DESTINATION_STATUSES.includes(d.status) ? d.deliveryLocation : d.pickupLocation;
-      return (loc?.coordinates?.latitude && loc?.coordinates?.longitude)
-        ? { latitude: loc.coordinates.latitude, longitude: loc.coordinates.longitude }
-        : null;
-    };
- 
     // ── Step 1: priority ke hisaab se tiers banao ──
     const tiers = {};
     upcomingRaw.forEach(d => {
@@ -928,27 +917,26 @@ exports.getSortedUpcomingForDriver = async (driverId) => {
       if (!tiers[tierKey]) tiers[tierKey] = [];
       tiers[tierKey].push(d);
     });
- 
+
     const tierKeysInOrder = Object.keys(PRIORITY_ORDER)
       .sort((a, b) => PRIORITY_ORDER[a] - PRIORITY_ORDER[b])
       .filter(k => tiers[k]?.length > 0);
- 
+
     console.log(`[PROXIMITY] Priority tiers found: ${tierKeysInOrder.map(k => `${k}(${tiers[k].length})`).join(', ')}`);
- 
+
     // ── Step 2: har tier ke andar chained nearest-neighbor ──
     const chainResult = [];
     let currentPoint = driverLocation;
- 
+
     for (const tierKey of tierKeysInOrder) {
       let remaining = [...tiers[tierKey]];
       console.log(`[PROXIMITY] Processing tier "${tierKey}" — ${remaining.length} delivery(ies)`);
- 
+
       while (remaining.length > 0) {
-        const result = await findNearestFromPool(currentPoint, remaining, getCoords);
- 
-        // ✅ DEBUG (v2): har chain-step ka currentPoint + result clearly log karo
-        console.log(`[PROXIMITY-CHAIN] currentPoint: ${JSON.stringify(currentPoint)} | chosen: ${result.chosen.trackingNumber} | distanceKm: ${result.distanceKm} | source: ${result.source}`);
- 
+        const result = await findNearestFromPool(currentPoint, remaining, getRankingCoords);
+
+        console.log(`[PROXIMITY-CHAIN] currentPoint: ${JSON.stringify(currentPoint)} | chosen: ${result.chosen.trackingNumber} | destination: ${result.chosen.deliveryLocation?.address} | distanceKm: ${result.distanceKm} | source: ${result.source}`);
+
         chainResult.push({
           item: result.chosen,
           distanceKm: result.distanceKm,
@@ -956,20 +944,21 @@ exports.getSortedUpcomingForDriver = async (driverId) => {
           source: result.source,
           tier: tierKey
         });
- 
-        // Agla comparison ab isi chosen stop ki location se hoga
-        const chosenCoords = getCoords(result.chosen);
+
+        // ✅ Ab agla comparison is CHOSEN delivery ki DESTINATION se hoga
+        // (driver wahan pahunchega, phir agli sabse nazdik delivery dhoondhega)
+        const chosenCoords = getRankingCoords(result.chosen);
         if (chosenCoords) {
           currentPoint = chosenCoords;
         } else {
-          console.warn(`[PROXIMITY-CHAIN] ⚠️ ${result.chosen.trackingNumber} ke chosenCoords null aaye — currentPoint update nahi hua, purana hi rahega`);
+          console.warn(`[PROXIMITY-CHAIN] ⚠️ ${result.chosen.trackingNumber} ke coordinates null aaye — currentPoint update nahi hua`);
         }
- 
+
         const removeIdx = remaining.findIndex(d => d._id.toString() === result.chosen._id.toString());
         if (removeIdx > -1) remaining.splice(removeIdx, 1);
       }
     }
- 
+
     orderedUpcoming = chainResult.map(r => ({
       ...r.item,
       __distanceKm: r.distanceKm,
@@ -978,16 +967,15 @@ exports.getSortedUpcomingForDriver = async (driverId) => {
       __tier: r.tier
     }));
   }
- 
+
   // ================================================================
-  // APP-COMPATIBILITY: App ki UI abhi "item.distance" field render karti
-  // hai, "distanceFromDriver" nahi. Hum "distance" field ke andar hi
-  // naya proximity-distance daal dete hain — app bina code-change ke
-  // sahi (driver-se) distance dikhati hai.
+  // APP-COMPATIBILITY: App ki UI "item.distance" field render karti hai.
+  // Hum "distance" field ke andar hi naya proximity-distance daal dete
+  // hain — app bina code-change ke sahi (driver-se) distance dikhati hai.
   // ================================================================
   const buildItem = (d, idx) => {
     const hasProximityDistance = d.__distanceKm !== undefined && d.__distanceKm !== Infinity;
- 
+
     return {
       id: d._id.toString(),
       trackingNumber: d.trackingNumber,
@@ -1017,37 +1005,37 @@ exports.getSortedUpcomingForDriver = async (driverId) => {
         : []
     };
   };
- 
+
   return {
     upcoming: orderedUpcoming.map((d, idx) => buildItem(d, idx)),
     completed: completedRaw.map(d => buildItem(d)),
     sortedByProximity: !!driverLocation
   };
 };
- 
+
 // ================================================================
 // GET Driver Deliveries - Upcoming & Completed (REST endpoint)
 // ================================================================
 exports.getDriverDeliveries = async (req, res) => {
   try {
     const driver = req.user;
- 
+
     if (!driver || driver.role !== 'driver') {
       return errorResponse(res, 'Unauthorized', 401);
     }
- 
+
     console.log('\n========== [DELIVERY-LIST] START ==========');
     console.log('[DELIVERY-LIST] driverId (from token):', driver._id.toString());
- 
+
     const result = await exports.getSortedUpcomingForDriver(driver._id);
- 
+
     console.log('[DELIVERY-LIST] sortedByProximity:', result.sortedByProximity);
     console.log('[DELIVERY-LIST] upcoming count:', result.upcoming.length, '| completed count:', result.completed.length);
     result.upcoming.forEach(u => {
       console.log(`  #${u.nearestRank} → ${u.trackingNumber} | priority: ${u.priority} | distance (shown in app): ${u.distance} | distanceFromDriver: ${u.distanceFromDriver}`);
     });
     console.log('========== [DELIVERY-LIST] END ==========\n');
- 
+
     return successResponse(res, 'Deliveries fetched successfully', {
       upcoming: result.upcoming,
       completed: result.completed,
@@ -1057,55 +1045,46 @@ exports.getDriverDeliveries = async (req, res) => {
       },
       sortedByProximity: result.sortedByProximity
     });
- 
+
   } catch (error) {
     console.error('Get Driver Deliveries Error:', error);
     return errorResponse(res, 'Failed to load deliveries', 500);
   }
 };
- 
+
 // ================================================================
 // GET /driver/delivery/:deliveryId/details
-// ================================================================
-// ✅ FIX: pehle yeh seedha DB se raw pickupLocation dikhata tha — jo
-// (chaining apply na hone ki wajah se) hamesha factory/pehli-delivery
-// wala address hota tha, chahe list me yeh delivery kahin bhi ho.
-// Ab isi delivery ki proximity-ranking (jo /my-delivery list me use
-// hoti hai, wahi) dobara nikaalte hain, aur agar yeh apni driver ki
-// list me #1 nahi hai, to "mujhse pehle wala stop" ka deliveryLocation
-// hi iska pickup point maan lete hain — list aur detail page ab hamesha
-// consistent rahenge.
 // ================================================================
 exports.getDeliveryDetails = async (req, res) => {
   try {
     const { deliveryId } = req.params;
     const user = req.user;
- 
+
     const delivery = await Delivery.findById(deliveryId)
       .populate('customerId', 'name phone companyName')
       .populate('driverId', 'name phone vehicleNumber')
       .populate('createdBy', 'name')
       .lean();
- 
+
     if (!delivery) return errorResponse(res, 'Delivery not found', 404);
- 
+
     // ── Effective pickup nikaalo (list ki proximity-ranking se) ──
     let effectivePickupLocation = delivery.pickupLocation;
- 
+
     if (delivery.driverId) {
       try {
         const driverIdForSort = delivery.driverId._id || delivery.driverId;
         const sorted = await exports.getSortedUpcomingForDriver(driverIdForSort);
         const myIndex = sorted.upcoming.findIndex(u => u.id === delivery._id.toString());
- 
+
         console.log(`[DELIVERY-DETAILS] deliveryId: ${deliveryId} | myRank: ${myIndex >= 0 ? myIndex + 1 : 'not in upcoming list'} of ${sorted.upcoming.length}`);
- 
+
         if (myIndex > 0) {
           const previousItem = sorted.upcoming[myIndex - 1];
           const previousDeliveryDoc = await Delivery.findById(previousItem.id)
             .select('deliveryLocation trackingNumber')
             .lean();
- 
+
           if (previousDeliveryDoc?.deliveryLocation?.coordinates?.latitude) {
             effectivePickupLocation = previousDeliveryDoc.deliveryLocation;
             console.log(`[DELIVERY-DETAILS] ✅ Pickup overridden — using "${previousDeliveryDoc.trackingNumber}" destination as pickup: ${previousDeliveryDoc.deliveryLocation.address}`);
@@ -1117,21 +1096,21 @@ exports.getDeliveryDetails = async (req, res) => {
         console.error('[DELIVERY-DETAILS] Proximity pickup resolution failed (non-fatal):', sortErr.message);
       }
     }
- 
+
     delivery.pickupLocation = effectivePickupLocation;
- 
+
     // Calculate Times (Exact Image Jaisa)
     const formatTime = (date) => date ? new Date(date).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
     }) : '—';
- 
+
     const formatDateTime = (date) => date ? new Date(date).toLocaleString('en-GB', {
       day: '2-digit', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit', hour12: true
     }).replace(',', '') : null;
- 
+
     const calcDuration = (start, end) => {
       if (!start || !end) return 'In Progress';
       const diff = new Date(end) - new Date(start);
@@ -1139,17 +1118,17 @@ exports.getDeliveryDetails = async (req, res) => {
       const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       return h > 0 ? `${h}h ${m}m` : `${m} min`;
     };
- 
+
     // Waiting Time: picked_up → out_for_delivery
     let waitingTime = '—';
     if (delivery.actualPickupTime) {
       const history = await DeliveryStatusHistory.find({ deliveryId })
         .sort({ timestamp: 1 })
         .select('status timestamp');
- 
+
       const pickedUpTime = delivery.actualPickupTime;
       const outForDeliveryTime = history.find(h => h.status === 'out_for_delivery')?.timestamp;
- 
+
       if (outForDeliveryTime) {
         waitingTime = calcDuration(pickedUpTime, outForDeliveryTime);
       } else if (['out_for_delivery', 'delivered'].includes(delivery.status)) {
@@ -1158,7 +1137,7 @@ exports.getDeliveryDetails = async (req, res) => {
         waitingTime = 'In Progress';
       }
     }
- 
+
     const journeyDetails = {
       started: delivery.actualPickupTime ? formatTime(delivery.actualPickupTime) : 'Not Started',
       ended: delivery.actualDeliveryTime ? formatTime(delivery.actualDeliveryTime) : 'Not Ended',
@@ -1168,7 +1147,7 @@ exports.getDeliveryDetails = async (req, res) => {
         : (delivery.actualPickupTime ? 'In Progress' : 'Not Started'),
       totalDistance: delivery.distance > 0 ? `${delivery.distance.toFixed(1)} km` : 'Calculating...'
     };
- 
+
     const response = {
       id: delivery._id.toString(),
       trackingNumber: delivery.trackingNumber,
@@ -1216,9 +1195,9 @@ exports.getDeliveryDetails = async (req, res) => {
       instructions: delivery.instructions || null,
       createdAt: formatDateTime(delivery.createdAt)
     };
- 
+
     return successResponse(res, 'Delivery details fetched', response);
- 
+
   } catch (error) {
     console.error('Error:', error);
     return errorResponse(res, 'Server error', 500);
