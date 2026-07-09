@@ -149,6 +149,19 @@ exports.renderDeliveriesList = async (req, res) => {
 // };
 
 // ============= RENDER DELIVERY DETAILS =============
+
+
+// ============= RENDER CREATE DELIVERY FROM ORDER =============
+
+
+// ============================================================
+// TOP OF FILE — add this import along with the others
+// (Delivery, Order, Driver, Customer, etc.)
+// ============================================================
+// const { getSortedUpcomingForDriver } = require('../Driver/deliveryController');
+
+
+// ============= RENDER DELIVERY DETAILS =============
 exports.renderDeliveryDetails = async (req, res) => {
   try {
     const { deliveryId } = req.params;
@@ -177,58 +190,66 @@ exports.renderDeliveryDetails = async (req, res) => {
     }
 
     // ================================================================
-    // ✅ MAP ROUTE FIX: driver app (/my-delivery) me jo "closest first"
-    // ranking dikhti hai (getSortedUpcomingForDriver), map yahan bhi
-    // EXACTLY usi ranking ke hisaab se route dikhaye — koi alag logic
-    // nahi, same source of truth.
+    // ✅ DYNAMIC CLOSEST-FIRST CHAIN
+    // Driver ki abhi ki "upcoming" (not-yet-completed) deliveries me se
+    // yeh delivery kis rank pe hai (closest-first order me) — yeh HAMESHA
+    // live calculate hota hai, kabhi bhi stored/static nahi hota.
     //
-    // Rule: is delivery se PEHLE (nearestRank - 1) wala jo bhi stop hai,
-    // uska deliveryLocation hi is delivery ka "pickup point" hai. Agar
-    // yeh khud sabse pehla/nazdik stop hai (rank 1), to original
-    // pickupLocation (factory) hi use hota hai.
+    // - Rank #1 (sabse nazdik) → pickup = Factory (chahe driver ne pehle
+    //   kisi aur PURANI/already-completed delivery ki ho — woh "upcoming"
+    //   list me hai hi nahi, isliye automatically ignore ho jaati hai).
+    // - Rank #2, #3... → pickup = "mujhse pehle wale rank" ki destination.
     // ================================================================
     let effectivePickupLocation = delivery.pickupLocation;
-    let proximityDebugInfo = { applied: false, myRank: null, totalStops: 0 };
 
-    if (delivery.driverId) {
+    console.log(`\n========== [DELIVERY-DETAILS] deliveryId: ${deliveryId} | trackingNumber: ${delivery.trackingNumber} ==========`);
+
+    if (typeof getSortedUpcomingForDriver !== 'function') {
+      console.error('[DELIVERY-DETAILS] ❌❌❌ getSortedUpcomingForDriver is NOT a function — import missing/broken at top of deliveryAdminController.js! Falling back to stored pickupLocation.');
+    } else if (delivery.driverId) {
       try {
         const driverIdForSort = delivery.driverId._id || delivery.driverId;
+        console.log(`[DELIVERY-DETAILS] Fetching sorted upcoming list for driverId: ${driverIdForSort}`);
+
         const sorted = await getSortedUpcomingForDriver(driverIdForSort);
+
+        console.log(`[DELIVERY-DETAILS] sorted.upcoming has ${sorted.upcoming.length} item(s):`,
+          sorted.upcoming.map(u => `${u.trackingNumber}(rank ${u.nearestRank})`).join(', ') || '(empty)');
 
         const myIndex = sorted.upcoming.findIndex(u => u.id === delivery._id.toString());
 
-        proximityDebugInfo.totalStops = sorted.upcoming.length;
-        proximityDebugInfo.myRank = myIndex >= 0 ? myIndex + 1 : null;
-
-        console.log(`[DELIVERY-DETAILS] Proximity check | deliveryId: ${deliveryId} | myRank: ${proximityDebugInfo.myRank} of ${proximityDebugInfo.totalStops} | sortedByProximity: ${sorted.sortedByProximity}`);
+        console.log(`[DELIVERY-DETAILS] myIndex in upcoming list: ${myIndex} (${myIndex >= 0 ? `rank ${myIndex + 1}` : 'NOT FOUND — status might not be "upcoming" e.g. already Delivered/Cancelled'})`);
 
         if (myIndex > 0) {
-          // Mujhse pehle wala stop (ranking me) hi mera pickup point hoga
           const previousItem = sorted.upcoming[myIndex - 1];
+          console.log(`[DELIVERY-DETAILS] Previous stop in chain: ${previousItem.trackingNumber} (id: ${previousItem.id})`);
+
           const previousDeliveryDoc = await Delivery.findById(previousItem.id)
             .select('deliveryLocation trackingNumber')
             .lean();
 
           if (previousDeliveryDoc?.deliveryLocation?.coordinates?.latitude) {
             effectivePickupLocation = previousDeliveryDoc.deliveryLocation;
-            proximityDebugInfo.applied = true;
             console.log(`[DELIVERY-DETAILS] ✅ Pickup overridden — using "${previousDeliveryDoc.trackingNumber}" destination as pickup: ${previousDeliveryDoc.deliveryLocation.address}`);
+          } else {
+            console.log(`[DELIVERY-DETAILS] ⚠️ Previous delivery found but its deliveryLocation.coordinates missing — keeping original pickup`);
           }
         } else if (myIndex === 0) {
-          console.log('[DELIVERY-DETAILS] Yeh delivery hi rank #1 (sabse nazdik) hai — original pickupLocation (factory) use hoga');
+          console.log('[DELIVERY-DETAILS] ✅ Yeh delivery hi rank #1 (sabse nazdik) hai — Factory/original pickupLocation use hoga (yeh sahi hai)');
         } else {
-          console.log('[DELIVERY-DETAILS] ⚠️ Yeh delivery driver ki upcoming list me nahi mili (shायad already completed/cancelled) — original pickupLocation use hoga');
+          console.log('[DELIVERY-DETAILS] Yeh delivery upcoming list me nahi mili (probably already Delivered/Cancelled) — original pickupLocation use hoga');
         }
       } catch (sortErr) {
-        console.error('[DELIVERY-DETAILS] Proximity pickup resolution failed (non-fatal):', sortErr.message);
+        console.error('[DELIVERY-DETAILS] ❌ Proximity pickup resolution THREW AN ERROR:', sortErr.message);
+        console.error(sortErr.stack);
       }
+    } else {
+      console.log('[DELIVERY-DETAILS] No driver assigned to this delivery — skipping chain resolution');
     }
 
-    // Delivery object me pickup override karke hi EJS ko bhejo — EJS me
-    // koi change nahi karna padega, wo already delivery.pickupLocation
-    // hi use karta hai.
     delivery.pickupLocation = effectivePickupLocation;
-    delivery.__proximityDebug = proximityDebugInfo; // optional: EJS me chahe to badge dikhane ke liye
+    console.log(`[DELIVERY-DETAILS] FINAL pickupLocation used for map: ${delivery.pickupLocation?.address}`);
+    console.log(`========== [DELIVERY-DETAILS] END ==========\n`);
 
     // Get status history
     const statusHistory = await DeliveryStatusHistory.find({ deliveryId: delivery._id })
@@ -252,7 +273,7 @@ exports.renderDeliveryDetails = async (req, res) => {
   }
 };
 
-// ============= RENDER CREATE DELIVERY FROM ORDER =============
+
 exports.renderCreateDeliveryFromOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
