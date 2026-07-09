@@ -365,7 +365,7 @@
         const GOOGLE_MAPS_API_KEY = '<%= process.env.GOOGLE_MAPS_API_KEY || "YOUR_API_KEY" %>';
         (function () {
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap&libraries=geometry`;
             script.async = true;
             script.defer = true;
             document.head.appendChild(script);
@@ -392,6 +392,10 @@
         const deliveryAddress = `<%= (delivery.deliveryLocation?.address || '').replace(/'/g, "\\'") %>`;
 
         // Coordinates (only for markers, not for route)
+        // ✅ Ye ab HAMESHA sahi chained pickup point hai — Delivery #1 ke
+        // liye factory, Delivery #2 ke liye Delivery #1 ka destination,
+        // waise hi aage — controller (getDeliveryDetails) se already
+        // proximity-chain se resolve hokar aata hai.
         const pickupLat   = <%- delivery.pickupLocation?.coordinates?.latitude || 0 %>;
         const pickupLng   = <%- delivery.pickupLocation?.coordinates?.longitude || 0 %>;
 
@@ -401,6 +405,7 @@
         let map, driverMarker, driverPolyline;
         let pickupMarker, deliveryMarker;
         let traveledPolyline = null;
+        let predictedRoutePolyline = null; // ✅ NAYA
 
         function initMap() {
             // Generic default center (Dubai - UAE business hub). No Ahmedabad hardcoding.
@@ -421,6 +426,10 @@
                     title: 'Pickup Location',
                     icon: { url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png', scaledSize: new google.maps.Size(45, 45) }
                 });
+                const pickupInfoWindow = new google.maps.InfoWindow({
+                    content: `<div style="padding:10px;"><strong>Pickup Point (chained)</strong><br>${pickupAddress}</div>`
+                });
+                pickupMarker.addListener('click', () => pickupInfoWindow.open(map, pickupMarker));
             }
 
             // Delivery Marker - uses Geocoder on address (no lat/lng dependency)
@@ -446,6 +455,12 @@
             // Directions se "predicted" route nahi. Agar driver ne journey
             // start hi nahi ki, koi route line nahi dikhegi.
             drawActualTraveledRoute();
+
+            // ✅ NAYA: Planned/predicted route bhi dikhao — chained pickup
+            // se delivery tak — turant assign hote hi, journey start hone
+            // ka wait kiye bina. Actual traveled route (upar wala) alag
+            // rang me overlay ho jayega jaise hi driver journey start karega.
+            drawPredictedRoute();
 
             // Live tracking
             const activeStatuses = ['assigned', 'picked_up', 'in_transit', 'In_transit', 'out_for_delivery'];
@@ -500,6 +515,81 @@
                 document.getElementById('totalDistance').textContent = 'N/A';
                 document.getElementById('totalDuration').textContent = 'N/A';
             }
+        }
+
+        // ==================== PREDICTED ROUTE (chained pickup → delivery) ====================
+        // Ye "planned" route hai — turant delivery-assign hote hi dikhta hai,
+        // chahe driver ne journey abhi start na ki ho. pickupLat/pickupLng
+        // ab hamesha SAHI CHAINED point hai (server-side proximity chain se
+        // aata hai — pehli delivery ke liye factory, agli ke liye pichli
+        // delivery ka destination — automatically).
+        function drawPredictedRoute() {
+            if (!pickupLat || !pickupLng || !deliveryAddress) {
+                console.log('ℹ️ Predicted route ke liye pickup coordinates ya delivery address missing');
+                return;
+            }
+
+            const directionsService = new google.maps.DirectionsService();
+
+            directionsService.route({
+                origin: { lat: pickupLat, lng: pickupLng },
+                destination: deliveryAddress,
+                travelMode: google.maps.TravelMode.DRIVING
+            }, (result, status) => {
+                if (status === 'OK') {
+                    if (predictedRoutePolyline) predictedRoutePolyline.setMap(null);
+
+                    predictedRoutePolyline = new google.maps.DirectionsRenderer({
+                        map: map,
+                        directions: result,
+                        suppressMarkers: true, // apne custom markers already hain
+                        polylineOptions: {
+                            strokeColor: '#9c27b0',
+                            strokeWeight: 4,
+                            strokeOpacity: 0,
+                            icons: [{
+                                icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 },
+                                offset: '0',
+                                repeat: '15px'
+                            }]
+                        }
+                    });
+
+                    const leg = result.routes[0]?.legs[0];
+                    if (leg) {
+                        console.log(`📍 Predicted route: ${leg.distance.text}, ${leg.duration.text}`);
+
+                        // Agar abhi tak koi "actual traveled" distance nahi hai (journey start nahi hui),
+                        // to yehi predicted wala dikhao
+                        const distEl = document.getElementById('totalDistance');
+                        const durEl = document.getElementById('totalDuration');
+
+                        const distanceNeedsUpdate = distEl && (
+                            distEl.textContent.includes('Calculating') ||
+                            distEl.textContent.trim() === 'Not started yet'
+                        );
+                        const durationNeedsUpdate = durEl && (
+                            durEl.textContent.includes('Calculating') ||
+                            durEl.textContent.trim() === 'Not started yet'
+                        );
+
+                        if (distanceNeedsUpdate) {
+                            distEl.innerHTML = `${leg.distance.text} <small class="grey-text">(planned)</small>`;
+                        }
+                        if (durationNeedsUpdate) {
+                            durEl.innerHTML = `${leg.duration.text} <small class="grey-text">(planned)</small>`;
+                        }
+
+                        // Agar traveled route abhi tak nahi bana (journey start nahi hui),
+                        // to map ko is predicted route pe hi fit kar do
+                        if (!traveledPolyline) {
+                            map.fitBounds(result.routes[0].bounds);
+                        }
+                    }
+                } else {
+                    console.warn('⚠️ Predicted route fetch failed:', status);
+                }
+            });
         }
 
         // Rest of your existing functions (fetchDriverLocation, updateDriverMarker, socket etc.)
