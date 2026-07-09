@@ -124,6 +124,68 @@
         .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
 
         /* ================================================================
+           ✅ ROUTE CHAIN — Factory → A → B visual (naya)
+           Har stop ek "pill" hai; beech mein arrow. Current delivery wali
+           pill highlight (blue, bold) hoti hai taaki turant pata chale
+           "hum yahan hain". Factory pill hamesha pehli hoti hai.
+        ================================================================ */
+        .route-chain-card {
+            background: #f8f9ff;
+            border: 1px solid #e0e4f7;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-top: 15px;
+        }
+        .route-chain-card h6 {
+            margin: 0 0 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #3949ab;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .route-chain-track {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .route-chain-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: #ffffff;
+            border: 1.5px solid #d1d5db;
+            color: #555;
+            white-space: nowrap;
+        }
+        .route-chain-pill.is-factory {
+            background: #eef2ff;
+            border-color: #6366f1;
+            color: #4338ca;
+        }
+        .route-chain-pill.is-current {
+            background: #1565c0;
+            border-color: #1565c0;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(21,101,192,0.35);
+        }
+        .route-chain-arrow {
+            color: #9ca3af;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .route-chain-note {
+            margin-top: 10px;
+            font-size: 0.78rem;
+            color: #6b7280;
+        }
+
+        /* ================================================================
            ✅ MOBILE RESPONSIVE — chhoti screens (phone/tablet) ke liye
         ================================================================ */
         @media (max-width: 992px) {
@@ -174,6 +236,7 @@
                 text-align: center;
             }
             .route-stats { padding: 12px; }
+            .route-chain-pill { font-size: 0.72rem; padding: 5px 10px; }
         }
     </style>
 </head>
@@ -272,6 +335,34 @@
                                             <% } %>
                                         </span>
                                     </div>
+
+                                    <!-- ================================================================
+                                         ✅ ROUTE CHAIN — Factory → A → B (naya)
+                                         `routeChain` controller se aata hai: current driver ki abhi ki
+                                         "upcoming" (not-yet-completed) deliveries ka poora sequence,
+                                         closest-first order mein. Sirf display ke liye — koi calculation
+                                         yahan nahi hoti. Highlighted pill = yeh wali delivery.
+                                    ================================================================ -->
+                                    <% if (typeof routeChain !== 'undefined' && routeChain && routeChain.length > 0) { %>
+                                    <div class="route-chain-card">
+                                        <h6><i class="material-icons tiny" style="vertical-align:middle;">alt_route</i> Route Chain (is driver ki current batch)</h6>
+                                        <div class="route-chain-track">
+                                            <% routeChain.forEach((stop, idx) => { %>
+                                                <span class="route-chain-pill <%= stop.isFactory ? 'is-factory' : '' %> <%= stop.isCurrent ? 'is-current' : '' %>">
+                                                    <% if (stop.isFactory) { %><i class="material-icons tiny">home_work</i><% } %>
+                                                    <%= stop.label %>
+                                                    <% if (stop.distance) { %><small>(<%= stop.distance %>)</small><% } %>
+                                                </span>
+                                                <% if (idx < routeChain.length - 1) { %>
+                                                    <span class="route-chain-arrow material-icons">arrow_forward</span>
+                                                <% } %>
+                                            <% }) %>
+                                        </div>
+                                        <p class="route-chain-note">
+                                            Ye sequence driver ki abhi ki active (not-yet-completed) deliveries pe based hai — jo deliveries already complete ho chuki hain unka is chain se koi lena-dena nahi.
+                                        </p>
+                                    </div>
+                                    <% } %>
 
                                     <!-- ================================================================
                                          ✅ DELIVERY ADDRESS ROW — same fix (agar kabhi ye bhi raw link

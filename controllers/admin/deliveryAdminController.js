@@ -162,15 +162,18 @@ exports.renderDeliveriesList = async (req, res) => {
 
 
 // ============= RENDER DELIVERY DETAILS =============
+
+
+// ============= RENDER DELIVERY DETAILS =============
 exports.renderDeliveryDetails = async (req, res) => {
   try {
     const { deliveryId } = req.params;
-
+ 
     if (!mongoose.Types.ObjectId.isValid(deliveryId)) {
       req.flash('error', 'Invalid delivery ID');
       return res.redirect('/admin/deliveries');
     }
-
+ 
     const delivery = await Delivery.findById(deliveryId)
       .populate({
         path: 'customerId',
@@ -183,93 +186,158 @@ exports.renderDeliveryDetails = async (req, res) => {
       })
       .populate('createdBy', 'name email')
       .lean();
-
+ 
     if (!delivery) {
       req.flash('error', 'Delivery not found');
       return res.redirect('/admin/deliveries');
     }
-
+ 
     // ================================================================
-    // ✅ DYNAMIC CLOSEST-FIRST CHAIN
-    // Driver ki abhi ki "upcoming" (not-yet-completed) deliveries me se
-    // yeh delivery kis rank pe hai (closest-first order me) — yeh HAMESHA
-    // live calculate hota hai, kabhi bhi stored/static nahi hota.
+    // ✅ DYNAMIC CLOSEST-FIRST CHAIN (restored + enhanced)
+    // Driver ki ABHI ki "upcoming" (not-yet-completed) deliveries mein se
+    // yeh delivery kis rank pe hai — yeh hamesha LIVE calculate hota hai.
     //
-    // - Rank #1 (sabse nazdik) → pickup = Factory (chahe driver ne pehle
-    //   kisi aur PURANI/already-completed delivery ki ho — woh "upcoming"
-    //   list me hai hi nahi, isliye automatically ignore ho jaati hai).
+    // - Rank #1 (sabse nazdik) → pickup = Factory / order ka asli pickup
+    //   (kyunki "upcoming" list mein sirf abhi ki active deliveries hoti
+    //   hain — pehle ki COMPLETED/Delivered deliveries ispe asar nahi
+    //   daaltin, chahe wo aaj subah ki ho ya kal ki — batch hamesha
+    //   apne aap reset ho jaata hai).
     // - Rank #2, #3... → pickup = "mujhse pehle wale rank" ki destination.
+    //
+    // `routeChain` ek explicit array hai — sirf display ke liye — jo
+    // poora Factory → A → B route EJS ko bhejta hai taaki admin panel
+    // pe route saaf dikhe (kaunsi delivery kis se chain hui hai).
     // ================================================================
     let effectivePickupLocation = delivery.pickupLocation;
-
-    console.log(`\n========== [DELIVERY-DETAILS] deliveryId: ${deliveryId} | trackingNumber: ${delivery.trackingNumber} ==========`);
-
-    if (typeof getSortedUpcomingForDriver !== 'function') {
-      console.error('[DELIVERY-DETAILS] ❌❌❌ getSortedUpcomingForDriver is NOT a function — import missing/broken at top of deliveryAdminController.js! Falling back to stored pickupLocation.');
-    } else if (delivery.driverId) {
+    let routeChain = []; // [{ trackingNumber, isCurrent, isFactory }]
+ 
+    if (delivery.driverId) {
       try {
         const driverIdForSort = delivery.driverId._id || delivery.driverId;
-        console.log(`[DELIVERY-DETAILS] Fetching sorted upcoming list for driverId: ${driverIdForSort}`);
-
         const sorted = await getSortedUpcomingForDriver(driverIdForSort);
-
-        console.log(`[DELIVERY-DETAILS] sorted.upcoming has ${sorted.upcoming.length} item(s):`,
-          sorted.upcoming.map(u => `${u.trackingNumber}(rank ${u.nearestRank})`).join(', ') || '(empty)');
-
         const myIndex = sorted.upcoming.findIndex(u => u.id === delivery._id.toString());
-
-        console.log(`[DELIVERY-DETAILS] myIndex in upcoming list: ${myIndex} (${myIndex >= 0 ? `rank ${myIndex + 1}` : 'NOT FOUND — status might not be "upcoming" e.g. already Delivered/Cancelled'})`);
-
+ 
+        console.log(`[DELIVERY-DETAILS] deliveryId: ${deliveryId} | myRank: ${myIndex >= 0 ? myIndex + 1 : 'not in upcoming batch'} of ${sorted.upcoming.length}`);
+ 
+        // Poora chain banayo display ke liye: Factory -> stop1 -> stop2 -> ...
+        routeChain.push({ label: 'Factory (Start)', isFactory: true, isCurrent: false });
+        sorted.upcoming.forEach((u, idx) => {
+          routeChain.push({
+            label: u.trackingNumber,
+            isFactory: false,
+            isCurrent: u.id === delivery._id.toString(),
+            distance: u.distanceFromDriver
+          });
+        });
+ 
         if (myIndex > 0) {
           const previousItem = sorted.upcoming[myIndex - 1];
-          console.log(`[DELIVERY-DETAILS] Previous stop in chain: ${previousItem.trackingNumber} (id: ${previousItem.id})`);
-
           const previousDeliveryDoc = await Delivery.findById(previousItem.id)
             .select('deliveryLocation trackingNumber')
             .lean();
-
+ 
           if (previousDeliveryDoc?.deliveryLocation?.coordinates?.latitude) {
             effectivePickupLocation = previousDeliveryDoc.deliveryLocation;
-            console.log(`[DELIVERY-DETAILS] ✅ Pickup overridden — using "${previousDeliveryDoc.trackingNumber}" destination as pickup: ${previousDeliveryDoc.deliveryLocation.address}`);
-          } else {
-            console.log(`[DELIVERY-DETAILS] ⚠️ Previous delivery found but its deliveryLocation.coordinates missing — keeping original pickup`);
+            console.log(`[DELIVERY-DETAILS] ✅ Pickup = "${previousDeliveryDoc.trackingNumber}" ka drop point: ${previousDeliveryDoc.deliveryLocation.address}`);
           }
         } else if (myIndex === 0) {
-          console.log('[DELIVERY-DETAILS] ✅ Yeh delivery hi rank #1 (sabse nazdik) hai — Factory/original pickupLocation use hoga (yeh sahi hai)');
+          console.log('[DELIVERY-DETAILS] Rank #1 hai — Factory/order ka asli pickup use hoga');
         } else {
-          console.log('[DELIVERY-DETAILS] Yeh delivery upcoming list me nahi mili (probably already Delivered/Cancelled) — original pickupLocation use hoga');
+          console.log('[DELIVERY-DETAILS] Ye delivery abhi ki upcoming batch mein nahi mili (already Delivered/Cancelled) — asli pickup use hoga');
         }
       } catch (sortErr) {
-        console.error('[DELIVERY-DETAILS] ❌ Proximity pickup resolution THREW AN ERROR:', sortErr.message);
-        console.error(sortErr.stack);
+        console.error('[DELIVERY-DETAILS] Chain resolution failed (non-fatal):', sortErr.message);
       }
-    } else {
-      console.log('[DELIVERY-DETAILS] No driver assigned to this delivery — skipping chain resolution');
     }
-
+ 
     delivery.pickupLocation = effectivePickupLocation;
-    console.log(`[DELIVERY-DETAILS] FINAL pickupLocation used for map: ${delivery.pickupLocation?.address}`);
-    console.log(`========== [DELIVERY-DETAILS] END ==========\n`);
-
+ 
     // Get status history
     const statusHistory = await DeliveryStatusHistory.find({ deliveryId: delivery._id })
       .sort({ timestamp: -1 })
       .populate('updatedBy.userId', 'name email')
       .lean();
-
+ 
     res.render('delivery_details', {
       title: `Delivery ${delivery.trackingNumber}`,
       user: req.user,
       delivery,
       statusHistory,
+      routeChain,
       url: req.originalUrl,
       messages: req.flash()
     });
-
+ 
   } catch (error) {
     console.error('[DELIVERY-DETAILS] Error:', error);
     req.flash('error', 'Failed to load delivery details');
     res.redirect('/admin/deliveries');
+  }
+};
+ 
+// ============= RENDER CREATE DELIVERY FROM ORDER =============
+exports.renderCreateDeliveryFromOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+ 
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      req.flash('error', 'Invalid order ID');
+      return res.redirect('/admin/orders');
+    }
+ 
+    const order = await Order.findById(orderId)
+      .populate({
+        path: 'customerId',
+        model: 'Customer',
+        select: 'name email phone companyName customerId'
+      })
+      .lean();
+ 
+    if (!order) {
+      req.flash('error', 'Order not found');
+      return res.redirect('/admin/orders');
+    }
+ 
+    const existingDelivery = await Delivery.findOne({ orderId: order.orderNumber });
+    if (existingDelivery) {
+      req.flash('error', 'Delivery already exists for this order');
+      return res.redirect(`/admin/deliveries/${existingDelivery._id}`);
+    }
+ 
+    // Ensure coordinates exist with fallback
+    if (!order.pickupLocation?.coordinates) {
+      order.pickupLocation = order.pickupLocation || {};
+      order.pickupLocation.coordinates = { latitude: 23.0225, longitude: 72.5714 };
+    }
+ 
+    if (!order.deliveryLocation?.coordinates) {
+      order.deliveryLocation = order.deliveryLocation || {};
+      order.deliveryLocation.coordinates = { latitude: 23.0225, longitude: 72.5714 };
+    }
+ 
+    // Get available drivers
+    const drivers = await Driver.find({
+      isActive: true,
+      // isAvailable: true,
+      profileStatus: 'approved'
+    })
+   
+      .select('name phone vehicleNumber profileImage isAvailable')
+      .lean();
+ 
+    res.render('delivery_create', {
+      title: `Create Delivery - ${order.orderNumber}`,
+      user: req.user,
+      order,
+      drivers,
+      url: req.originalUrl,
+      messages: req.flash()
+    });
+ 
+  } catch (error) {
+    console.error('[RENDER-CREATE-DELIVERY] Error:', error);
+    req.flash('error', 'Failed to load create delivery page');
+    res.redirect('/admin/orders');
   }
 };
 
