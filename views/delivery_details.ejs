@@ -43,70 +43,13 @@
             50% { opacity: 0.6; transform: scale(0.8); }
         }
         .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; display: inline-block; white-space: nowrap; }
-        .status-assigned            { background: #fff3cd; color: #856404; }
-        .status-pending_acceptance  { background: #e3f2fd; color: #1565c0; }
-        .status-picked_up           { background: #d1ecf1; color: #0c5460; }
-        .status-in_transit,
-        .status-In_transit          { background: #cce5ff; color: #004085; }
-        .status-out_for_delivery    { background: #d4edda; color: #155724; }
-        .status-delivered,
-        .status-Delivered           { background: #d4edda; color: #155724; }
-        .status-cancelled,
-        .status-Cancelled           { background: #ffcdd2; color: #b71c1c; }
-        .status-failed              { background: #f8d7da; color: #721c24; }
-
-        /* ================================================================
-           ✅ RESPONSIVE FIX: info-row ko flex-wrap + word-break diya taaki
-           lambe Google Maps links ya kisi bhi lambi value se layout na toote.
-           Chhoti screen pe label/value stack ho jaate hain (upar-neeche).
-        ================================================================ */
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 11px 0;
-            border-bottom: 1px solid #eee;
-            flex-wrap: wrap;
-        }
-        .info-label {
-            color: #555;
-            font-weight: 500;
-            flex-shrink: 0;
-        }
-        .info-value {
-            font-weight: 600;
-            text-align: right;
-            word-break: break-word;
-            overflow-wrap: break-word;
-            max-width: 65%;
-            min-width: 0; /* flexbox overflow fix */
-        }
-
-        /* ✅ Google Maps link ko chhota "View on Map" pill button banata hai,
-           poora URL text screen pe overflow nahi karega */
-        .map-link-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            background: #e3f2fd;
-            color: #1565c0 !important;
-            padding: 5px 12px;
-            border-radius: 16px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            text-decoration: none;
-            white-space: nowrap;
-            transition: background 0.2s;
-        }
-        .map-link-chip:hover { background: #bbdefb; }
-        .map-link-chip .material-icons { font-size: 15px; }
-
+        .info-row { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #eee; flex-wrap: wrap; }
+        .info-label { color: #555; font-weight: 500; }
+        .info-value { font-weight: 600; text-align: right; word-break: break-word; }
         .route-stats { background: #f5f5f5; padding: 15px; border-radius: 8px; margin-top: 15px; }
-        .route-stat-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; flex-wrap: wrap; gap: 6px; }
+        .route-stat-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; }
         .route-stat-item:last-child { margin-bottom: 0; }
-        .route-stat-item strong { color: #2196F3; word-break: break-word; text-align: right; }
-
+        .route-stat-item strong { color: #2196F3; }
         .driver-info-overlay {
             position: absolute;
             bottom: 20px;
@@ -116,19 +59,11 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
             min-width: 240px;
-            max-width: calc(100% - 40px);
             font-size: 0.9rem;
         }
-        .driver-info-overlay p { margin: 5px 0; display: flex; align-items: center; gap: 8px; word-break: break-word; }
-        .driver-info-overlay .material-icons { font-size: 16px; color: #666; flex-shrink: 0; }
-        .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+        .driver-info-overlay p { margin: 5px 0; display: flex; align-items: center; gap: 8px; }
 
-        /* ================================================================
-           ✅ ROUTE CHAIN — Factory → A → B visual (naya)
-           Har stop ek "pill" hai; beech mein arrow. Current delivery wali
-           pill highlight (blue, bold) hoti hai taaki turant pata chale
-           "hum yahan hain". Factory pill hamesha pehli hoti hai.
-        ================================================================ */
+        /* Route Chain Styles */
         .route-chain-card {
             background: #f8f9ff;
             border: 1px solid #e0e4f7;
@@ -136,108 +71,24 @@
             padding: 14px 16px;
             margin-top: 15px;
         }
-        .route-chain-card h6 {
-            margin: 0 0 12px;
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: #3949ab;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
         .route-chain-track {
             display: flex;
             align-items: center;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 8px;
         }
         .route-chain-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
             padding: 6px 12px;
             border-radius: 20px;
-            font-size: 0.8rem;
+            font-size: 0.82rem;
             font-weight: 600;
             background: #ffffff;
             border: 1.5px solid #d1d5db;
             color: #555;
-            white-space: nowrap;
         }
-        .route-chain-pill.is-factory {
-            background: #eef2ff;
-            border-color: #6366f1;
-            color: #4338ca;
-        }
-        .route-chain-pill.is-current {
-            background: #1565c0;
-            border-color: #1565c0;
-            color: #fff;
-            box-shadow: 0 2px 8px rgba(21,101,192,0.35);
-        }
-        .route-chain-arrow {
-            color: #9ca3af;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-        .route-chain-note {
-            margin-top: 10px;
-            font-size: 0.78rem;
-            color: #6b7280;
-        }
-
-        /* ================================================================
-           ✅ MOBILE RESPONSIVE — chhoti screens (phone/tablet) ke liye
-        ================================================================ */
-        @media (max-width: 992px) {
-            #map { height: 350px; }
-        }
-
-        @media (max-width: 600px) {
-            .info-row {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 4px;
-            }
-            .info-value {
-                text-align: left;
-                max-width: 100%;
-            }
-            h5.mb-1 {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
-            .status-badge.right {
-                float: none !important;
-                margin: 0;
-            }
-            .live-badge {
-                top: 10px;
-                left: 10px;
-                padding: 6px 12px;
-                font-size: 0.8rem;
-            }
-            .driver-info-overlay {
-                bottom: 10px;
-                left: 10px;
-                right: 10px;
-                min-width: 0;
-                padding: 10px 14px;
-                font-size: 0.82rem;
-            }
-            #map { height: 280px; }
-            .action-buttons {
-                flex-direction: column;
-            }
-            .action-buttons .btn,
-            .action-buttons .btn-flat {
-                width: 100%;
-                text-align: center;
-            }
-            .route-stats { padding: 12px; }
-            .route-chain-pill { font-size: 0.72rem; padding: 5px 10px; }
-        }
+        .route-chain-pill.is-factory { background: #eef2ff; border-color: #6366f1; color: #4338ca; }
+        .route-chain-pill.is-current { background: #1565c0; border-color: #1565c0; color: #fff; }
+        .route-chain-arrow { color: #9ca3af; font-size: 20px; }
     </style>
 </head>
 
@@ -290,8 +141,7 @@
                                     <div class="info-row">
                                         <span class="info-label">Customer</span>
                                         <span class="info-value">
-                                            <%= delivery.customerId?.companyName || delivery.customerId?.name ||
-                                                delivery.orderId?.customerId?.companyName || 'N/A' %>
+                                            <%= delivery.customerId?.companyName || delivery.customerId?.name || 'N/A' %>
                                         </span>
                                     </div>
                                     <div class="info-row">
@@ -311,79 +161,35 @@
                                         <span class="info-label">Priority</span>
                                         <span class="info-value"><%= (delivery.priority || 'medium').toUpperCase() %></span>
                                     </div>
-
-                                    <!-- ================================================================
-                                         ✅ PICKUP ROW — RESPONSIVE FIX
-                                         Agar address ek Google Maps URL hai (lamba link), to poora URL
-                                         text dikhane ke bajaye ek chhota "View on Map" clickable chip
-                                         dikhate hain. Agar normal address text hai, to wo hi dikhta hai
-                                         (word-wrap ke saath, overflow nahi hoga).
-                                    ================================================================ -->
-                                    <% 
-                                        const pickupAddrRaw = delivery.pickupLocation?.address || 'N/A';
-                                        const pickupIsMapLink = /^https?:\/\//i.test(pickupAddrRaw.trim());
-                                    %>
                                     <div class="info-row">
                                         <span class="info-label">Pickup</span>
-                                        <span class="info-value">
-                                            <% if (pickupIsMapLink) { %>
-                                                <a href="<%= pickupAddrRaw %>" target="_blank" rel="noopener" class="map-link-chip">
-                                                    <i class="material-icons">location_on</i> View on Map
-                                                </a>
-                                            <% } else { %>
-                                                <%= pickupAddrRaw %>
-                                            <% } %>
-                                        </span>
+                                        <span class="info-value"><%= delivery.pickupLocation?.address || 'N/A' %></span>
                                     </div>
 
-                                    <!-- ================================================================
-                                         ✅ ROUTE CHAIN — Factory → A → B (naya)
-                                         `routeChain` controller se aata hai: current driver ki abhi ki
-                                         "upcoming" (not-yet-completed) deliveries ka poora sequence,
-                                         closest-first order mein. Sirf display ke liye — koi calculation
-                                         yahan nahi hoti. Highlighted pill = yeh wali delivery.
-                                    ================================================================ -->
+                                    <!-- Route Chain -->
                                     <% if (typeof routeChain !== 'undefined' && routeChain && routeChain.length > 0) { %>
                                     <div class="route-chain-card">
-                                        <h6><i class="material-icons tiny" style="vertical-align:middle;">alt_route</i> Route Chain (is driver ki current batch)</h6>
+                                        <h6><i class="material-icons tiny" style="vertical-align:middle;">alt_route</i> Route Chain (Current Active Batch)</h6>
                                         <div class="route-chain-track">
                                             <% routeChain.forEach((stop, idx) => { %>
                                                 <span class="route-chain-pill <%= stop.isFactory ? 'is-factory' : '' %> <%= stop.isCurrent ? 'is-current' : '' %>">
-                                                    <% if (stop.isFactory) { %><i class="material-icons tiny">home_work</i><% } %>
                                                     <%= stop.label %>
-                                                    <% if (stop.distance) { %><small>(<%= stop.distance %>)</small><% } %>
                                                 </span>
                                                 <% if (idx < routeChain.length - 1) { %>
-                                                    <span class="route-chain-arrow material-icons">arrow_forward</span>
+                                                    <span class="route-chain-arrow">→</span>
                                                 <% } %>
                                             <% }) %>
                                         </div>
-                                        <p class="route-chain-note">
-                                            Ye sequence driver ki abhi ki active (not-yet-completed) deliveries pe based hai — jo deliveries already complete ho chuki hain unka is chain se koi lena-dena nahi.
-                                        </p>
+                                        <small class="grey-text">Only active (not delivered) deliveries are shown</small>
                                     </div>
                                     <% } %>
 
-                                    <!-- ================================================================
-                                         ✅ DELIVERY ADDRESS ROW — same fix (agar kabhi ye bhi raw link
-                                         ban jaye to yahan bhi overflow nahi hoga)
-                                    ================================================================ -->
-                                    <% 
-                                        const deliveryAddrRaw = delivery.deliveryLocation?.address || 'N/A';
-                                        const deliveryIsMapLink = /^https?:\/\//i.test(deliveryAddrRaw.trim());
-                                    %>
                                     <div class="info-row" style="align-items:flex-start;">
                                         <span class="info-label">Delivery Address</span>
                                         <span class="info-value" id="delivery-addr-display">
-                                            <% if (deliveryIsMapLink) { %>
-                                                <a href="<%= deliveryAddrRaw %>" target="_blank" rel="noopener" class="map-link-chip">
-                                                    <i class="material-icons">location_on</i> View on Map
-                                                </a>
-                                            <% } else { %>
-                                                <%= deliveryAddrRaw %>
-                                            <% } %>
+                                            <%= delivery.deliveryLocation?.address || 'N/A' %>
                                             <% if (!['delivered','completed','cancelled'].includes(delivery.status)) { %>
-                                              <a href="#" onclick="openChangeAddrModal()" style="font-size:12px;margin-left:8px;color:#1565c0;display:inline-block;" title="Change Address">
+                                              <a href="#" onclick="openChangeAddrModal()" style="font-size:12px;margin-left:8px;color:#1565c0;" title="Change Address">
                                                 <i class="material-icons" style="font-size:15px;vertical-align:middle;">edit_location</i> Change
                                               </a>
                                             <% } %>
@@ -393,17 +199,13 @@
                                     <div class="info-row">
                                         <span class="info-label">Scheduled Pickup</span>
                                         <span class="info-value">
-                                            <%= delivery.scheduledPickupTime
-                                                ? new Date(delivery.scheduledPickupTime).toLocaleString('en-IN')
-                                                : 'N/A' %>
+                                            <%= delivery.scheduledPickupTime ? new Date(delivery.scheduledPickupTime).toLocaleString('en-IN') : 'N/A' %>
                                         </span>
                                     </div>
                                     <div class="info-row">
                                         <span class="info-label">Scheduled Delivery</span>
                                         <span class="info-value">
-                                            <%= delivery.scheduledDeliveryTime
-                                                ? new Date(delivery.scheduledDeliveryTime).toLocaleString('en-IN')
-                                                : 'N/A' %>
+                                            <%= delivery.scheduledDeliveryTime ? new Date(delivery.scheduledDeliveryTime).toLocaleString('en-IN') : 'N/A' %>
                                         </span>
                                     </div>
 
@@ -411,15 +213,11 @@
                                         <h6><strong>Route Information</strong></h6>
                                         <div class="route-stat-item">
                                             <span>Distance:</span>
-                                            <strong id="totalDistance">
-                                                <%= delivery.distance ? delivery.distance.toFixed(2)+' km' : 'Calculating...' %>
-                                            </strong>
+                                            <strong id="totalDistance">Calculating...</strong>
                                         </div>
                                         <div class="route-stat-item">
                                             <span>Est. Duration:</span>
-                                            <strong id="totalDuration">
-                                                <%= delivery.estimatedDuration ? delivery.estimatedDuration+' min' : 'Calculating...' %>
-                                            </strong>
+                                            <strong id="totalDuration">Calculating...</strong>
                                         </div>
                                         <div class="route-stat-item">
                                             <span>Current Speed:</span>
@@ -429,17 +227,12 @@
                                             <span>Last Update:</span>
                                             <strong id="lastUpdate">--</strong>
                                         </div>
-                                        <div class="route-stat-item">
-                                            <span>Tracking:</span>
-                                            <strong id="locationStatus" style="color:#4CAF50;">Waiting...</strong>
-                                        </div>
                                     </div>
                                 </div>
 
                                 <!-- RIGHT: Map -->
                                 <div class="col s12 l7">
                                     <div style="position:relative;">
-
                                         <% if (['picked_up','in_transit','In_transit','out_for_delivery'].includes(delivery.status)) { %>
                                         <div class="live-badge">
                                             <span class="live-pulse-dot"></span>
@@ -455,15 +248,9 @@
                                                 <i class="material-icons tiny">person</i>
                                                 <%= delivery.driverId.name || 'Driver' %>
                                             </strong>
-                                            <p><i class="material-icons">directions_car</i>
-                                                <span id="overlayVehicle"><%= delivery.vehicleNumber || 'N/A' %></span>
-                                            </p>
-                                            <p><i class="material-icons">speed</i>
-                                                Speed: <strong id="overlaySpeed">-- km/h</strong>
-                                            </p>
-                                            <p><i class="material-icons">location_on</i>
-                                                <span id="overlayStatus">Getting location...</span>
-                                            </p>
+                                            <p><i class="material-icons">directions_car</i> <span id="overlayVehicle"><%= delivery.vehicleNumber || 'N/A' %></span></p>
+                                            <p><i class="material-icons">speed</i> Speed: <strong id="overlaySpeed">-- km/h</strong></p>
+                                            <p><i class="material-icons">location_on</i> <span id="overlayStatus">Getting location...</span></p>
                                         </div>
                                         <% } %>
                                     </div>
@@ -474,13 +261,11 @@
 
                         <div class="card-action right-align">
                             <div class="action-buttons">
-                                <a href="/admin/deliveries/<%= delivery._id %>/edit"
-                                   class="btn waves-effect waves-light orange">
+                                <a href="/admin/deliveries/<%= delivery._id %>/edit" class="btn waves-effect waves-light orange">
                                     <i class="material-icons left">edit</i>Edit
                                 </a>
                                 <% if (!['delivered','Delivered','cancelled','Cancelled'].includes(delivery.status)) { %>
-                                <a href="#" onclick="confirmCancel('<%= delivery._id %>')"
-                                   class="btn waves-effect waves-light red">
+                                <a href="#" onclick="confirmCancel('<%= delivery._id %>')" class="btn waves-effect waves-light red">
                                     <i class="material-icons left">cancel</i>Cancel
                                 </a>
                                 <% } %>
@@ -523,69 +308,22 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <!-- ── Change Delivery Address Modal ── -->
-<div id="change-addr-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:1000;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
-  <div style="background:#fff;border-radius:10px;padding:28px;max-width:480px;width:100%;position:relative;box-sizing:border-box;">
-    <h5 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#1a237e;">Change Delivery Address</h5>
-    <div class="input-field">
-      <input id="new-addr-input" type="text" placeholder="Enter new delivery address" style="border:1px solid #ddd;border-radius:4px;padding:10px;width:100%;box-sizing:border-box;">
-      <label for="new-addr-input" style="display:none;"></label>
-    </div>
-    <div class="input-field">
-      <input id="new-addr-lat" type="number" step="any" placeholder="Latitude (optional)" style="border:1px solid #ddd;border-radius:4px;padding:10px;width:100%;box-sizing:border-box;margin-top:8px;">
-    </div>
-    <div class="input-field">
-      <input id="new-addr-lng" type="number" step="any" placeholder="Longitude (optional)" style="border:1px solid #ddd;border-radius:4px;padding:10px;width:100%;box-sizing:border-box;margin-top:8px;">
-    </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap;">
-      <button onclick="closeChangeAddrModal()" style="padding:8px 18px;border:1px solid #ddd;background:#f5f5f5;border-radius:4px;cursor:pointer;">Cancel</button>
-      <button onclick="submitChangeAddr()" style="padding:8px 18px;background:#1565c0;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;">Update Address</button>
-    </div>
-  </div>
-</div>
 
-<script>
-  const DELIVERY_ID_FOR_ADDR = '<%= delivery._id %>';
-  function openChangeAddrModal() {
-    const modal = document.getElementById('change-addr-modal');
-    modal.style.display = 'flex';
-    document.getElementById('new-addr-input').value = '';
-  }
-  function closeChangeAddrModal() {
-    document.getElementById('change-addr-modal').style.display = 'none';
-  }
-  function submitChangeAddr() {
-    const address = document.getElementById('new-addr-input').value.trim();
-    const lat = document.getElementById('new-addr-lat').value;
-    const lng = document.getElementById('new-addr-lng').value;
-    if (!address) { M.toast({ html: 'Please enter the new address', classes: 'orange' }); return; }
-    fetch(`/admin/deliveries/${DELIVERY_ID_FOR_ADDR}/change-address`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address,
-        latitude: lat || undefined,
-        longitude: lng || undefined
-      })
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        M.toast({ html: '✅ Delivery address updated!', classes: 'green rounded' });
-        closeChangeAddrModal();
-        setTimeout(() => location.reload(), 800);
-      } else {
-        M.toast({ html: data.message || 'Failed to update address', classes: 'red rounded' });
-      }
-    })
-    .catch(() => M.toast({ html: 'Network error', classes: 'red rounded' }));
-  }
-  document.getElementById('change-addr-modal').addEventListener('click', function(e) {
-    if (e.target === this) closeChangeAddrModal();
-  });
-</script>
+    <!-- Change Address Modal -->
+    <div id="change-addr-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:1000;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
+      <div style="background:#fff;border-radius:10px;padding:28px;max-width:480px;width:90%;position:relative;">
+        <h5 style="margin:0 0 16px;font-size:16px;font-weight:700;color:#1a237e;">Change Delivery Address</h5>
+        <input id="new-addr-input" type="text" placeholder="Enter new delivery address" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;margin-bottom:10px;">
+        <input id="new-addr-lat" type="number" step="any" placeholder="Latitude (optional)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;margin-bottom:10px;">
+        <input id="new-addr-lng" type="number" step="any" placeholder="Longitude (optional)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;margin-bottom:16px;">
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button onclick="closeChangeAddrModal()" style="padding:8px 18px;border:1px solid #ddd;background:#f5f5f5;border-radius:4px;cursor:pointer;">Cancel</button>
+          <button onclick="submitChangeAddr()" style="padding:8px 18px;background:#1565c0;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;">Update Address</button>
+        </div>
+      </div>
+    </div>
 
-<%- include('_layouts/commonJs') %>
+    <%- include('_layouts/commonJs') %>
 
     <!-- Google Maps -->
     <script>
@@ -600,79 +338,54 @@
     </script>
 
     <script>
-        // ── Variables from EJS ─────────────────────────────────────
         const deliveryId     = '<%= delivery._id.toString() %>';
         const deliveryStatus = '<%= delivery.status %>';
+        let safeDriverId = '<%= safeDriverId %>';
+        const driverId = safeDriverId;
 
-        <% 
-            let safeDriverId = '';
-            if (delivery.driverId) {
-                safeDriverId = (typeof delivery.driverId === 'object' && delivery.driverId._id) 
-                    ? delivery.driverId._id.toString() 
-                    : delivery.driverId.toString();
-            }
-        %>
-        const driverId = '<%= safeDriverId %>';
-
-        // Addresses (exact strings from DB - Naroda, Dubai, Riyadh etc. will work perfectly)
         const pickupAddress   = `<%= (delivery.pickupLocation?.address || '').replace(/'/g, "\\'") %>`;
         const deliveryAddress = `<%= (delivery.deliveryLocation?.address || '').replace(/'/g, "\\'") %>`;
 
-        // Coordinates (only for markers, not for route)
         const pickupLat   = <%- delivery.pickupLocation?.coordinates?.latitude || 0 %>;
         const pickupLng   = <%- delivery.pickupLocation?.coordinates?.longitude || 0 %>;
 
-        console.log('🚛 Pickup Address  :', pickupAddress);
-        console.log('📦 Delivery Address:', deliveryAddress);
-
-        let map, driverMarker, driverPolyline;
-        let pickupMarker, deliveryMarker;
-        let traveledPolyline = null;
-        let predictedRoutePolyline = null;
+        let map, driverMarker, traveledPolyline;
 
         function initMap() {
             map = new google.maps.Map(document.getElementById('map'), {
                 center: { lat: 25.2048, lng: 55.2708 },
-                zoom: 10,
+                zoom: 11,
                 mapTypeControl: true,
                 streetViewControl: false,
-                fullscreenControl: true,
-                styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }]
+                fullscreenControl: true
             });
 
+            // Pickup Marker
             if (pickupLat && pickupLng) {
-                pickupMarker = new google.maps.Marker({
+                new google.maps.Marker({
                     position: { lat: pickupLat, lng: pickupLng },
                     map: map,
-                    title: 'Pickup Location',
-                    icon: { url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png', scaledSize: new google.maps.Size(45, 45) }
+                    title: 'Pickup',
+                    icon: { url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png', scaledSize: new google.maps.Size(40, 40) }
                 });
-                const pickupInfoWindow = new google.maps.InfoWindow({
-                    content: `<div style="padding:10px;max-width:220px;word-break:break-word;"><strong>Pickup Point (chained)</strong><br>${pickupAddress}</div>`
-                });
-                pickupMarker.addListener('click', () => pickupInfoWindow.open(map, pickupMarker));
             }
 
+            // Delivery Marker
             if (deliveryAddress) {
                 const geocoder = new google.maps.Geocoder();
                 geocoder.geocode({ address: deliveryAddress }, (results, status) => {
                     if (status === 'OK' && results[0]) {
-                        deliveryMarker = new google.maps.Marker({
+                        new google.maps.Marker({
                             position: results[0].geometry.location,
                             map: map,
-                            title: 'Delivery Location',
-                            icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png', scaledSize: new google.maps.Size(45, 45) }
+                            title: 'Delivery',
+                            icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png', scaledSize: new google.maps.Size(40, 40) }
                         });
-                        const infoWindow = new google.maps.InfoWindow({
-                            content: `<div style="padding:10px;max-width:220px;word-break:break-word;"><strong>Delivery Location</strong><br>${deliveryAddress}</div>`
-                        });
-                        deliveryMarker.addListener('click', () => infoWindow.open(map, deliveryMarker));
                     }
                 });
             }
 
             drawActualTraveledRoute();
-            drawPredictedRoute();
 
             const activeStatuses = ['assigned', 'picked_up', 'in_transit', 'In_transit', 'out_for_delivery'];
             if (activeStatuses.includes(deliveryStatus) && driverId) {
@@ -685,119 +398,61 @@
             try {
                 const res = await fetch(`/admin/deliveries/${deliveryId}/journey-route`);
                 const data = await res.json();
-
-                if (!data.success || !data.data.path || data.data.path.length < 2) {
-                    document.getElementById('totalDistance').textContent = 'Not started yet';
-                    document.getElementById('totalDuration').textContent = 'Not started yet';
-                    console.log('ℹ️ Koi traveled route nahi mila — driver ne abhi is delivery ki journey shuru nahi ki.');
-                    return;
-                }
+                if (!data.success || !data.data.path || data.data.path.length < 2) return;
 
                 const path = data.data.path.map(p => ({ lat: p.lat, lng: p.lng }));
-
-                if (traveledPolyline) traveledPolyline.setMap(null);
                 traveledPolyline = new google.maps.Polyline({
-                    path,
+                    path: path,
                     geodesic: true,
                     strokeColor: '#2196F3',
                     strokeOpacity: 0.9,
                     strokeWeight: 6,
                     map: map
                 });
-
-                document.getElementById('totalDistance').innerHTML =
-                    `${data.data.stats.totalDistance} <small class="grey-text">(actual traveled)</small>`;
-                document.getElementById('totalDuration').innerHTML =
-                    `${data.data.stats.totalDuration} <small class="grey-text">(actual)</small>`;
-
-                const bounds = new google.maps.LatLngBounds();
-                path.forEach(p => bounds.extend(p));
-                if (pickupLat && pickupLng) bounds.extend({ lat: pickupLat, lng: pickupLng });
-                map.fitBounds(bounds);
-
             } catch (err) {
-                console.error('Failed to load traveled route:', err);
-                document.getElementById('totalDistance').textContent = 'N/A';
-                document.getElementById('totalDuration').textContent = 'N/A';
+                console.log("No traveled route found yet");
             }
         }
 
-        function drawPredictedRoute() {
-            if (!pickupLat || !pickupLng || !deliveryAddress) {
-                console.log('ℹ️ Predicted route ke liye pickup coordinates ya delivery address missing');
-                return;
-            }
+        // ==================== Live Tracking Functions ====================
+        async function fetchDriverLocation() {
+            try {
+                const res = await fetch(`/admin/drivers/${driverId}/location`);
+                const data = await res.json();
+                if (data.success && data.location) updateDriverMarker(data.location);
+            } catch (e) { console.log("Location fetch failed"); }
+        }
 
-            const directionsService = new google.maps.DirectionsService();
-
-            directionsService.route({
-                origin: { lat: pickupLat, lng: pickupLng },
-                destination: deliveryAddress,
-                travelMode: google.maps.TravelMode.DRIVING
-            }, (result, status) => {
-                if (status === 'OK') {
-                    if (predictedRoutePolyline) predictedRoutePolyline.setMap(null);
-
-                    predictedRoutePolyline = new google.maps.DirectionsRenderer({
-                        map: map,
-                        directions: result,
-                        suppressMarkers: true,
-                        polylineOptions: {
-                            strokeColor: '#9c27b0',
-                            strokeWeight: 4,
-                            strokeOpacity: 0,
-                            icons: [{
-                                icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 },
-                                offset: '0',
-                                repeat: '15px'
-                            }]
-                        }
-                    });
-
-                    const leg = result.routes[0]?.legs[0];
-                    if (leg) {
-                        console.log(`📍 Predicted route: ${leg.distance.text}, ${leg.duration.text}`);
-
-                        const distEl = document.getElementById('totalDistance');
-                        const durEl = document.getElementById('totalDuration');
-
-                        const distanceNeedsUpdate = distEl && (
-                            distEl.textContent.includes('Calculating') ||
-                            distEl.textContent.trim() === 'Not started yet'
-                        );
-                        const durationNeedsUpdate = durEl && (
-                            durEl.textContent.includes('Calculating') ||
-                            durEl.textContent.trim() === 'Not started yet'
-                        );
-
-                        if (distanceNeedsUpdate) {
-                            distEl.innerHTML = `${leg.distance.text} <small class="grey-text">(planned)</small>`;
-                        }
-                        if (durationNeedsUpdate) {
-                            durEl.innerHTML = `${leg.duration.text} <small class="grey-text">(planned)</small>`;
-                        }
-
-                        if (!traveledPolyline) {
-                            map.fitBounds(result.routes[0].bounds);
-                        }
-                    }
-                } else {
-                    console.warn('⚠️ Predicted route fetch failed:', status);
+        function initializeSocket() {
+            const socket = io();
+            socket.on('driverLocationUpdate', (data) => {
+                if (data.driverId === driverId) {
+                    updateDriverMarker(data);
                 }
             });
         }
 
-        async function fetchDriverLocation() { /* your existing code */ }
-        function initializeSocket() { /* your existing code */ }
-        function updateDriverMarker(data) { /* your existing code */ }
-        function drawTrailLine(oldPosition, newPosition) { /* your existing code */ }
-        function fitMapBounds() { /* your existing code */ }
-        function setStatus(t) { const e = document.getElementById('locationStatus'); if (e) e.textContent = t; }
-        function setSpeed(kmh) { const e = document.getElementById('currentSpeed'); if (e) e.textContent = kmh + ' km/h'; }
-        function setLastUpdate(t) { const e = document.getElementById('lastUpdate'); if (e) e.textContent = t; }
+        function updateDriverMarker(loc) {
+            if (!map) return;
+            const position = { lat: loc.latitude, lng: loc.longitude };
+
+            if (!driverMarker) {
+                driverMarker = new google.maps.Marker({
+                    position: position,
+                    map: map,
+                    title: 'Driver Live',
+                    icon: { url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png', scaledSize: new google.maps.Size(40, 40) }
+                });
+            } else {
+                driverMarker.setPosition(position);
+            }
+
+            document.getElementById('overlaySpeed').textContent = (loc.speed || 0) + ' km/h';
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('en-IN');
+        }
 
         function confirmCancel(id) {
-            if (!confirm('Cancel this delivery? Driver will be notified.')) return;
+            if (!confirm('Cancel this delivery?')) return;
             const remarks = prompt('Reason for cancellation:') || 'Cancelled by admin';
             fetch(`/admin/deliveries/${id}/cancel`, {
                 method: 'POST',
@@ -806,16 +461,13 @@
             })
             .then(r => r.json())
             .then(data => {
-                M.toast({ html: data.message || (data.success ? 'Cancelled!' : 'Failed'), classes: data.success ? 'green' : 'red' });
-                if (data.success) setTimeout(() => location.reload(), 1500);
-            })
-            .catch(() => M.toast({ html: 'Network error', classes: 'red' }));
+                M.toast({ html: data.message || 'Done', classes: data.success ? 'green' : 'red' });
+                if (data.success) setTimeout(() => location.reload(), 1200);
+            });
         }
 
-        const _activeStatuses = ['assigned', 'picked_up', 'in_transit', 'In_transit', 'out_for_delivery'];
-        if (_activeStatuses.includes(deliveryStatus) && driverId) {
-            setInterval(fetchDriverLocation, 30000);
-        }
+        // Auto refresh
+        if (driverId) setInterval(fetchDriverLocation, 25000);
     </script>
 
 </body>

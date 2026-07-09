@@ -165,6 +165,8 @@ exports.renderDeliveriesList = async (req, res) => {
 
 
 // ============= RENDER DELIVERY DETAILS =============
+
+
 exports.renderDeliveryDetails = async (req, res) => {
   try {
     const { deliveryId } = req.params;
@@ -193,35 +195,31 @@ exports.renderDeliveryDetails = async (req, res) => {
     }
  
     // ================================================================
-    // ✅ DYNAMIC CLOSEST-FIRST CHAIN (restored + enhanced)
-    // Driver ki ABHI ki "upcoming" (not-yet-completed) deliveries mein se
-    // yeh delivery kis rank pe hai — yeh hamesha LIVE calculate hota hai.
-    //
-    // - Rank #1 (sabse nazdik) → pickup = Factory / order ka asli pickup
-    //   (kyunki "upcoming" list mein sirf abhi ki active deliveries hoti
-    //   hain — pehle ki COMPLETED/Delivered deliveries ispe asar nahi
-    //   daaltin, chahe wo aaj subah ki ho ya kal ki — batch hamesha
-    //   apne aap reset ho jaata hai).
-    // - Rank #2, #3... → pickup = "mujhse pehle wale rank" ki destination.
-    //
-    // `routeChain` ek explicit array hai — sirf display ke liye — jo
-    // poora Factory → A → B route EJS ko bhejta hai taaki admin panel
-    // pe route saaf dikhe (kaunsi delivery kis se chain hui hai).
+    // ✅ FIXED: DYNAMIC CLOSEST-FIRST CHAIN
+    // Ab delivered/completed deliveries ko strictly exclude kiya gaya hai
     // ================================================================
     let effectivePickupLocation = delivery.pickupLocation;
-    let routeChain = []; // [{ trackingNumber, isCurrent, isFactory }]
- 
+    let routeChain = []; // [{ label, isCurrent, isFactory, distance }]
+
     if (delivery.driverId) {
       try {
         const driverIdForSort = delivery.driverId._id || delivery.driverId;
         const sorted = await getSortedUpcomingForDriver(driverIdForSort);
-        const myIndex = sorted.upcoming.findIndex(u => u.id === delivery._id.toString());
- 
-        console.log(`[DELIVERY-DETAILS] deliveryId: ${deliveryId} | myRank: ${myIndex >= 0 ? myIndex + 1 : 'not in upcoming batch'} of ${sorted.upcoming.length}`);
- 
-        // Poora chain banayo display ke liye: Factory -> stop1 -> stop2 -> ...
+
+        // ✅ Double safety: Filter out already completed deliveries
+        const validUpcoming = sorted.upcoming.filter(u => 
+          !['delivered', 'Delivered', 'completed', 'Completed', 'cancelled', 'Cancelled']
+            .includes(u.status || u.deliveryStatus || '')
+        );
+
+        const myIndex = validUpcoming.findIndex(u => u.id === delivery._id.toString());
+
+        console.log(`[DELIVERY-DETAILS] deliveryId: ${deliveryId} | myRank: ${myIndex >= 0 ? myIndex + 1 : 'not in upcoming'} of ${validUpcoming.length}`);
+
+        // Build Route Chain for display
         routeChain.push({ label: 'Factory (Start)', isFactory: true, isCurrent: false });
-        sorted.upcoming.forEach((u, idx) => {
+
+        validUpcoming.forEach((u, idx) => {
           routeChain.push({
             label: u.trackingNumber,
             isFactory: false,
@@ -229,22 +227,27 @@ exports.renderDeliveryDetails = async (req, res) => {
             distance: u.distanceFromDriver
           });
         });
- 
+
+        // Set effective pickup location (previous delivery ka drop point)
         if (myIndex > 0) {
-          const previousItem = sorted.upcoming[myIndex - 1];
+          const previousItem = validUpcoming[myIndex - 1];
           const previousDeliveryDoc = await Delivery.findById(previousItem.id)
-            .select('deliveryLocation trackingNumber')
+            .select('deliveryLocation trackingNumber status')
             .lean();
- 
-          if (previousDeliveryDoc?.deliveryLocation?.coordinates?.latitude) {
+
+          if (previousDeliveryDoc?.deliveryLocation?.coordinates?.latitude &&
+              !['delivered', 'Delivered', 'completed', 'Completed', 'cancelled', 'Cancelled']
+                .includes(previousDeliveryDoc.status)) {
+            
             effectivePickupLocation = previousDeliveryDoc.deliveryLocation;
-            console.log(`[DELIVERY-DETAILS] ✅ Pickup = "${previousDeliveryDoc.trackingNumber}" ka drop point: ${previousDeliveryDoc.deliveryLocation.address}`);
+            console.log(`[DELIVERY-DETAILS] ✅ Pickup chained from: ${previousDeliveryDoc.trackingNumber}`);
           }
         } else if (myIndex === 0) {
-          console.log('[DELIVERY-DETAILS] Rank #1 hai — Factory/order ka asli pickup use hoga');
+          console.log('[DELIVERY-DETAILS] Rank #1 → Using original pickup location');
         } else {
-          console.log('[DELIVERY-DETAILS] Ye delivery abhi ki upcoming batch mein nahi mili (already Delivered/Cancelled) — asli pickup use hoga');
+          console.log('[DELIVERY-DETAILS] Delivery not in current active batch');
         }
+
       } catch (sortErr) {
         console.error('[DELIVERY-DETAILS] Chain resolution failed (non-fatal):', sortErr.message);
       }
