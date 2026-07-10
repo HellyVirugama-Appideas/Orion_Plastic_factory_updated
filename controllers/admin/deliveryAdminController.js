@@ -11,6 +11,94 @@ const { getSortedUpcomingForDriver } = require('../Driver/deliveryController');
 
 
 // ============= RENDER DELIVERIES LIST =============
+// exports.renderDeliveriesList = async (req, res) => {
+//   try {
+//     const {
+//       page = 1,
+//       limit = 20,
+//       status,
+//       search,
+//       startDate,
+//       endDate
+//     } = req.query;
+
+//     const query = {};
+//     if (status) query.status = status;
+
+//     if (search) {
+//       query.$or = [
+//         { trackingNumber: { $regex: search, $options: 'i' } },
+//         { orderId: { $regex: search, $options: 'i' } }
+//       ];
+//     }
+
+//     if (startDate || endDate) {
+//       query.createdAt = {};
+//       if (startDate) query.createdAt.$gte = new Date(startDate);
+//       if (endDate) query.createdAt.$lte = new Date(endDate);
+//     }
+
+//     const skip = (parseInt(page) - 1) * parseInt(limit);
+
+//     const deliveries = await Delivery.find(query)
+//       .populate({
+//         path: 'customerId',
+//         model: 'Customer',
+//         select: 'name email phone companyName customerId'
+//       })
+//       .populate('driverId', 'name phone vehicleNumber')
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(parseInt(limit))
+//       .lean();
+
+//     const total = await Delivery.countDocuments(query);
+
+//     const stats = await Delivery.aggregate([
+//       {
+//         $facet: {
+//           total: [{ $count: 'count' }],
+//           delivered: [{ $match: { status: 'delivered' } }, { $count: 'count' }],
+//           inTransit: [
+//             { $match: { status: { $in: ['in_transit', 'assigned', 'picked_up', 'out_for_delivery'] } } },
+//             { $count: 'count' }
+//           ],
+//           pending: [{ $match: { status: { $in: ['pending', 'pending_acceptance'] } } }, { $count: 'count' }]
+//         }
+//       }
+//     ]);
+
+//     const statistics = {
+//       total: stats[0].total[0]?.count || 0,
+//       delivered: stats[0].delivered[0]?.count || 0,
+//       inTransit: stats[0].inTransit[0]?.count || 0,
+//       pending: stats[0].pending[0]?.count || 0
+//     };
+
+//     res.render('deliveries_list', {
+//       title: 'Deliveries Management',
+//       user: req.user,
+//       deliveries,
+//       stats: statistics,
+//       pagination: {
+//         total,
+//         page: parseInt(page),
+//         pages: Math.ceil(total / parseInt(limit)),
+//         limit: parseInt(limit)
+//       },
+//       filters: { status, search, startDate, endDate },
+//       url: req.originalUrl,
+//       messages: req.flash()
+//     });
+
+//   } catch (error) {
+//     console.error('[DELIVERIES-LIST] Error:', error);
+//     req.flash('error', 'Failed to load deliveries');
+//     res.redirect('/admin/dashboard');
+//   }
+// };
+
+// ============= RENDER DELIVERIES LIST =============
 exports.renderDeliveriesList = async (req, res) => {
   try {
     const {
@@ -19,11 +107,13 @@ exports.renderDeliveriesList = async (req, res) => {
       status,
       search,
       startDate,
-      endDate
+      endDate,
+      driverId
     } = req.query;
 
     const query = {};
     if (status) query.status = status;
+    if (driverId) query.driverId = driverId;
 
     if (search) {
       query.$or = [
@@ -38,35 +128,64 @@ exports.renderDeliveriesList = async (req, res) => {
       if (endDate) query.createdAt.$lte = new Date(endDate);
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    const deliveries = await Delivery.find(query)
-      .populate({
-        path: 'customerId',
-        model: 'Customer',
-        select: 'name email phone companyName customerId'
-      })
-      .populate('driverId', 'name phone vehicleNumber')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
+    let deliveries = await Delivery.find(query)
+      .populate('customerId', 'name email phone companyName customerId')
+      .populate('driverId', 'name phone vehicleNumber currentLocation')
       .lean();
 
-    const total = await Delivery.countDocuments(query);
+    // === Proximity Sorting ===
+    const driverGroups = {};
+    for (const del of deliveries) {
+      const dId = del.driverId?._id?.toString() || 'unassigned';
+      if (!driverGroups[dId]) driverGroups[dId] = [];
+      driverGroups[dId].push(del);
+    }
 
-    const stats = await Delivery.aggregate([
-      {
-        $facet: {
-          total: [{ $count: 'count' }],
-          delivered: [{ $match: { status: 'delivered' } }, { $count: 'count' }],
-          inTransit: [
-            { $match: { status: { $in: ['in_transit', 'assigned', 'picked_up', 'out_for_delivery'] } } },
-            { $count: 'count' }
-          ],
-          pending: [{ $match: { status: { $in: ['pending', 'pending_acceptance'] } } }, { $count: 'count' }]
-        }
+    let finalDeliveries = [];
+
+    for (const [dId, group] of Object.entries(driverGroups)) {
+      if (dId === 'unassigned') {
+        finalDeliveries.push(...group);
+        continue;
       }
-    ]);
+
+      try {
+        const sorted = await getSortedUpcomingForDriver(dId);
+        const upcomingMap = new Map(sorted.upcoming.map(item => [item.id, item]));
+
+        const orderedGroup = group.map(del => {
+          const sortedItem = upcomingMap.get(del._id.toString());
+          return {
+            ...del,
+            __nearestRank: sortedItem ? sortedItem.nearestRank : 999,
+            __distance: sortedItem ? sortedItem.distanceFromDriver : null,
+            
+            // IMPORTANT: Show Original Pickup Location in List (Factory)
+            pickupLocation: del.originalPickupLocation || del.pickupLocation,
+            deliveryLocation: del.deliveryLocation
+          };
+        }).sort((a, b) => (a.__nearestRank || 999) - (b.__nearestRank || 999));
+
+        finalDeliveries.push(...orderedGroup);
+
+      } catch (e) {
+        console.error(`Sorting failed for driver ${dId}`, e.message);
+        finalDeliveries.push(...group);
+      }
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const paginatedDeliveries = finalDeliveries.slice(skip, skip + parseInt(limit));
+
+    // Stats
+    const stats = await Delivery.aggregate([{
+      $facet: {
+        total: [{ $count: 'count' }],
+        delivered: [{ $match: { status: 'delivered' } }, { $count: 'count' }],
+        inTransit: [{ $match: { status: { $in: ['in_transit', 'assigned', 'picked_up', 'out_for_delivery'] } } }, { $count: 'count' }],
+        pending: [{ $match: { status: { $in: ['pending', 'pending_acceptance'] } } }, { $count: 'count' }]
+      }
+    }]);
 
     const statistics = {
       total: stats[0].total[0]?.count || 0,
@@ -78,15 +197,15 @@ exports.renderDeliveriesList = async (req, res) => {
     res.render('deliveries_list', {
       title: 'Deliveries Management',
       user: req.user,
-      deliveries,
+      deliveries: paginatedDeliveries,
       stats: statistics,
       pagination: {
-        total,
+        total: finalDeliveries.length,
         page: parseInt(page),
-        pages: Math.ceil(total / parseInt(limit)),
+        pages: Math.ceil(finalDeliveries.length / parseInt(limit)),
         limit: parseInt(limit)
       },
-      filters: { status, search, startDate, endDate },
+      filters: { status, search, startDate, endDate, driverId },
       url: req.originalUrl,
       messages: req.flash()
     });
@@ -97,7 +216,6 @@ exports.renderDeliveriesList = async (req, res) => {
     res.redirect('/admin/dashboard');
   }
 };
-
 // ============= RENDER DELIVERY DETAILS =============
 // exports.renderDeliveryDetails = async (req, res) => {
 //   try {
@@ -773,6 +891,218 @@ exports.renderCreateDeliveryFromOrder = async (req, res) => {
 
 
 
+// exports.createDeliveryFromOrder = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+//     const {
+//       customerId,
+//       driverId,
+//       scheduledPickupTime,
+//       scheduledDeliveryTime,
+//       instructions,
+//       waypoints,
+//       routeDistance,
+//       routeDuration
+//     } = req.body;
+
+//     const order = await Order.findById(orderId)
+//       .populate({
+//         path: 'customerId',
+//         model: 'Customer'
+//       });
+
+//     if (!order) {
+//       req.flash('error', 'Order not found');
+//       return res.redirect('/admin/orders');
+//     }
+
+//     const existing = await Delivery.findOne({ orderId: order.orderNumber });
+//     if (existing) {
+//       req.flash('error', 'Delivery already exists for this order');
+//       return res.redirect(`/admin/deliveries/${existing._id}`);
+//     }
+
+//     const driver = await Driver.findById(driverId);
+//     if (!driver) {
+//       req.flash('error', 'Driver not found');
+//       return res.redirect(`/admin/orders/${orderId}/create-delivery`);
+//     }
+
+//     if (driver.profileStatus !== 'approved') {
+//       req.flash('warning', 'Note: Driver is not approved yet, but assigning anyway');
+//       return res.redirect(`/admin/orders/${orderId}/create-delivery`);
+//     }
+
+//     // Generate tracking number
+//     const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+//     const random = Math.floor(1000 + Math.random() * 9000);
+//     const trackingNumber = `DEL${dateStr}${random}`;
+
+//     // Parse waypoints
+//     let parsedWaypoints = [];
+//     if (waypoints) {
+//       try {
+//         parsedWaypoints = JSON.parse(waypoints);
+//       } catch (e) {
+//         console.error('Waypoints parse error:', e);
+//       }
+//     }
+
+//     // ================================================================
+//     // ✅ CHAINING FIX (v2): agar isi driver ki koi ACTIVE (abhi tak
+//     // delivered/cancelled/failed NAHI hui) delivery pehle se bani hui
+//     // hai, to us delivery ka "destination" hi is naye delivery ka
+//     // "pickup point" banega — factory nahi.
+//     //
+//     // ⚠️ ROOT-CAUSE FIX: pehle status check nahi hota tha — sirf
+//     // "sabse recently CREATED" delivery utha li jaati thi, chahe wo
+//     // already COMPLETED kyun na ho chuki ho. Isse purani (subah wali,
+//     // already delivered) delivery ka address naye batch (sham wali)
+//     // ki pehli delivery ka galat pickup ban jata tha.
+//     //
+//     // Ab sirf un deliveries ko "chain link" maana jayega jo abhi bhi
+//     // ACTIVE hain. Agar driver ki saari pichli deliveries complete ho
+//     // chuki hain, naya batch FACTORY se hi shuru hoga.
+//     // ================================================================
+//     const previousDeliveryForDriver = await Delivery.findOne({
+//       driverId,
+//       status: { $nin: ['Delivered', 'Failed', 'Cancelled', 'Completed', 'delivered', 'failed', 'cancelled', 'completed'] }
+//     })
+//       .sort({ createdAt: -1 })
+//       .select('deliveryLocation trackingNumber status');
+
+//     const hasValidPreviousStop = !!(
+//       previousDeliveryForDriver?.deliveryLocation?.coordinates?.latitude &&
+//       previousDeliveryForDriver?.deliveryLocation?.coordinates?.longitude &&
+//       previousDeliveryForDriver?.deliveryLocation?.address
+//     );
+
+//     // Pickup location decide karo: chain me pichla ACTIVE stop mile to wahi, warna order ka factory pickup
+//     const effectivePickupLocation = hasValidPreviousStop
+//       ? previousDeliveryForDriver.deliveryLocation
+//       : order.pickupLocation;
+
+//     if (hasValidPreviousStop) {
+//       console.log(`[CREATE-DELIVERY] 🔗 Chained pickup — using ACTIVE previous delivery's destination as pickup: "${previousDeliveryForDriver.deliveryLocation.address}" (from ${previousDeliveryForDriver.trackingNumber}, status: ${previousDeliveryForDriver.status})`);
+//     } else {
+//       console.log(`[CREATE-DELIVERY] No ACTIVE previous delivery for this driver (saari pichli deliveries complete ho chuki hain ya koi hai hi nahi) — using factory as pickup`);
+//     }
+
+//     // Safe coordinate extraction (defaulting to Ahmedabad coords)
+//     const pickupCoords = {
+//       latitude: effectivePickupLocation?.coordinates?.latitude || 23.0225,
+//       longitude: effectivePickupLocation?.coordinates?.longitude || 72.5714
+//     };
+
+//     const deliveryCoords = {
+//       latitude: order?.deliveryLocation?.coordinates?.latitude || 23.0225,
+//       longitude: order?.deliveryLocation?.coordinates?.longitude || 72.5714
+//     };
+
+//     // Create delivery
+//     const delivery = await Delivery.create({
+//       trackingNumber,
+//       orderId: order.orderNumber,
+//       customerId: order.customerId?._id || null,
+//       driverId,
+//       vehicleNumber: driver.vehicleNumber,
+//       pickupLocation: {
+//         ...effectivePickupLocation,
+//         coordinates: pickupCoords
+//       },
+//       deliveryLocation: {
+//         ...order.deliveryLocation,
+//         coordinates: deliveryCoords
+//       },
+//       // ✅ Chain reference — traceability ke liye (schema me field na ho to Mongoose ise silently ignore kar dega, crash nahi hoga)
+//       previousDeliveryId: previousDeliveryForDriver?._id || null,
+//       packageDetails: {
+//         description: order.items?.map(i => i.productName).join(', ') || 'Package',
+//         quantity: order.items?.reduce((sum, i) => sum + (i.quantity || 0), 0) || 1,
+//         weight: order.items?.reduce((sum, i) => sum + (i.specifications?.weight || 0), 0) || 0
+//       },
+//       scheduledPickupTime: scheduledPickupTime ? new Date(scheduledPickupTime) : null,
+//       scheduledDeliveryTime: scheduledDeliveryTime ? new Date(scheduledDeliveryTime) : null,
+//       instructions,
+//       waypoints: parsedWaypoints,
+//       distance: parseFloat(routeDistance) || 0,
+//       estimatedDuration: parseInt(routeDuration) || 0,
+//       status: 'assigned',
+//       priority: order.priority || 'medium',
+//       createdBy: req.user._id
+//     });
+
+//     // ✅ Pichli delivery ka nextDeliveryId bhi set kar do (chain dono taraf se traceable rahe)
+//     if (previousDeliveryForDriver?._id) {
+//       await Delivery.findByIdAndUpdate(previousDeliveryForDriver._id, { nextDeliveryId: delivery._id });
+//     }
+
+//     // Update order
+//     order.deliveryId = delivery._id;
+//     order.status = 'assigned';
+//     await order.save();
+
+
+//     // Create status history
+//     await DeliveryStatusHistory.create({
+//       deliveryId: delivery._id,
+//       status: 'assigned',
+//       remarks: hasValidPreviousStop
+//         ? `Delivery assigned to ${driver.name} (${driver.vehicleNumber}) — chained pickup from ${previousDeliveryForDriver.trackingNumber}`
+//         : `Delivery assigned to ${driver.name} (${driver.vehicleNumber})`,
+//       updatedBy: {
+//         userId: req.user._id,
+//         userRole: req.user.role,
+//         userName: req.user.name
+//       }
+//     });
+
+//     // Notifications (push + in-app) – yeh same rahega
+//     // 1. Push Notification (FCM)
+//     if (driver.fcmToken) {
+//       const data = {
+//         deliveryId: delivery._id.toString(),
+//         trackingNumber: delivery.trackingNumber,
+//         type: "delivery_assigned",
+//         title: "Delivery Assigned 🚚",
+//         body: `You have a new delivery. Pickup from ${effectivePickupLocation?.address || 'location'}` //${delivery.trackingNumber}
+//       };
+
+//       sendNotification(driver.fcmToken, data);   // ← assuming your helper accepts token + object
+//     } else {
+//       console.warn(`No FCM token for driver ${driver._id} → assignment notification skipped`);
+//     }
+
+//     // 2. In-app Notification
+//     try {
+//       const notificationDoc = await Notification.create({
+//         recipientId: driver._id,          // matches your schema
+//         recipientType: 'Driver',          // required for refPath
+//         type: 'delivery_assigned',
+//         title: 'New Delivery Assigned',
+//         message: `You have been assigned delivery. Check details in your app.`, //${delivery.trackingNumber}
+//         referenceId: delivery._id,
+//         referenceModel: 'Delivery',
+//         priority: `${delivery.priority}`,
+//         createdAt: new Date()
+//       });
+
+//       console.log(`[NOTIF-SUCCESS] In-app notification created → _id: ${notificationDoc._id}`);
+//     } catch (notifErr) {
+//       console.error("[NOTIF-ERROR] Failed to create in-app notification:", notifErr.message || notifErr);
+//     }
+
+//     console.log('[CREATE-DELIVERY] Success:', delivery.trackingNumber);
+//     req.flash('success', 'Delivery created and driver assigned successfully!');
+//     res.redirect(`/admin/deliveries/${delivery._id}`);
+
+//   } catch (error) {
+//     console.error('[CREATE-DELIVERY] Error:', error);
+//     req.flash('error', error.message || 'Failed to create delivery');
+//     res.redirect(`/admin/orders/${req.params.orderId}/create-delivery`);
+//   }
+// };
+
 exports.createDeliveryFromOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -831,20 +1161,7 @@ exports.createDeliveryFromOrder = async (req, res) => {
     }
 
     // ================================================================
-    // ✅ CHAINING FIX (v2): agar isi driver ki koi ACTIVE (abhi tak
-    // delivered/cancelled/failed NAHI hui) delivery pehle se bani hui
-    // hai, to us delivery ka "destination" hi is naye delivery ka
-    // "pickup point" banega — factory nahi.
-    //
-    // ⚠️ ROOT-CAUSE FIX: pehle status check nahi hota tha — sirf
-    // "sabse recently CREATED" delivery utha li jaati thi, chahe wo
-    // already COMPLETED kyun na ho chuki ho. Isse purani (subah wali,
-    // already delivered) delivery ka address naye batch (sham wali)
-    // ki pehli delivery ka galat pickup ban jata tha.
-    //
-    // Ab sirf un deliveries ko "chain link" maana jayega jo abhi bhi
-    // ACTIVE hain. Agar driver ki saari pichli deliveries complete ho
-    // chuki hain, naya batch FACTORY se hi shuru hoga.
+    // CHAINING LOGIC (Active previous delivery only)
     // ================================================================
     const previousDeliveryForDriver = await Delivery.findOne({
       driverId,
@@ -859,18 +1176,17 @@ exports.createDeliveryFromOrder = async (req, res) => {
       previousDeliveryForDriver?.deliveryLocation?.address
     );
 
-    // Pickup location decide karo: chain me pichla ACTIVE stop mile to wahi, warna order ka factory pickup
     const effectivePickupLocation = hasValidPreviousStop
       ? previousDeliveryForDriver.deliveryLocation
       : order.pickupLocation;
 
     if (hasValidPreviousStop) {
-      console.log(`[CREATE-DELIVERY] 🔗 Chained pickup — using ACTIVE previous delivery's destination as pickup: "${previousDeliveryForDriver.deliveryLocation.address}" (from ${previousDeliveryForDriver.trackingNumber}, status: ${previousDeliveryForDriver.status})`);
+      console.log(`[CREATE-DELIVERY] 🔗 Chained pickup from: ${previousDeliveryForDriver.trackingNumber}`);
     } else {
-      console.log(`[CREATE-DELIVERY] No ACTIVE previous delivery for this driver (saari pichli deliveries complete ho chuki hain ya koi hai hi nahi) — using factory as pickup`);
+      console.log(`[CREATE-DELIVERY] Using original factory pickup`);
     }
 
-    // Safe coordinate extraction (defaulting to Ahmedabad coords)
+    // Safe coordinates
     const pickupCoords = {
       latitude: effectivePickupLocation?.coordinates?.latitude || 23.0225,
       longitude: effectivePickupLocation?.coordinates?.longitude || 72.5714
@@ -881,28 +1197,36 @@ exports.createDeliveryFromOrder = async (req, res) => {
       longitude: order?.deliveryLocation?.coordinates?.longitude || 72.5714
     };
 
-    // Create delivery
+    // ==================== CREATE DELIVERY ====================
     const delivery = await Delivery.create({
       trackingNumber,
       orderId: order.orderNumber,
       customerId: order.customerId?._id || null,
       driverId,
       vehicleNumber: driver.vehicleNumber,
+
+      // Original Factory Pickup (List view ke liye important)
+      originalPickupLocation: order.pickupLocation,     // ← Yeh line important hai
+
+      // Effective pickup (chaining ke liye)
       pickupLocation: {
         ...effectivePickupLocation,
         coordinates: pickupCoords
       },
+
       deliveryLocation: {
         ...order.deliveryLocation,
         coordinates: deliveryCoords
       },
-      // ✅ Chain reference — traceability ke liye (schema me field na ho to Mongoose ise silently ignore kar dega, crash nahi hoga)
+
       previousDeliveryId: previousDeliveryForDriver?._id || null,
+
       packageDetails: {
         description: order.items?.map(i => i.productName).join(', ') || 'Package',
         quantity: order.items?.reduce((sum, i) => sum + (i.quantity || 0), 0) || 1,
         weight: order.items?.reduce((sum, i) => sum + (i.specifications?.weight || 0), 0) || 0
       },
+
       scheduledPickupTime: scheduledPickupTime ? new Date(scheduledPickupTime) : null,
       scheduledDeliveryTime: scheduledDeliveryTime ? new Date(scheduledDeliveryTime) : null,
       instructions,
@@ -914,9 +1238,11 @@ exports.createDeliveryFromOrder = async (req, res) => {
       createdBy: req.user._id
     });
 
-    // ✅ Pichli delivery ka nextDeliveryId bhi set kar do (chain dono taraf se traceable rahe)
+    // Update previous delivery's nextDeliveryId
     if (previousDeliveryForDriver?._id) {
-      await Delivery.findByIdAndUpdate(previousDeliveryForDriver._id, { nextDeliveryId: delivery._id });
+      await Delivery.findByIdAndUpdate(previousDeliveryForDriver._id, { 
+        nextDeliveryId: delivery._id 
+      });
     }
 
     // Update order
@@ -924,14 +1250,13 @@ exports.createDeliveryFromOrder = async (req, res) => {
     order.status = 'assigned';
     await order.save();
 
-
-    // Create status history
+    // Status History
     await DeliveryStatusHistory.create({
       deliveryId: delivery._id,
       status: 'assigned',
       remarks: hasValidPreviousStop
-        ? `Delivery assigned to ${driver.name} (${driver.vehicleNumber}) — chained pickup from ${previousDeliveryForDriver.trackingNumber}`
-        : `Delivery assigned to ${driver.name} (${driver.vehicleNumber})`,
+        ? `Delivery assigned to ${driver.name} — chained from ${previousDeliveryForDriver.trackingNumber}`
+        : `Delivery assigned to ${driver.name}`,
       updatedBy: {
         userId: req.user._id,
         userRole: req.user.role,
@@ -939,39 +1264,32 @@ exports.createDeliveryFromOrder = async (req, res) => {
       }
     });
 
-    // Notifications (push + in-app) – yeh same rahega
-    // 1. Push Notification (FCM)
+    // Notifications (existing code)
     if (driver.fcmToken) {
       const data = {
         deliveryId: delivery._id.toString(),
         trackingNumber: delivery.trackingNumber,
         type: "delivery_assigned",
         title: "Delivery Assigned 🚚",
-        body: `You have a new delivery. Pickup from ${effectivePickupLocation?.address || 'location'}` //${delivery.trackingNumber}
+        body: `You have a new delivery. Pickup from ${effectivePickupLocation?.address || 'location'}`
       };
-
-      sendNotification(driver.fcmToken, data);   // ← assuming your helper accepts token + object
-    } else {
-      console.warn(`No FCM token for driver ${driver._id} → assignment notification skipped`);
+      sendNotification(driver.fcmToken, data);
     }
 
-    // 2. In-app Notification
     try {
-      const notificationDoc = await Notification.create({
-        recipientId: driver._id,          // matches your schema
-        recipientType: 'Driver',          // required for refPath
+      await Notification.create({
+        recipientId: driver._id,
+        recipientType: 'Driver',
         type: 'delivery_assigned',
         title: 'New Delivery Assigned',
-        message: `You have been assigned delivery. Check details in your app.`, //${delivery.trackingNumber}
+        message: `You have been assigned delivery ${delivery.trackingNumber}.`,
         referenceId: delivery._id,
         referenceModel: 'Delivery',
         priority: `${delivery.priority}`,
         createdAt: new Date()
       });
-
-      console.log(`[NOTIF-SUCCESS] In-app notification created → _id: ${notificationDoc._id}`);
     } catch (notifErr) {
-      console.error("[NOTIF-ERROR] Failed to create in-app notification:", notifErr.message || notifErr);
+      console.error("[NOTIF-ERROR]", notifErr.message);
     }
 
     console.log('[CREATE-DELIVERY] Success:', delivery.trackingNumber);

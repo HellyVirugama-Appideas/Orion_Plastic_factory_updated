@@ -11,14 +11,17 @@
     <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
 
     <style>
-        table tr td, th { text-align: center; }
-
+        table tr td, th { text-align: center; vertical-align: middle; }
         [type='checkbox']+span:not(.lever):before { border-color: black; }
         [type='checkbox']:checked+span:not(.lever):before { border-right-color: black; border-bottom-color: black; }
 
         .status-badge {
-            padding: 6px 14px; border-radius: 4px; font-size: 0.85rem;
-            font-weight: 500; display: inline-block; text-transform: capitalize;
+            padding: 6px 14px; 
+            border-radius: 4px; 
+            font-size: 0.85rem;
+            font-weight: 500; 
+            display: inline-block; 
+            text-transform: capitalize;
         }
         .status-pending            { background-color: #fff3cd; color: #856404; }
         .status-pending_acceptance { background-color: #fff0d4; color: #e65100; }
@@ -40,21 +43,47 @@
         td.checkbox-column, td.actions-column { cursor: default; }
         td.priority-column { cursor: default; }
 
+        .distance-cell {
+            font-weight: 600;
+            color: #1565c0;
+        }
+        .rank-badge {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
         /* Tabs */
         .tab-bar {
             display: flex; gap: 0; border-bottom: 2px solid #e0e0e0;
             margin-bottom: 16px; flex-wrap: wrap;
         }
         .tab-btn {
-            padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
-            background: none; border: none; outline: none; color: #757575;
-            border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .2s;
+            padding: 10px 18px; 
+            font-size: 13px; 
+            font-weight: 600; 
+            cursor: pointer;
+            background: none; 
+            border: none; 
+            outline: none; 
+            color: #757575;
+            border-bottom: 3px solid transparent; 
+            margin-bottom: -2px; 
+            transition: all .2s;
         }
         .tab-btn:hover  { color: #1565c0; }
         .tab-btn.active { color: #1565c0; border-bottom: 3px solid #1565c0; }
         .tab-btn .badge-num {
-            display: inline-block; background: #e0e0e0; color: #555;
-            border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 5px;
+            display: inline-block; 
+            background: #e0e0e0; 
+            color: #555;
+            border-radius: 10px; 
+            padding: 1px 7px; 
+            font-size: 11px; 
+            margin-left: 5px;
         }
         .tab-btn.active .badge-num { background: #1565c0; color: #fff; }
     </style>
@@ -118,11 +147,13 @@
                                                 <thead>
                                                     <tr>
                                                         <th>Sr</th>
+                                                        <th>Rank</th>
                                                         <th>Tracking Number</th>
                                                         <th>Customer</th>
                                                         <th>Driver</th>
                                                         <th>Pickup Location</th>
                                                         <th>Delivery Location</th>
+                                                        <th>Distance from Driver</th>
                                                         <th>Status</th>
                                                         <th>Priority</th>
                                                         <th>Created Date</th>
@@ -153,12 +184,20 @@
                                                             <tr class="delivery-row <%= tabClass %>"
                                                                 data-href="/admin/deliveries/<%= delivery._id %>">
                                                                 <td><%= index + 1 %></td>
+                                                                
+                                                                <td>
+                                                                    <% if (delivery.__nearestRank) { %>
+                                                                        <span class="rank-badge">#<%= delivery.__nearestRank %></span>
+                                                                    <% } else { %>
+                                                                        <span class="grey-text">-</span>
+                                                                    <% } %>
+                                                                </td>
 
                                                                 <td><strong><%= delivery.trackingNumber %></strong></td>
 
                                                                 <td>
                                                                     <% if (delivery.customerId) { %>
-                                                                        <%= delivery.customerId.companyName || delivery.customerId.name || 'N/A' %><br>
+                                                                        <%= delivery.customerId.companyName || delivery.customerId.name || 'N/A' %>
                                                                     <% } else { %>
                                                                         <span class="grey-text">N/A</span>
                                                                     <% } %>
@@ -167,13 +206,18 @@
                                                                 <td>
                                                                     <% if (delivery.driverId) { %>
                                                                         <%= delivery.driverId.name %><br>
+                                                                        <!-- <small class="grey-text"><%= delivery.driverId.vehicleNumber || '' %></small> -->
                                                                     <% } else { %>
                                                                         <span class="grey-text">Not Assigned</span>
                                                                     <% } %>
                                                                 </td>
 
-                                                                <td><%= delivery.pickupLocation?.address?.substring(0, 30) || 'N/A' %>...</td>
-                                                                <td><%= delivery.deliveryLocation?.address?.substring(0, 30) || 'N/A' %>...</td>
+                                                                <td><%= delivery.pickupLocation?.address?.substring(0, 35) || 'N/A' %>...</td>
+                                                                <td><%= delivery.deliveryLocation?.address?.substring(0, 35) || 'N/A' %>...</td>
+
+                                                                <td class="distance-cell">
+                                                                    <%= delivery.__distance || 'N/A' %>
+                                                                </td>
 
                                                                 <td>
                                                                     <span class="status-badge status-<%= delivery.status %>">
@@ -224,7 +268,7 @@
                                                         <% }) %>
                                                     <% } else { %>
                                                         <tr>
-                                                            <td colspan="10" class="center-align grey-text">No deliveries found</td>
+                                                            <td colspan="12" class="center-align grey-text">No deliveries found</td>
                                                         </tr>
                                                     <% } %>
                                                 </tbody>
@@ -309,7 +353,7 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        M.toast({ html: `Priority set to <strong>${priority.toUpperCase()}</strong> — driver notified`, classes: 'green rounded', displayLength: 2500 });
+                        M.toast({ html: `Priority set to <strong>${priority.toUpperCase()}</strong>`, classes: 'green rounded', displayLength: 2500 });
                     } else {
                         M.toast({ html: data.message || 'Failed to update priority', classes: 'red rounded' });
                     }
@@ -318,7 +362,7 @@
             });
         });
 
-        // Row click — original logic + priority column block
+        // Row click
         document.querySelectorAll('tr.delivery-row').forEach(row => {
             row.addEventListener('click', function (e) {
                 if (
@@ -326,12 +370,8 @@
                     e.target.closest('.actions-column')  ||
                     e.target.closest('.priority-column') ||
                     e.target.closest('.priority-select') ||
-                    e.target.tagName === 'INPUT'  ||
-                    e.target.tagName === 'LABEL'  ||
                     e.target.tagName === 'SELECT' ||
-                    e.target.tagName === 'OPTION' ||
-                    e.target.tagName === 'A'      ||
-                    e.target.closest('.btn-edit')
+                    e.target.tagName === 'OPTION'
                 ) return;
 
                 const href = this.getAttribute('data-href');
