@@ -2903,7 +2903,7 @@
 //         address: defaultPickup.name || defaultPickup.address || 'Warehouse'
 //       };
 //     }
- 
+
 //     const anyPickup = await PickupLocation.findOne({ isActive: true }).sort({ createdAt: 1 });
 //     if (anyPickup?.coordinates?.latitude && anyPickup?.coordinates?.longitude) {
 //       log("WARN", `Koi default PickupLocation nahi mila - "${anyPickup.name}" ko warehouse maan rahe hain`);
@@ -2913,35 +2913,35 @@
 //         address: anyPickup.name || anyPickup.address || 'Warehouse'
 //       };
 //     }
- 
+
 //     log("WARN", `DB me koi bhi PickupLocation nahi hai - admin panel se ek pickup location add karo`);
 //     return null;
- 
+
 //   } catch (err) {
 //     log("ERR", `getWarehouseLocation error: ${err.message}`);
 //     return null;
 //   }
 // }
- 
+
 // async function optimizeDriverRouteAndNotify(driverId, io) {
 //   try {
 //     const activeDelivery = await Delivery.findOne({
 //       driverId,
 //       status: 'In_transit'
 //     }).select('deliveryLocation _id');
- 
+
 //     const pendingDeliveries = await Delivery.find({
 //       driverId,
 //       status: { $in: ['assigned', 'ready_for_pickup'] }
 //     }).sort({ createdAt: 1 });
- 
+
 //     if (pendingDeliveries.length === 0) {
 //       log("INFO", `[ROUTE-OPT] Driver ${driverId} ke paas koi pending delivery nahi hai`);
 //       return;
 //     }
- 
+
 //     let startPoint;
- 
+
 //     if (activeDelivery?.deliveryLocation?.coordinates?.latitude) {
 //       startPoint = {
 //         latitude: activeDelivery.deliveryLocation.coordinates.latitude,
@@ -2951,7 +2951,7 @@
 //       log("INFO", `[ROUTE-OPT] Active delivery (${activeDelivery._id}) ke destination ko reference point banaya`);
 //     } else {
 //       const driver = await Driver.findById(driverId).select('currentLocation');
- 
+
 //       if (driver?.currentLocation?.latitude && driver?.currentLocation?.longitude) {
 //         startPoint = {
 //           latitude: driver.currentLocation.latitude,
@@ -2968,13 +2968,13 @@
 //         log("INFO", `[ROUTE-OPT] Dynamic warehouse location use kiya:`, startPoint);
 //       }
 //     }
- 
+
 //     const optimizedOrder = optimizeRoute(startPoint, pendingDeliveries);
- 
+
 //     log("INFO", `[ROUTE-OPT] Optimized queue: ${JSON.stringify(optimizedOrder.map(d => ({
 //       id: d._id, seq: d.routeSequence, distance: d.distanceFromPrevious + ' km'
 //     })))}`);
- 
+
 //     for (const item of optimizedOrder) {
 //       await Delivery.findByIdAndUpdate(item._id, {
 //         routeSequence: item.routeSequence,
@@ -2982,7 +2982,7 @@
 //         effectivePickupLocation: item.effectivePickupLocation
 //       });
 //     }
- 
+
 //     if (io) {
 //       const driverRoom = `driver-${driverId.toString()}`;
 //       io.to(driverRoom).emit('route:optimized', {
@@ -3000,7 +3000,7 @@
 //       });
 //       log("EMIT", `[ROUTE-OPT] route:optimized emitted to room: ${driverRoom}`);
 //     }
- 
+
 //   } catch (err) {
 //     log("ERR", `[ROUTE-OPT] Error: ${err.message}`);
 //     console.error(err.stack);
@@ -3853,6 +3853,119 @@ function setupSocketHandlers(io) {
     // ─────────────────────────────────────────────
     // STEP 4: DRIVER — driver:location (live tracking)
     // ─────────────────────────────────────────────
+    // socket.on("driver:location", async (data) => {
+    //   try {
+    //     const { driverId, journeyId, deliveryId, latitude, longitude, speed, heading, accuracy, timestamp } = data || {};
+
+    //     if (!driverId || !latitude || !longitude) {
+    //       log("WARN", `driver:location — invalid data | socket: ${socket.id}`);
+    //       return;
+    //     }
+
+    //     log("LOC", `From driver ${driverId} | lat: ${latitude} | lng: ${longitude} | speed: ${speed}`);
+
+    //     // DB update
+    //     try {
+    //       await Driver.findByIdAndUpdate(
+    //         driverId,
+    //         {
+    //           "currentLocation.latitude": latitude,
+    //           "currentLocation.longitude": longitude,
+    //           "currentLocation.speed": speed || 0,
+    //           "currentLocation.heading": heading || 0,
+    //           "currentLocation.accuracy": accuracy || 0,
+    //           "currentLocation.timestamp": new Date(),
+    //           lastLocationUpdate: new Date(),
+    //         },
+    //         { new: false }
+    //       );
+    //       log("INFO", `DB location saved for driver ${driverId}`);
+
+    //       // ✅ AUTO-PUSH: location save hone ke turant baad driver ko naya
+    //       // nearest-first sorted delivery list bhi bhej do — REST call ka
+    //       // wait nahi karna padta, app khulte hi pehli baar bhi sahi order
+    //       // mil jaata hai (bas location ek baar bhej diya ho).
+    //       try {
+    //         const sorted = await getSortedUpcomingForDriver(driverId);
+    //         io.to(`driver-${driverId}`).emit("driver:deliveries:updated", {
+    //           upcoming: sorted.upcoming,
+    //           completed: sorted.completed,
+    //           sortedByProximity: sorted.sortedByProximity,
+    //           timestamp: new Date().toISOString(),
+    //         });
+    //         log("EMIT", `driver:deliveries:updated pushed to driver-${driverId} | sortedByProximity: ${sorted.sortedByProximity}`);
+    //       } catch (sortErr) {
+    //         log("ERR", `Auto-push sorted deliveries failed | ${sortErr.message}`);
+    //       }
+    //     } catch (e) {
+    //       log("ERR", `DB location save failed | ${e.message}`);
+    //     }
+
+    //     const locationPayload = {
+    //       latitude,
+    //       longitude,
+    //       speed: speed || 0,
+    //       heading: heading || 0,
+    //       accuracy: accuracy || 0,
+    //       timestamp: timestamp || new Date().toISOString(),
+    //       journeyId,
+    //       deliveryId,
+    //     };
+
+    //     driverLocations.set(driverId, locationPayload);
+
+    //     if (activeDrivers.has(driverId)) {
+    //       const di = activeDrivers.get(driverId);
+    //       activeDrivers.set(driverId, { ...di, lastSeen: new Date().toISOString() });
+    //     } else {
+    //       log("WARN", `driver:location — driverId ${driverId} not in activeDrivers! Call driver:connect first.`);
+    //     }
+
+    //     const driverInfo = activeDrivers.get(driverId);
+
+    //     const adminRoomSockets = await io.in("admin-room").allSockets();
+    //     if (adminRoomSockets.size === 0) {
+    //       log("WARN", `No clients in admin-room!`);
+    //     }
+
+    //     io.to("admin-room").emit("driver:location:update", {
+    //       driverId,
+    //       driverName: driverInfo?.driverName || "Driver",
+    //       vehicleNumber: driverInfo?.vehicleNumber || "N/A",
+    //       journeyId,
+    //       deliveryId,
+    //       location: locationPayload,
+    //       isAvailable: false,
+    //       status: "In_transit",
+    //       timestamp: new Date().toISOString(),
+    //     });
+
+    //     if (deliveryId) {
+    //       io.to(`delivery-${deliveryId}`).emit("delivery:location:update", {
+    //         deliveryId,
+    //         driverId,
+    //         location: { latitude, longitude },
+    //         speed,
+    //         heading,
+    //         timestamp: timestamp || new Date().toISOString(),
+    //       });
+    //     }
+
+    //     if (journeyId) {
+    //       io.to(`journey-${journeyId}`).emit("journey:location:update", {
+    //         journeyId,
+    //         driverId,
+    //         location: { latitude, longitude, speed, heading, accuracy },
+    //         timestamp: timestamp || new Date().toISOString(),
+    //       });
+    //     }
+    //   } catch (err) {
+    //     log("ERR", `driver:location | ${err.stack}`);
+    //   }
+    // });
+
+
+
     socket.on("driver:location", async (data) => {
       try {
         const { driverId, journeyId, deliveryId, latitude, longitude, speed, heading, accuracy, timestamp } = data || {};
@@ -3864,41 +3977,51 @@ function setupSocketHandlers(io) {
 
         log("LOC", `From driver ${driverId} | lat: ${latitude} | lng: ${longitude} | speed: ${speed}`);
 
-        // DB update
-        try {
-          await Driver.findByIdAndUpdate(
-            driverId,
+        // DB update (non-blocking) — Driver ka current location
+        Driver.findByIdAndUpdate(
+          driverId,
+          {
+            "currentLocation.latitude": latitude,
+            "currentLocation.longitude": longitude,
+            "currentLocation.speed": speed || 0,
+            "currentLocation.heading": heading || 0,
+            "currentLocation.accuracy": accuracy || 0,
+            "currentLocation.lastUpdated": new Date(),
+            lastLocationUpdate: new Date(),
+          },
+          { new: false }
+        )
+          .then(() => log("INFO", `DB location saved for driver ${driverId}`))
+          .catch((e) => log("ERR", `DB location save failed | ${e.message}`));
+
+        // ✅ NAYA FIX: Journey ke waypoints array me bhi ye GPS point push karo —
+        // isi se "actual traveled route" ban ke store hota hai. Isके bina
+        // Journey.waypoints hamesha khaali reh jaata tha, isliye map pe
+        // completed delivery ka route kabhi nahi dikhta tha.
+        if (journeyId) {
+          Journey.findByIdAndUpdate(
+            journeyId,
             {
-              "currentLocation.latitude": latitude,
-              "currentLocation.longitude": longitude,
-              "currentLocation.speed": speed || 0,
-              "currentLocation.heading": heading || 0,
-              "currentLocation.accuracy": accuracy || 0,
-              "currentLocation.timestamp": new Date(),
-              lastLocationUpdate: new Date(),
+              $push: {
+                waypoints: {
+                  location: {
+                    coordinates: {
+                      latitude: Number(latitude),
+                      longitude: Number(longitude)
+                    }
+                  },
+                  speed: speed || 0,
+                  heading: heading || 0,
+                  timestamp: timestamp ? new Date(timestamp) : new Date()
+                }
+              }
             },
             { new: false }
-          );
-          log("INFO", `DB location saved for driver ${driverId}`);
-
-          // ✅ AUTO-PUSH: location save hone ke turant baad driver ko naya
-          // nearest-first sorted delivery list bhi bhej do — REST call ka
-          // wait nahi karna padta, app khulte hi pehli baar bhi sahi order
-          // mil jaata hai (bas location ek baar bhej diya ho).
-          try {
-            const sorted = await getSortedUpcomingForDriver(driverId);
-            io.to(`driver-${driverId}`).emit("driver:deliveries:updated", {
-              upcoming: sorted.upcoming,
-              completed: sorted.completed,
-              sortedByProximity: sorted.sortedByProximity,
-              timestamp: new Date().toISOString(),
-            });
-            log("EMIT", `driver:deliveries:updated pushed to driver-${driverId} | sortedByProximity: ${sorted.sortedByProximity}`);
-          } catch (sortErr) {
-            log("ERR", `Auto-push sorted deliveries failed | ${sortErr.message}`);
-          }
-        } catch (e) {
-          log("ERR", `DB location save failed | ${e.message}`);
+          )
+            .then(() => log("INFO", `Waypoint saved to Journey ${journeyId}`))
+            .catch((e) => log("ERR", `Waypoint save failed | journeyId: ${journeyId} | ${e.message}`));
+        } else {
+          log("WARN", `driver:location — journeyId missing, waypoint NAHI save hua (route incomplete rahega)`);
         }
 
         const locationPayload = {
@@ -3922,11 +4045,6 @@ function setupSocketHandlers(io) {
         }
 
         const driverInfo = activeDrivers.get(driverId);
-
-        const adminRoomSockets = await io.in("admin-room").allSockets();
-        if (adminRoomSockets.size === 0) {
-          log("WARN", `No clients in admin-room!`);
-        }
 
         io.to("admin-room").emit("driver:location:update", {
           driverId,

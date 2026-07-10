@@ -161,21 +161,15 @@ exports.renderDeliveriesList = async (req, res) => {
 // const { getSortedUpcomingForDriver } = require('../Driver/deliveryController');
 
 
-// ============= RENDER DELIVERY DETAILS =============
-
-
-// ============= RENDER DELIVERY DETAILS =============
-
-
 exports.renderDeliveryDetails = async (req, res) => {
   try {
     const { deliveryId } = req.params;
- 
+
     if (!mongoose.Types.ObjectId.isValid(deliveryId)) {
       req.flash('error', 'Invalid delivery ID');
       return res.redirect('/admin/deliveries');
     }
- 
+
     const delivery = await Delivery.findById(deliveryId)
       .populate({
         path: 'customerId',
@@ -188,79 +182,76 @@ exports.renderDeliveryDetails = async (req, res) => {
       })
       .populate('createdBy', 'name email')
       .lean();
- 
+
     if (!delivery) {
       req.flash('error', 'Delivery not found');
       return res.redirect('/admin/deliveries');
     }
- 
+
     // ================================================================
-    // ✅ FIXED: DYNAMIC CLOSEST-FIRST CHAIN
-    // Ab delivered/completed deliveries ko strictly exclude kiya gaya hai
+    // ✅ STRONG FIXED ROUTE CHAIN LOGIC
     // ================================================================
     let effectivePickupLocation = delivery.pickupLocation;
-    let routeChain = []; // [{ label, isCurrent, isFactory, distance }]
+    let routeChain = [];
 
     if (delivery.driverId) {
       try {
         const driverIdForSort = delivery.driverId._id || delivery.driverId;
         const sorted = await getSortedUpcomingForDriver(driverIdForSort);
 
-        // ✅ Double safety: Filter out already completed deliveries
-        const validUpcoming = sorted.upcoming.filter(u => 
-          !['delivered', 'Delivered', 'completed', 'Completed', 'cancelled', 'Cancelled']
-            .includes(u.status || u.deliveryStatus || '')
-        );
+        // ✅ Bahut Strong Filter
+        const validUpcoming = sorted.upcoming.filter(u => {
+          const status = String(u.status || '').toLowerCase().trim();
+          return !['delivered', 'completed', 'cancelled', 'Delivered', 'Completed', 'Cancelled'].includes(status);
+        });
 
         const myIndex = validUpcoming.findIndex(u => u.id === delivery._id.toString());
 
-        console.log(`[DELIVERY-DETAILS] deliveryId: ${deliveryId} | myRank: ${myIndex >= 0 ? myIndex + 1 : 'not in upcoming'} of ${validUpcoming.length}`);
+        console.log(`[DELIVERY-DETAILS] Valid Upcoming: ${validUpcoming.length} | My Rank: ${myIndex >= 0 ? myIndex + 1 : 'Not Found'}`);
 
-        // Build Route Chain for display
+        // Route Chain Build
         routeChain.push({ label: 'Factory (Start)', isFactory: true, isCurrent: false });
 
-        validUpcoming.forEach((u, idx) => {
+        validUpcoming.forEach((u) => {
           routeChain.push({
             label: u.trackingNumber,
             isFactory: false,
-            isCurrent: u.id === delivery._id.toString(),
-            distance: u.distanceFromDriver
+            isCurrent: u.id === delivery._id.toString()
           });
         });
 
-        // Set effective pickup location (previous delivery ka drop point)
+        // Effective Pickup Logic - Sirf Active Delivery se
         if (myIndex > 0) {
           const previousItem = validUpcoming[myIndex - 1];
-          const previousDeliveryDoc = await Delivery.findById(previousItem.id)
+          const previousDoc = await Delivery.findById(previousItem.id)
             .select('deliveryLocation trackingNumber status')
             .lean();
 
-          if (previousDeliveryDoc?.deliveryLocation?.coordinates?.latitude &&
-              !['delivered', 'Delivered', 'completed', 'Completed', 'cancelled', 'Cancelled']
-                .includes(previousDeliveryDoc.status)) {
-            
-            effectivePickupLocation = previousDeliveryDoc.deliveryLocation;
-            console.log(`[DELIVERY-DETAILS] ✅ Pickup chained from: ${previousDeliveryDoc.trackingNumber}`);
+          const prevStatus = String(previousDoc?.status || '').toLowerCase().trim();
+
+          if (previousDoc && !['delivered', 'completed', 'cancelled'].includes(prevStatus)) {
+            effectivePickupLocation = previousDoc.deliveryLocation;
+            console.log(`[DELIVERY-DETAILS] Pickup chained from active delivery: ${previousDoc.trackingNumber}`);
+          } else {
+            console.log(`[DELIVERY-DETAILS] Previous delivery was already delivered - Using original pickup`);
           }
-        } else if (myIndex === 0) {
-          console.log('[DELIVERY-DETAILS] Rank #1 → Using original pickup location');
         } else {
-          console.log('[DELIVERY-DETAILS] Delivery not in current active batch');
+          console.log(`[DELIVERY-DETAILS] Rank #1 - Using original pickup location`);
         }
 
-      } catch (sortErr) {
-        console.error('[DELIVERY-DETAILS] Chain resolution failed (non-fatal):', sortErr.message);
+      } catch (err) {
+        console.error('[DELIVERY-DETAILS] Chain resolution failed:', err.message);
       }
     }
- 
+
     delivery.pickupLocation = effectivePickupLocation;
- 
-    // Get status history
+
+    // Status History
     const statusHistory = await DeliveryStatusHistory.find({ deliveryId: delivery._id })
       .sort({ timestamp: -1 })
       .populate('updatedBy.userId', 'name email')
       .lean();
- 
+
     res.render('delivery_details', {
       title: `Delivery ${delivery.trackingNumber}`,
       user: req.user,
@@ -270,7 +261,7 @@ exports.renderDeliveryDetails = async (req, res) => {
       url: req.originalUrl,
       messages: req.flash()
     });
- 
+
   } catch (error) {
     console.error('[DELIVERY-DETAILS] Error:', error);
     req.flash('error', 'Failed to load delivery details');
@@ -577,6 +568,211 @@ exports.renderCreateDeliveryFromOrder = async (req, res) => {
 //     res.redirect(`/admin/orders/${req.params.orderId}/create-delivery`);
 //   }
 // };
+// exports.createDeliveryFromOrder = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+//     const {
+//       customerId,
+//       driverId,
+//       scheduledPickupTime,
+//       scheduledDeliveryTime,
+//       instructions,
+//       waypoints,
+//       routeDistance,
+//       routeDuration
+//     } = req.body;
+
+//     const order = await Order.findById(orderId)
+//       .populate({
+//         path: 'customerId',
+//         model: 'Customer'
+//       });
+
+//     if (!order) {
+//       req.flash('error', 'Order not found');
+//       return res.redirect('/admin/orders');
+//     }
+
+//     const existing = await Delivery.findOne({ orderId: order.orderNumber });
+//     if (existing) {
+//       req.flash('error', 'Delivery already exists for this order');
+//       return res.redirect(`/admin/deliveries/${existing._id}`);
+//     }
+
+//     const driver = await Driver.findById(driverId);
+//     if (!driver) {
+//       req.flash('error', 'Driver not found');
+//       return res.redirect(`/admin/orders/${orderId}/create-delivery`);
+//     }
+
+//     if (driver.profileStatus !== 'approved') {
+//       req.flash('warning', 'Note: Driver is not approved yet, but assigning anyway');
+//       return res.redirect(`/admin/orders/${orderId}/create-delivery`);
+//     }
+
+//     // if (!driver.isAvailable) {
+//     //   req.flash('warning', 'Note: Driver is marked as unavailable, but multiple assignments allowed');
+//     // }
+
+//     // Generate tracking number
+//     const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+//     const random = Math.floor(1000 + Math.random() * 9000);
+//     const trackingNumber = `DEL${dateStr}${random}`;
+
+//     // Parse waypoints
+//     let parsedWaypoints = [];
+//     if (waypoints) {
+//       try {
+//         parsedWaypoints = JSON.parse(waypoints);
+//       } catch (e) {
+//         console.error('Waypoints parse error:', e);
+//       }
+//     }
+
+//     // ================================================================
+//     // ✅ CHAINING FIX: agar isi driver ki koi pehle se delivery bani hui
+//     // hai (chahe kisi bhi order se ho), to us delivery ka "destination"
+//     // hi is naye delivery ka "pickup point" banega — factory nahi.
+//     // Isse route hamesha Factory→A, A→B, B→C bante hain (Factory→C nahi).
+//     // ================================================================
+//     const previousDeliveryForDriver = await Delivery.findOne({ driverId })
+//       .sort({ createdAt: -1 })
+//       .select('deliveryLocation trackingNumber');
+
+//     const hasValidPreviousStop = !!(
+//       previousDeliveryForDriver?.deliveryLocation?.coordinates?.latitude &&
+//       previousDeliveryForDriver?.deliveryLocation?.coordinates?.longitude &&
+//       previousDeliveryForDriver?.deliveryLocation?.address
+//     );
+
+//     // Pickup location decide karo: chain me pichla stop mile to wahi, warna order ka factory pickup
+//     const effectivePickupLocation = hasValidPreviousStop
+//       ? previousDeliveryForDriver.deliveryLocation
+//       : order.pickupLocation;
+
+//     if (hasValidPreviousStop) {
+//       console.log(`[CREATE-DELIVERY] 🔗 Chained pickup — using previous delivery's destination as pickup: "${previousDeliveryForDriver.deliveryLocation.address}" (from ${previousDeliveryForDriver.trackingNumber})`);
+//     } else {
+//       console.log(`[CREATE-DELIVERY] No previous delivery for this driver — using factory as pickup`);
+//     }
+
+//     // Safe coordinate extraction (defaulting to Ahmedabad coords)
+//     const pickupCoords = {
+//       latitude: effectivePickupLocation?.coordinates?.latitude || 23.0225,
+//       longitude: effectivePickupLocation?.coordinates?.longitude || 72.5714
+//     };
+
+//     const deliveryCoords = {
+//       latitude: order?.deliveryLocation?.coordinates?.latitude || 23.0225,
+//       longitude: order?.deliveryLocation?.coordinates?.longitude || 72.5714
+//     };
+
+//     // Create delivery
+//     const delivery = await Delivery.create({
+//       trackingNumber,
+//       orderId: order.orderNumber,
+//       customerId: order.customerId?._id || null,
+//       driverId,
+//       vehicleNumber: driver.vehicleNumber,
+//       pickupLocation: {
+//         ...effectivePickupLocation,
+//         coordinates: pickupCoords
+//       },
+//       deliveryLocation: {
+//         ...order.deliveryLocation,
+//         coordinates: deliveryCoords
+//       },
+//       // ✅ Chain reference — traceability ke liye (schema me field na ho to Mongoose ise silently ignore kar dega, crash nahi hoga)
+//       previousDeliveryId: previousDeliveryForDriver?._id || null,
+//       packageDetails: {
+//         description: order.items?.map(i => i.productName).join(', ') || 'Package',
+//         quantity: order.items?.reduce((sum, i) => sum + (i.quantity || 0), 0) || 1,
+//         weight: order.items?.reduce((sum, i) => sum + (i.specifications?.weight || 0), 0) || 0
+//       },
+//       scheduledPickupTime: scheduledPickupTime ? new Date(scheduledPickupTime) : null,
+//       scheduledDeliveryTime: scheduledDeliveryTime ? new Date(scheduledDeliveryTime) : null,
+//       instructions,
+//       waypoints: parsedWaypoints,
+//       distance: parseFloat(routeDistance) || 0,
+//       estimatedDuration: parseInt(routeDuration) || 0,
+//       status: 'assigned',
+//       priority: order.priority || 'medium',
+//       createdBy: req.user._id
+//     });
+
+//     // ✅ Pichli delivery ka nextDeliveryId bhi set kar do (chain dono taraf se traceable rahe)
+//     if (previousDeliveryForDriver?._id) {
+//       await Delivery.findByIdAndUpdate(previousDeliveryForDriver._id, { nextDeliveryId: delivery._id });
+//     }
+
+//     // Update order
+//     order.deliveryId = delivery._id;
+//     order.status = 'assigned';
+//     await order.save();
+
+
+//     // Create status history
+//     await DeliveryStatusHistory.create({
+//       deliveryId: delivery._id,
+//       status: 'assigned',
+//       remarks: hasValidPreviousStop
+//         ? `Delivery assigned to ${driver.name} (${driver.vehicleNumber}) — chained pickup from ${previousDeliveryForDriver.trackingNumber}`
+//         : `Delivery assigned to ${driver.name} (${driver.vehicleNumber})`,
+//       updatedBy: {
+//         userId: req.user._id,
+//         userRole: req.user.role,
+//         userName: req.user.name
+//       }
+//     });
+
+//     // Notifications (push + in-app) – yeh same rahega
+//     // 1. Push Notification (FCM)
+//     if (driver.fcmToken) {
+//       const data = {
+//         deliveryId: delivery._id.toString(),
+//         trackingNumber: delivery.trackingNumber,
+//         type: "delivery_assigned",
+//         title: "Delivery Assigned 🚚",
+//         body: `You have a new delivery. Pickup from ${effectivePickupLocation?.address || 'location'}` //${delivery.trackingNumber}
+//       };
+
+//       sendNotification(driver.fcmToken, data);   // ← assuming your helper accepts token + object
+//     } else {
+//       console.warn(`No FCM token for driver ${driver._id} → assignment notification skipped`);
+//     }
+
+//     // 2. In-app Notification
+//     try {
+//       const notificationDoc = await Notification.create({
+//         recipientId: driver._id,          // matches your schema
+//         recipientType: 'Driver',          // required for refPath
+//         type: 'delivery_assigned',
+//         title: 'New Delivery Assigned',
+//         message: `You have been assigned delivery. Check details in your app.`, //${delivery.trackingNumber}
+//         referenceId: delivery._id,
+//         referenceModel: 'Delivery',
+//         priority: `${delivery.priority}`,
+//         createdAt: new Date()
+//       });
+
+//       console.log(`[NOTIF-SUCCESS] In-app notification created → _id: ${notificationDoc._id}`);
+//     } catch (notifErr) {
+//       console.error("[NOTIF-ERROR] Failed to create in-app notification:", notifErr.message || notifErr);
+//     }
+
+//     console.log('[CREATE-DELIVERY] Success:', delivery.trackingNumber);
+//     req.flash('success', 'Delivery created and driver assigned successfully!');
+//     res.redirect(`/admin/deliveries/${delivery._id}`);
+
+//   } catch (error) {
+//     console.error('[CREATE-DELIVERY] Error:', error);
+//     req.flash('error', error.message || 'Failed to create delivery');
+//     res.redirect(`/admin/orders/${req.params.orderId}/create-delivery`);
+//   }
+// };
+
+
+
 exports.createDeliveryFromOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -619,10 +815,6 @@ exports.createDeliveryFromOrder = async (req, res) => {
       return res.redirect(`/admin/orders/${orderId}/create-delivery`);
     }
 
-    // if (!driver.isAvailable) {
-    //   req.flash('warning', 'Note: Driver is marked as unavailable, but multiple assignments allowed');
-    // }
-
     // Generate tracking number
     const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
     const random = Math.floor(1000 + Math.random() * 9000);
@@ -639,14 +831,27 @@ exports.createDeliveryFromOrder = async (req, res) => {
     }
 
     // ================================================================
-    // ✅ CHAINING FIX: agar isi driver ki koi pehle se delivery bani hui
-    // hai (chahe kisi bhi order se ho), to us delivery ka "destination"
-    // hi is naye delivery ka "pickup point" banega — factory nahi.
-    // Isse route hamesha Factory→A, A→B, B→C bante hain (Factory→C nahi).
+    // ✅ CHAINING FIX (v2): agar isi driver ki koi ACTIVE (abhi tak
+    // delivered/cancelled/failed NAHI hui) delivery pehle se bani hui
+    // hai, to us delivery ka "destination" hi is naye delivery ka
+    // "pickup point" banega — factory nahi.
+    //
+    // ⚠️ ROOT-CAUSE FIX: pehle status check nahi hota tha — sirf
+    // "sabse recently CREATED" delivery utha li jaati thi, chahe wo
+    // already COMPLETED kyun na ho chuki ho. Isse purani (subah wali,
+    // already delivered) delivery ka address naye batch (sham wali)
+    // ki pehli delivery ka galat pickup ban jata tha.
+    //
+    // Ab sirf un deliveries ko "chain link" maana jayega jo abhi bhi
+    // ACTIVE hain. Agar driver ki saari pichli deliveries complete ho
+    // chuki hain, naya batch FACTORY se hi shuru hoga.
     // ================================================================
-    const previousDeliveryForDriver = await Delivery.findOne({ driverId })
+    const previousDeliveryForDriver = await Delivery.findOne({
+      driverId,
+      status: { $nin: ['Delivered', 'Failed', 'Cancelled', 'Completed', 'delivered', 'failed', 'cancelled', 'completed'] }
+    })
       .sort({ createdAt: -1 })
-      .select('deliveryLocation trackingNumber');
+      .select('deliveryLocation trackingNumber status');
 
     const hasValidPreviousStop = !!(
       previousDeliveryForDriver?.deliveryLocation?.coordinates?.latitude &&
@@ -654,15 +859,15 @@ exports.createDeliveryFromOrder = async (req, res) => {
       previousDeliveryForDriver?.deliveryLocation?.address
     );
 
-    // Pickup location decide karo: chain me pichla stop mile to wahi, warna order ka factory pickup
+    // Pickup location decide karo: chain me pichla ACTIVE stop mile to wahi, warna order ka factory pickup
     const effectivePickupLocation = hasValidPreviousStop
       ? previousDeliveryForDriver.deliveryLocation
       : order.pickupLocation;
 
     if (hasValidPreviousStop) {
-      console.log(`[CREATE-DELIVERY] 🔗 Chained pickup — using previous delivery's destination as pickup: "${previousDeliveryForDriver.deliveryLocation.address}" (from ${previousDeliveryForDriver.trackingNumber})`);
+      console.log(`[CREATE-DELIVERY] 🔗 Chained pickup — using ACTIVE previous delivery's destination as pickup: "${previousDeliveryForDriver.deliveryLocation.address}" (from ${previousDeliveryForDriver.trackingNumber}, status: ${previousDeliveryForDriver.status})`);
     } else {
-      console.log(`[CREATE-DELIVERY] No previous delivery for this driver — using factory as pickup`);
+      console.log(`[CREATE-DELIVERY] No ACTIVE previous delivery for this driver (saari pichli deliveries complete ho chuki hain ya koi hai hi nahi) — using factory as pickup`);
     }
 
     // Safe coordinate extraction (defaulting to Ahmedabad coords)

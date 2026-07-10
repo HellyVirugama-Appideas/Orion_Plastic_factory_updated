@@ -42,10 +42,21 @@
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.6; transform: scale(0.8); }
         }
-        .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; display: inline-block; white-space: nowrap; }
-        .info-row { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #eee; flex-wrap: wrap; }
+        .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; display: inline-block; }
+        .status-assigned            { background: #fff3cd; color: #856404; }
+        .status-pending_acceptance  { background: #e3f2fd; color: #1565c0; }
+        .status-picked_up           { background: #d1ecf1; color: #0c5460; }
+        .status-in_transit,
+        .status-In_transit          { background: #cce5ff; color: #004085; }
+        .status-out_for_delivery    { background: #d4edda; color: #155724; }
+        .status-delivered,
+        .status-Delivered           { background: #d4edda; color: #155724; }
+        .status-cancelled,
+        .status-Cancelled           { background: #ffcdd2; color: #b71c1c; }
+        .status-failed              { background: #f8d7da; color: #721c24; }
+        .info-row { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #eee; }
         .info-label { color: #555; font-weight: 500; }
-        .info-value { font-weight: 600; text-align: right; word-break: break-word; }
+        .info-value { font-weight: 600; text-align: right; }
         .route-stats { background: #f5f5f5; padding: 15px; border-radius: 8px; margin-top: 15px; }
         .route-stat-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; }
         .route-stat-item:last-child { margin-bottom: 0; }
@@ -62,8 +73,10 @@
             font-size: 0.9rem;
         }
         .driver-info-overlay p { margin: 5px 0; display: flex; align-items: center; gap: 8px; }
+        .driver-info-overlay .material-icons { font-size: 16px; color: #666; }
+        .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
 
-        /* Route Chain Styles */
+        /* Route Chain */
         .route-chain-card {
             background: #f8f9ff;
             border: 1px solid #e0e4f7;
@@ -71,24 +84,6 @@
             padding: 14px 16px;
             margin-top: 15px;
         }
-        .route-chain-track {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .route-chain-pill {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            background: #ffffff;
-            border: 1.5px solid #d1d5db;
-            color: #555;
-        }
-        .route-chain-pill.is-factory { background: #eef2ff; border-color: #6366f1; color: #4338ca; }
-        .route-chain-pill.is-current { background: #1565c0; border-color: #1565c0; color: #fff; }
-        .route-chain-arrow { color: #9ca3af; font-size: 20px; }
     </style>
 </head>
 
@@ -169,18 +164,15 @@
                                     <!-- Route Chain -->
                                     <% if (typeof routeChain !== 'undefined' && routeChain && routeChain.length > 0) { %>
                                     <div class="route-chain-card">
-                                        <h6><i class="material-icons tiny" style="vertical-align:middle;">alt_route</i> Route Chain (Current Active Batch)</h6>
-                                        <div class="route-chain-track">
+                                        <h6><i class="material-icons tiny">alt_route</i> Route Chain (Active Batch)</h6>
+                                        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
                                             <% routeChain.forEach((stop, idx) => { %>
-                                                <span class="route-chain-pill <%= stop.isFactory ? 'is-factory' : '' %> <%= stop.isCurrent ? 'is-current' : '' %>">
+                                                <span style="padding:6px 12px; border-radius:20px; background:#fff; border:1.5px solid #d1d5db; <%= stop.isCurrent ? 'background:#1565c0;color:white;' : '' %>">
                                                     <%= stop.label %>
                                                 </span>
-                                                <% if (idx < routeChain.length - 1) { %>
-                                                    <span class="route-chain-arrow">→</span>
-                                                <% } %>
+                                                <% if (idx < routeChain.length - 1) { %> → <% } %>
                                             <% }) %>
                                         </div>
-                                        <small class="grey-text">Only active (not delivered) deliveries are shown</small>
                                     </div>
                                     <% } %>
 
@@ -213,11 +205,11 @@
                                         <h6><strong>Route Information</strong></h6>
                                         <div class="route-stat-item">
                                             <span>Distance:</span>
-                                            <strong id="totalDistance">Calculating...</strong>
+                                            <strong id="totalDistance"><%= delivery.distance ? delivery.distance.toFixed(2)+' km' : 'Calculating...' %></strong>
                                         </div>
                                         <div class="route-stat-item">
                                             <span>Est. Duration:</span>
-                                            <strong id="totalDuration">Calculating...</strong>
+                                            <strong id="totalDuration"><%= delivery.estimatedDuration ? delivery.estimatedDuration+' min' : 'Calculating...' %></strong>
                                         </div>
                                         <div class="route-stat-item">
                                             <span>Current Speed:</span>
@@ -248,9 +240,15 @@
                                                 <i class="material-icons tiny">person</i>
                                                 <%= delivery.driverId.name || 'Driver' %>
                                             </strong>
-                                            <p><i class="material-icons">directions_car</i> <span id="overlayVehicle"><%= delivery.vehicleNumber || 'N/A' %></span></p>
-                                            <p><i class="material-icons">speed</i> Speed: <strong id="overlaySpeed">-- km/h</strong></p>
-                                            <p><i class="material-icons">location_on</i> <span id="overlayStatus">Getting location...</span></p>
+                                            <p><i class="material-icons">directions_car</i>
+                                                <span id="overlayVehicle"><%= delivery.vehicleNumber || 'N/A' %></span>
+                                            </p>
+                                            <p><i class="material-icons">speed</i>
+                                                Speed: <strong id="overlaySpeed">-- km/h</strong>
+                                            </p>
+                                            <p><i class="material-icons">location_on</i>
+                                                <span id="overlayStatus">Getting location...</span>
+                                            </p>
                                         </div>
                                         <% } %>
                                     </div>
@@ -323,6 +321,43 @@
       </div>
     </div>
 
+    <script>
+      const DELIVERY_ID_FOR_ADDR = '<%= delivery._id %>';
+      function openChangeAddrModal() {
+        const modal = document.getElementById('change-addr-modal');
+        modal.style.display = 'flex';
+        document.getElementById('new-addr-input').value = '';
+      }
+      function closeChangeAddrModal() {
+        document.getElementById('change-addr-modal').style.display = 'none';
+      }
+      function submitChangeAddr() {
+        const address = document.getElementById('new-addr-input').value.trim();
+        const lat = document.getElementById('new-addr-lat').value;
+        const lng = document.getElementById('new-addr-lng').value;
+        if (!address) { M.toast({ html: 'Please enter the new address', classes: 'orange' }); return; }
+        fetch(`/admin/deliveries/${DELIVERY_ID_FOR_ADDR}/change-address`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, latitude: lat || undefined, longitude: lng || undefined })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            M.toast({ html: '✅ Delivery address updated!', classes: 'green rounded' });
+            closeChangeAddrModal();
+            setTimeout(() => location.reload(), 800);
+          } else {
+            M.toast({ html: data.message || 'Failed to update address', classes: 'red rounded' });
+          }
+        })
+        .catch(() => M.toast({ html: 'Network error', classes: 'red rounded' }));
+      }
+      document.getElementById('change-addr-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeChangeAddrModal();
+      });
+    </script>
+
     <%- include('_layouts/commonJs') %>
 
     <!-- Google Maps -->
@@ -330,7 +365,7 @@
         const GOOGLE_MAPS_API_KEY = '<%= process.env.GOOGLE_MAPS_API_KEY || "YOUR_API_KEY" %>';
         (function () {
             const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap&libraries=geometry`;
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
             script.async = true;
             script.defer = true;
             document.head.appendChild(script);
@@ -338,10 +373,19 @@
     </script>
 
     <script>
+        // Variables
         const deliveryId     = '<%= delivery._id.toString() %>';
         const deliveryStatus = '<%= delivery.status %>';
-        let safeDriverId = '<%= safeDriverId %>';
-        const driverId = safeDriverId;
+
+        <% 
+            let safeDriverId = '';
+            if (delivery.driverId) {
+                safeDriverId = (typeof delivery.driverId === 'object' && delivery.driverId._id) 
+                    ? delivery.driverId._id.toString() 
+                    : delivery.driverId.toString();
+            }
+        %>
+        const driverId = '<%= safeDriverId %>';
 
         const pickupAddress   = `<%= (delivery.pickupLocation?.address || '').replace(/'/g, "\\'") %>`;
         const deliveryAddress = `<%= (delivery.deliveryLocation?.address || '').replace(/'/g, "\\'") %>`;
@@ -349,12 +393,15 @@
         const pickupLat   = <%- delivery.pickupLocation?.coordinates?.latitude || 0 %>;
         const pickupLng   = <%- delivery.pickupLocation?.coordinates?.longitude || 0 %>;
 
-        let map, driverMarker, traveledPolyline;
+        let map, driverMarker;
+        let pickupMarker, deliveryMarker;
+        let traveledPolyline = null;       // ✅ WAPAS ADD KIYA — actual driver-walked path
+        let predictedRoutePolyline = null; // ✅ Planned route (journey start hone se pehle)
 
         function initMap() {
             map = new google.maps.Map(document.getElementById('map'), {
                 center: { lat: 25.2048, lng: 55.2708 },
-                zoom: 11,
+                zoom: 10,
                 mapTypeControl: true,
                 streetViewControl: false,
                 fullscreenControl: true
@@ -362,11 +409,11 @@
 
             // Pickup Marker
             if (pickupLat && pickupLng) {
-                new google.maps.Marker({
+                pickupMarker = new google.maps.Marker({
                     position: { lat: pickupLat, lng: pickupLng },
                     map: map,
-                    title: 'Pickup',
-                    icon: { url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png', scaledSize: new google.maps.Size(40, 40) }
+                    title: 'Pickup Location',
+                    icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
                 });
             }
 
@@ -375,80 +422,129 @@
                 const geocoder = new google.maps.Geocoder();
                 geocoder.geocode({ address: deliveryAddress }, (results, status) => {
                     if (status === 'OK' && results[0]) {
-                        new google.maps.Marker({
+                        deliveryMarker = new google.maps.Marker({
                             position: results[0].geometry.location,
                             map: map,
-                            title: 'Delivery',
-                            icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png', scaledSize: new google.maps.Size(40, 40) }
+                            title: 'Delivery Location',
+                            icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
                         });
                     }
                 });
             }
 
+            // ✅ WAPAS ADD KIYA: Driver ne jo asli safar kiya (ya complete
+            // ho chuki delivery ka poora traveled path) — ye function
+            // pehle bhi tha, isliye completed deliveries ka route dikhta
+            // tha. Naye simplified version me ye call hi chhoot gaya tha.
             drawActualTraveledRoute();
 
+            // Agar journey abhi start nahi hui / traveled data nahi hai,
+            // to bhi planned (pickup → delivery) route dikha do
+            drawPredictedRoute();
+
+            // Live tracking
             const activeStatuses = ['assigned', 'picked_up', 'in_transit', 'In_transit', 'out_for_delivery'];
             if (activeStatuses.includes(deliveryStatus) && driverId) {
-                fetchDriverLocation();
-                initializeSocket();
+                if (typeof fetchDriverLocation === 'function') fetchDriverLocation();
+                if (typeof initializeSocket === 'function') initializeSocket();
             }
         }
 
+        // ==================== ACTUAL TRAVELED ROUTE (completed/in-progress deliveries) ====================
+        // Journey.waypoints se banta hai — driver:journey:location socket
+        // event har GPS ping ko waypoint ke roop me save karta hai. Ye
+        // delivery COMPLETE ho chuki ho tab bhi kaam karta hai (Journey
+        // record permanently DB me rehta hai), isliye completed delivery
+        // ka pura traveled path yahan wapas dikhega.
         async function drawActualTraveledRoute() {
             try {
                 const res = await fetch(`/admin/deliveries/${deliveryId}/journey-route`);
                 const data = await res.json();
-                if (!data.success || !data.data.path || data.data.path.length < 2) return;
+
+                if (!data.success || !data.data.path || data.data.path.length < 2) {
+                    console.log('ℹ️ Koi traveled route nahi mila — journey record nahi mila ya waypoints kam hain.');
+                    return;
+                }
 
                 const path = data.data.path.map(p => ({ lat: p.lat, lng: p.lng }));
+
+                if (traveledPolyline) traveledPolyline.setMap(null);
                 traveledPolyline = new google.maps.Polyline({
-                    path: path,
+                    path,
                     geodesic: true,
                     strokeColor: '#2196F3',
                     strokeOpacity: 0.9,
                     strokeWeight: 6,
                     map: map
                 });
+
+                const distEl = document.getElementById('totalDistance');
+                const durEl = document.getElementById('totalDuration');
+                if (distEl) distEl.innerHTML = `${data.data.stats.totalDistance} <small class="grey-text">(actual traveled)</small>`;
+                if (durEl) durEl.innerHTML = `${data.data.stats.totalDuration} <small class="grey-text">(actual)</small>`;
+
+                // Map ko poore traveled path pe fit karo
+                const bounds = new google.maps.LatLngBounds();
+                path.forEach(p => bounds.extend(p));
+                if (pickupLat && pickupLng) bounds.extend({ lat: pickupLat, lng: pickupLng });
+                map.fitBounds(bounds);
+
             } catch (err) {
-                console.log("No traveled route found yet");
+                console.error('Failed to load traveled route:', err);
             }
         }
 
-        // ==================== Live Tracking Functions ====================
-        async function fetchDriverLocation() {
-            try {
-                const res = await fetch(`/admin/drivers/${driverId}/location`);
-                const data = await res.json();
-                if (data.success && data.location) updateDriverMarker(data.location);
-            } catch (e) { console.log("Location fetch failed"); }
-        }
+        // ==================== PREDICTED ROUTE (chained pickup → delivery) ====================
+        function drawPredictedRoute() {
+            if (!pickupLat || !pickupLng || !deliveryAddress) return;
 
-        function initializeSocket() {
-            const socket = io();
-            socket.on('driverLocationUpdate', (data) => {
-                if (data.driverId === driverId) {
-                    updateDriverMarker(data);
+            const directionsService = new google.maps.DirectionsService();
+
+            directionsService.route({
+                origin: { lat: pickupLat, lng: pickupLng },
+                destination: deliveryAddress,
+                travelMode: google.maps.TravelMode.DRIVING
+            }, (result, status) => {
+                if (status === 'OK') {
+                    if (predictedRoutePolyline) predictedRoutePolyline.setMap(null);
+
+                    predictedRoutePolyline = new google.maps.DirectionsRenderer({
+                        map: map,
+                        directions: result,
+                        suppressMarkers: true,
+                        polylineOptions: {
+                            strokeColor: '#9c27b0',
+                            strokeWeight: 4,
+                            strokeOpacity: 0,
+                            icons: [{
+                                icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 },
+                                offset: '0',
+                                repeat: '15px'
+                            }]
+                        }
+                    });
+
+                    const leg = result.routes[0]?.legs[0];
+                    if (leg) {
+                        const distEl = document.getElementById('totalDistance');
+                        const durEl = document.getElementById('totalDuration');
+
+                        // Sirf tab overwrite karo jab traveled-route wala data na mila ho
+                        if (distEl && distEl.textContent.includes('Calculating')) {
+                            distEl.innerHTML = `${leg.distance.text} <small class="grey-text">(planned)</small>`;
+                        }
+                        if (durEl && durEl.textContent.includes('Calculating')) {
+                            durEl.innerHTML = `${leg.duration.text} <small class="grey-text">(planned)</small>`;
+                        }
+
+                        if (!traveledPolyline) {
+                            map.fitBounds(result.routes[0].bounds);
+                        }
+                    }
+                } else {
+                    console.warn('⚠️ Predicted route fetch failed:', status);
                 }
             });
-        }
-
-        function updateDriverMarker(loc) {
-            if (!map) return;
-            const position = { lat: loc.latitude, lng: loc.longitude };
-
-            if (!driverMarker) {
-                driverMarker = new google.maps.Marker({
-                    position: position,
-                    map: map,
-                    title: 'Driver Live',
-                    icon: { url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png', scaledSize: new google.maps.Size(40, 40) }
-                });
-            } else {
-                driverMarker.setPosition(position);
-            }
-
-            document.getElementById('overlaySpeed').textContent = (loc.speed || 0) + ' km/h';
-            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('en-IN');
         }
 
         function confirmCancel(id) {
@@ -462,13 +558,9 @@
             .then(r => r.json())
             .then(data => {
                 M.toast({ html: data.message || 'Done', classes: data.success ? 'green' : 'red' });
-                if (data.success) setTimeout(() => location.reload(), 1200);
+                if (data.success) setTimeout(() => location.reload(), 1500);
             });
         }
-
-        // Auto refresh
-        if (driverId) setInterval(fetchDriverLocation, 25000);
     </script>
-
 </body>
 </html>
