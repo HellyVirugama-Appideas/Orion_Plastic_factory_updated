@@ -594,6 +594,8 @@
                 // In-memory store
                 // ================================================================
                 let pickupLocations = <%- JSON.stringify(pickupLocations || []) %>;
+                // 👇 NEW: categories injected from server (Category model)
+                let orderCategories = <%- JSON.stringify(categories || []) %>;
                 let itemCounter = 0;
 
                 // ===== INIT =====
@@ -1106,9 +1108,22 @@
                 // ================================================================
                 // ORDER ITEMS
                 // ================================================================
+                function buildCategoryOptionsHtml() {
+                    // 👇 Build <option> list dynamically from orderCategories (fetched from DB)
+                    if (!orderCategories || orderCategories.length === 0) {
+                        // Fallback if no categories exist yet in DB
+                        return `<option value="other" selected>Other</option>`;
+                    }
+                    return orderCategories.map(cat => {
+                        // value = cat.name (kept as string, matches Order.items.category usage in controller)
+                        return `<option value="${cat.name}">${cat.name}</option>`;
+                    }).join('') + `<option value="other">Other</option>`;
+                }
+
                 function addItem() {
                     itemCounter++;
                     const id   = itemCounter;
+                    const categoryOptionsHtml = buildCategoryOptionsHtml();
                     const html = `
                         <div class="item-card" id="item-${id}">
                             <button type="button" class="btn-small red remove-item-btn waves-effect"
@@ -1128,12 +1143,7 @@
                             <div class="row">
                                 <div class="input-field col s12 m4">
                                     <select id="category-${id}">
-                                        <option value="containers">Containers</option>
-                                        <option value="bottles">Bottles</option>
-                                        <option value="bags">Bags</option>
-                                        <option value="sheets">Sheets</option>
-                                        <option value="custom">Custom</option>
-                                        <option value="other" selected>Other</option>
+                                        ${categoryOptionsHtml}
                                     </select>
                                     <label>Category</label>
                                 </div>

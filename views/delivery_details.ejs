@@ -180,11 +180,6 @@
                                         <span class="info-label">Delivery Address</span>
                                         <span class="info-value" id="delivery-addr-display">
                                             <%= delivery.deliveryLocation?.address || 'N/A' %>
-                                            <% if (!['delivered','completed','cancelled'].includes(delivery.status)) { %>
-                                              <a href="#" onclick="openChangeAddrModal()" style="font-size:12px;margin-left:8px;color:#1565c0;" title="Change Address">
-                                                <i class="material-icons" style="font-size:15px;vertical-align:middle;">edit_location</i> Change
-                                              </a>
-                                            <% } %>
                                         </span>
                                     </div>
 
@@ -259,9 +254,7 @@
 
                         <div class="card-action right-align">
                             <div class="action-buttons">
-                                <a href="/admin/deliveries/<%= delivery._id %>/edit" class="btn waves-effect waves-light orange">
-                                    <i class="material-icons left">edit</i>Edit
-                                </a>
+                                
                                 <% if (!['delivered','Delivered','cancelled','Cancelled'].includes(delivery.status)) { %>
                                 <a href="#" onclick="confirmCancel('<%= delivery._id %>')" class="btn waves-effect waves-light red">
                                     <i class="material-icons left">cancel</i>Cancel
