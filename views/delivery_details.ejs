@@ -397,7 +397,8 @@
                 zoom: 10,
                 mapTypeControl: true,
                 streetViewControl: false,
-                fullscreenControl: true
+                fullscreenControl: true,
+                clickableIcons: false // ✅ base map ke random business POI icons (jaise "Narayani Heights") click-hone-yogya nahi rahenge — isi wajah se galat/unrelated info card khul jaata tha
             });
 
             // Pickup Marker
@@ -405,9 +406,17 @@
                 pickupMarker = new google.maps.Marker({
                     position: { lat: pickupLat, lng: pickupLng },
                     map: map,
-                    title: 'Pickup Location',
+                    title: pickupAddress || 'Pickup Location',
                     icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
                 });
+
+                // ✅ Ab click karne par humara apna sahi pickup address dikhega
+                // (Factory (Start) ya jo bhi controller se effective pickup aaya ho),
+                // random Google POI nahi
+                const pickupInfo = new google.maps.InfoWindow({
+                    content: `<strong>Pickup</strong><br>${pickupAddress || 'Pickup Location'}`
+                });
+                pickupMarker.addListener('click', () => pickupInfo.open(map, pickupMarker));
             }
 
             // Delivery Marker
@@ -418,9 +427,14 @@
                         deliveryMarker = new google.maps.Marker({
                             position: results[0].geometry.location,
                             map: map,
-                            title: 'Delivery Location',
+                            title: deliveryAddress || 'Delivery Location',
                             icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
                         });
+
+                        const deliveryInfo = new google.maps.InfoWindow({
+                            content: `<strong>Delivery</strong><br>${deliveryAddress}`
+                        });
+                        deliveryMarker.addListener('click', () => deliveryInfo.open(map, deliveryMarker));
                     }
                 });
             }

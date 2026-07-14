@@ -1030,6 +1030,19 @@ async function getDefaultStartPoint() {
   return null;
 }
 
+// ✅ Driver ki live GPS reading sanity-check karta hai (business sirf India mein hai).
+// Agar GPS koi bahar-ka/garbage coordinate de de (jaise Abu Dhabi 24.19,54.47),
+// to usse currentPoint na banaya jaaye — warna poori proximity chain ulti ho jaati hai.
+function isPlausibleDriverLocation(loc) {
+  if (!loc) return false;
+  const { latitude, longitude } = loc;
+  const INDIA_BOUNDS = { minLat: 6, maxLat: 38, minLng: 68, maxLng: 98 };
+  return (
+    latitude >= INDIA_BOUNDS.minLat && latitude <= INDIA_BOUNDS.maxLat &&
+    longitude >= INDIA_BOUNDS.minLng && longitude <= INDIA_BOUNDS.maxLng
+  );
+}
+
 async function findNearestFromPool(currentPoint, pool, getCoords) {
   const withCoords = pool.map(d => ({ delivery: d, coords: getCoords(d) }));
   const validEntries = withCoords.filter(e => e.coords);
@@ -1095,6 +1108,14 @@ exports.getSortedUpcomingForDriver = async (driverId) => {
     ? { latitude: driverDoc.currentLocation.latitude, longitude: driverDoc.currentLocation.longitude }
     : null;
 
+  if (driverLocation && !isPlausibleDriverLocation(driverLocation)) {
+    console.warn(
+      `[PROXIMITY] ⚠️ Driver ki GPS location suspicious lag rahi hai (${driverLocation.latitude}, ${driverLocation.longitude}) ` +
+      `— expected bounds ke bahar hai, isko ignore karke fallback warehouse point use karenge`
+    );
+    driverLocation = null;
+  }
+
   let usedFallbackStart = false;
   if (!driverLocation) {
     driverLocation = await getDefaultStartPoint();
@@ -1156,59 +1177,50 @@ exports.getSortedUpcomingForDriver = async (driverId) => {
 
   let orderedUpcoming = upcomingRaw;
 
+  // ✅ PURE PROXIMITY CHAIN — priority se bilkul grouping nahi hoti ab.
+  // Chahe delivery kabhi bhi/kisi bhi order mein assign hui ho (dur wali pehle,
+  // medium beech mein, close baad mein — koi farak nahi padta), list hamesha
+  // driver/factory ke current point se sabse nazdeek wali delivery se shuru hogi,
+  // uske baad wahi se agli sabse nazdeek, phir agli, aage badhte hue.
+  // Priority field sirf display/info ke liye rakhi hai, sorting ke liye use nahi hoti.
   if (driverLocation && upcomingRaw.length > 1) {
-    const tiers = {};
-    upcomingRaw.forEach(d => {
-      const p = (d.priority || 'medium').toLowerCase();
-      const tierKey = PRIORITY_ORDER.hasOwnProperty(p) ? p : 'medium';
-      if (!tiers[tierKey]) tiers[tierKey] = [];
-      tiers[tierKey].push(d);
-    });
-
-    const tierKeysInOrder = Object.keys(PRIORITY_ORDER)
-      .sort((a, b) => PRIORITY_ORDER[a] - PRIORITY_ORDER[b])
-      .filter(k => tiers[k]?.length > 0);
-
-    console.log(`[PROXIMITY] Priority tiers found: ${tierKeysInOrder.map(k => `${k}(${tiers[k].length})`).join(', ')}${usedFallbackStart ? ' (using fallback warehouse start point)' : ''}`);
+    console.log(
+      `[PROXIMITY] Pure nearest-neighbor chain chalayenge — ${upcomingRaw.length} delivery(ies), priority sirf display ke liye hai` +
+      `${usedFallbackStart ? ' (using fallback warehouse start point)' : ''}`
+    );
 
     const chainResult = [];
     let currentPoint = driverLocation;
+    let remaining = [...upcomingRaw];
 
-    for (const tierKey of tierKeysInOrder) {
-      let remaining = [...tiers[tierKey]];
-      console.log(`[PROXIMITY] Processing tier "${tierKey}" — ${remaining.length} delivery(ies)`);
+    while (remaining.length > 0) {
+      const result = await findNearestFromPool(currentPoint, remaining, getRankingCoords);
 
-      while (remaining.length > 0) {
-        const result = await findNearestFromPool(currentPoint, remaining, getRankingCoords);
+      console.log(`[PROXIMITY-CHAIN] currentPoint: ${JSON.stringify(currentPoint)} | chosen: ${result.chosen.trackingNumber} | destination: ${result.chosen.deliveryLocation?.address} | distanceKm: ${result.distanceKm} | source: ${result.source}`);
 
-        console.log(`[PROXIMITY-CHAIN] currentPoint: ${JSON.stringify(currentPoint)} | chosen: ${result.chosen.trackingNumber} | destination: ${result.chosen.deliveryLocation?.address} | distanceKm: ${result.distanceKm} | source: ${result.source}`);
+      chainResult.push({
+        item: result.chosen,
+        distanceKm: result.distanceKm,
+        durationMin: result.durationMin,
+        source: result.source
+      });
 
-        chainResult.push({
-          item: result.chosen,
-          distanceKm: result.distanceKm,
-          durationMin: result.durationMin,
-          source: result.source,
-          tier: tierKey
-        });
-
-        const chosenCoords = getRankingCoords(result.chosen);
-        if (chosenCoords) {
-          currentPoint = chosenCoords;
-        } else {
-          console.warn(`[PROXIMITY-CHAIN] ⚠️ ${result.chosen.trackingNumber} ke coordinates null aaye — currentPoint update nahi hua`);
-        }
-
-        const removeIdx = remaining.findIndex(d => d._id.toString() === result.chosen._id.toString());
-        if (removeIdx > -1) remaining.splice(removeIdx, 1);
+      const chosenCoords = getRankingCoords(result.chosen);
+      if (chosenCoords) {
+        currentPoint = chosenCoords;
+      } else {
+        console.warn(`[PROXIMITY-CHAIN] ⚠️ ${result.chosen.trackingNumber} ke coordinates null aaye — currentPoint update nahi hua`);
       }
+
+      const removeIdx = remaining.findIndex(d => d._id.toString() === result.chosen._id.toString());
+      if (removeIdx > -1) remaining.splice(removeIdx, 1);
     }
 
     orderedUpcoming = chainResult.map(r => ({
       ...r.item,
       __distanceKm: r.distanceKm,
       __etaMin: r.durationMin,
-      __distanceSource: r.source,
-      __tier: r.tier
+      __distanceSource: r.source
     }));
   }
 

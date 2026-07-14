@@ -495,6 +495,7 @@
                             <input type="number" id="n_lng" step="any">
                             <label for="n_lng">Longitude <span style="color:red">*</span></label>
                         </div>
+                        <div class="col s12" id="n_verify_hint" style="margin:-8px 0 12px; font-size:0.85rem; color:#666;"></div>
                         <div class="col s12" style="margin-bottom:12px;">
                             <label>
                                 <input type="checkbox" id="n_isDefault" class="filled-in">
@@ -556,6 +557,7 @@
                             <input type="number" id="e_lng" step="any">
                             <label for="e_lng" class="active">Longitude <span style="color:red">*</span></label>
                         </div>
+                        <div class="col s12" id="e_verify_hint" style="margin:-8px 0 12px; font-size:0.85rem; color:#666;"></div>
                         <div class="col s12 m6" style="margin-bottom:12px;">
                             <label>
                                 <input type="checkbox" id="e_isDefault" class="filled-in">
@@ -606,7 +608,44 @@
                     addItem();
                     renderPickupDropdown();
                     document.getElementById('pickupLocationId').addEventListener('change', updatePickupPreview);
+
+                    // ✅ Lat/Lng ko manually type/edit karne par, address se match
+                    // karta hai ya nahi ye turant dikha do — isse "address kuch
+                    // aur, coordinates kahin aur" wala mismatch save hone se
+                    // pehle hi pakad mein aa jaata hai.
+                    ['n_lat', 'n_lng'].forEach(id => {
+                        document.getElementById(id)?.addEventListener('blur', () => verifyLatLng('n_lat', 'n_lng', 'n_verify_hint'));
+                    });
+                    ['e_lat', 'e_lng'].forEach(id => {
+                        document.getElementById(id)?.addEventListener('blur', () => verifyLatLng('e_lat', 'e_lng', 'e_verify_hint'));
+                    });
                 });
+
+                // --- Verify: entered lat/lng reverse-geocode karke dikhata hai
+                // taaki admin visually confirm kar sake ki ye wahi jagah hai
+                // jo "Full Address" field mein type ki hai ---
+                let verifyLatLngTimer = null;
+                function verifyLatLng(latId, lngId, hintId) {
+                    clearTimeout(verifyLatLngTimer);
+                    verifyLatLngTimer = setTimeout(async () => {
+                        const lat = parseFloat(document.getElementById(latId).value);
+                        const lng = parseFloat(document.getElementById(lngId).value);
+                        const hint = document.getElementById(hintId);
+                        if (!hint) return;
+                        if (isNaN(lat) || isNaN(lng)) { hint.innerHTML = ''; return; }
+
+                        hint.style.color = '#666';
+                        hint.innerHTML = 'Checking coordinates…';
+                        try {
+                            const result = await reverseGeocode(lat, lng);
+                            hint.style.color = '#2e7d32';
+                            hint.innerHTML = `📍 In lat/lng par ye jagah hai: <strong>${result.address}</strong> — check karo ki "Full Address" field se match karti hai.`;
+                        } catch (err) {
+                            hint.style.color = '#c62828';
+                            hint.innerHTML = `⚠️ Coordinates verify nahi ho paaye: ${err.message}`;
+                        }
+                    }, 400);
+                }
 
                 // ================================================================
                 //  GOOGLE MAPS LINK PARSER  — FULLY UPDATED
