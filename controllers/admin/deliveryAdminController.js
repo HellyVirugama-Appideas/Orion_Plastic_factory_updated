@@ -2861,27 +2861,25 @@ exports.createDeliveryFromOrder = async (req, res) => {
     });
 
     // Notifications
-    if (driver.fcmToken && driver.fcmToken.trim().length > 20) {
+    if (driver.fcmToken) {
       try {
-        const result = await sendNotification(
-          driver.name || "Driver",
-          "english",
-          driver.fcmToken,
-          "delivery_assigned",
-          {
-            deliveryId: delivery._id.toString(),
-            trackingNumber: delivery.trackingNumber,
-            type: "delivery_assigned",
-            title: "Delivery Assigned 🚚",
-            body: `You have a new delivery. Pickup from ${effectivePickupLocation?.address || 'location'}`
-          }
-        );
-        console.log(`[CREATE-DELIVERY-NOTIF-SUCCESS] FCM sent → ${result?.messageId || 'ok'}`);
+        const result = await sendNotification(driver.fcmToken, {
+          title: "Delivery Assigned 🚚",
+          body: `You have a new delivery. Pickup from ${effectivePickupLocation?.address || 'location'}`,
+          deliveryId: delivery._id.toString(),
+          trackingNumber: delivery.trackingNumber,
+          type: "delivery_assigned"
+        });
+        if (result) {
+          console.log(`[CREATE-DELIVERY-NOTIF-SUCCESS] FCM push sent to driver ${driver._id}`);
+        } else {
+          console.warn(`[CREATE-DELIVERY-NOTIF] sendNotification returned null — check driver.fcmToken validity`);
+        }
       } catch (pushErr) {
         console.error("[CREATE-DELIVERY-FCM-ERROR]", pushErr.code || pushErr.message || pushErr);
       }
     } else {
-      console.warn(`No valid fcmToken for driver ${driver._id} → assignment push notification skipped`);
+      console.warn(`No FCM token for driver ${driver._id} → assignment push notification skipped`);
     }
 
     try {
@@ -2973,27 +2971,27 @@ exports.cancelDelivery = async (req, res) => {
       console.log(`[CANCEL-NOTIF] Preparing for driver ${driver._id} (${driver.name})`);
 
       // 1. Push Notification (FCM)
-      if (driver.fcmToken && driver.fcmToken.trim().length > 20) {
+      if (driver.fcmToken) {
         console.log(`[CANCEL-FCM] Attempting send to: ${driver.fcmToken.substring(0, 20)}...`);
         try {
-          const result = await sendNotification(
-            driver.name || "Driver",
-            "english",
-            driver.fcmToken,
-            "delivery_cancelled",
-            {
-              deliveryId: delivery._id.toString(),
-              trackingNumber: delivery.trackingNumber,
-              reason: remarks,
-              type: "delivery_cancelled"
-            }
-          );
-          console.log(`[CANCEL-NOTIF-SUCCESS] FCM sent → ${result?.messageId || 'ok'}`);
+          const result = await sendNotification(driver.fcmToken, {
+            title: "Delivery Cancelled",
+            body: `Your assigned delivery ${delivery.trackingNumber} has been cancelled.\nReason: ${remarks}`,
+            deliveryId: delivery._id.toString(),
+            trackingNumber: delivery.trackingNumber,
+            reason: remarks,
+            type: "delivery_cancelled"
+          });
+          if (result) {
+            console.log(`[CANCEL-NOTIF-SUCCESS] FCM sent`);
+          } else {
+            console.warn(`[CANCEL-NOTIF] sendNotification returned null`);
+          }
         } catch (pushErr) {
           console.error("[CANCEL-FCM-ERROR]", pushErr.code || pushErr.message || pushErr);
         }
       } else {
-        console.warn("[CANCEL-NOTIF] No valid fcmToken", { length: driver.fcmToken?.length || 0 });
+        console.warn("[CANCEL-NOTIF] No fcmToken for driver");
       }
 
       // 2. In-app Notification (consistent with schema)
@@ -3284,26 +3282,22 @@ exports.updateDelivery = async (req, res) => {
         console.log(`[UPDATE-NOTIF] Notifying OLD driver: ${oldDriver.name}`);
 
         // Push notification
-        if (oldDriver.fcmToken && oldDriver.fcmToken.trim().length > 20) {
+        if (oldDriver.fcmToken) {
           try {
-            await sendNotification(
-              oldDriver.name || "Driver",
-              "english",
-              oldDriver.fcmToken,
-              "delivery_cancelled",
-              {
-                deliveryId: delivery._id.toString(),
-                trackingNumber: delivery.trackingNumber,
-                reason: "Reassigned to another driver",
-                type: "delivery_cancelled"
-              }
-            );
+            await sendNotification(oldDriver.fcmToken, {
+              title: "Delivery Reassigned",
+              body: `Delivery ${delivery.trackingNumber} has been reassigned to another driver.`,
+              deliveryId: delivery._id.toString(),
+              trackingNumber: delivery.trackingNumber,
+              reason: "Reassigned to another driver",
+              type: "delivery_cancelled"
+            });
             console.log(`[UPDATE-NOTIF] FCM sent to OLD driver`);
           } catch (e) {
             console.error("[UPDATE-FCM-OLD-ERROR]", e.message || e);
           }
         } else {
-          console.warn("[UPDATE-NOTIF] No valid FCM token for OLD driver");
+          console.warn("[UPDATE-NOTIF] No FCM token for OLD driver");
         }
 
         // In-app notification
@@ -3330,27 +3324,23 @@ exports.updateDelivery = async (req, res) => {
         console.log(`[UPDATE-NOTIF] Notifying NEW driver: ${newDriver.name}`);
 
         // Push notification
-        if (newDriver.fcmToken && newDriver.fcmToken.trim().length > 20) {
+        if (newDriver.fcmToken) {
           try {
-            await sendNotification(
-              newDriver.name || "Driver",
-              "english",
-              newDriver.fcmToken,
-              "delivery_assigned",
-              {
-                deliveryId: delivery._id.toString(),
-                trackingNumber: delivery.trackingNumber,
-                customerName: delivery.customerId?.name || "Customer",
-                pickup: delivery.pickupLocation?.address || "",
-                type: "delivery_assigned"
-              }
-            );
+            await sendNotification(newDriver.fcmToken, {
+              title: "New Delivery Assigned",
+              body: `Delivery ${delivery.trackingNumber} has been assigned to you. Please check details in the app.`,
+              deliveryId: delivery._id.toString(),
+              trackingNumber: delivery.trackingNumber,
+              customerName: delivery.customerId?.name || "Customer",
+              pickup: delivery.pickupLocation?.address || "",
+              type: "delivery_assigned"
+            });
             console.log(`[UPDATE-NOTIF] FCM sent to NEW driver`);
           } catch (e) {
             console.error("[UPDATE-FCM-NEW-ERROR]", e.message || e);
           }
         } else {
-          console.warn("[UPDATE-NOTIF] No valid FCM token for NEW driver");
+          console.warn("[UPDATE-NOTIF] No FCM token for NEW driver");
         }
 
         // In-app notification
@@ -3380,25 +3370,21 @@ exports.updateDelivery = async (req, res) => {
         console.log(`[UPDATE-NOTIF] Current driver: ${currentDriver.name}`);
 
         // Push notification
-        if (currentDriver.fcmToken && currentDriver.fcmToken.trim().length > 20) {
+        if (currentDriver.fcmToken) {
           try {
-            await sendNotification(
-              currentDriver.name || "Driver",
-              "english",
-              currentDriver.fcmToken,
-              "delivery_updated",
-              {
-                deliveryId: delivery._id.toString(),
-                trackingNumber: delivery.trackingNumber,
-                type: "delivery_updated"
-              }
-            );
+            await sendNotification(currentDriver.fcmToken, {
+              title: "Delivery Updated",
+              body: `Delivery ${delivery.trackingNumber} details have been updated. Please check the app.`,
+              deliveryId: delivery._id.toString(),
+              trackingNumber: delivery.trackingNumber,
+              type: "delivery_updated"
+            });
             console.log(`[UPDATE-NOTIF] FCM update sent to current driver`);
           } catch (e) {
             console.error("[UPDATE-FCM-CURRENT-ERROR]", e.message || e);
           }
         } else {
-          console.warn("[UPDATE-NOTIF] No valid FCM token for current driver");
+          console.warn("[UPDATE-NOTIF] No FCM token for current driver");
         }
 
         // In-app notification
@@ -3762,19 +3748,14 @@ exports.updateDeliveryPriority = async (req, res) => {
         // FCM (optional)
         if (updatedDelivery.driverId?.fcmToken) {
             try {
-                await sendNotification(
-                    updatedDelivery.driverId.name || "Driver",
-                    "english",
-                    updatedDelivery.driverId.fcmToken,
-                    "priority_changed",
-                    {
-                        title: `Priority Updated: ${priority.toUpperCase()}`,
-                        body: `Your delivery ${updatedDelivery.trackingNumber} priority has been changed.`,
-                        type: 'priority_changed',
-                        deliveryId: updatedDelivery._id.toString(),
-                        trackingNumber: updatedDelivery.trackingNumber
-                    }
-                );
+                await sendNotification(updatedDelivery.driverId.fcmToken, {
+                    title: `Priority Updated: ${priority.toUpperCase()}`,
+                    body: `Your delivery ${updatedDelivery.trackingNumber} priority has been changed.`,
+                    type: 'priority_changed',
+                    deliveryId: updatedDelivery._id.toString(),
+                    trackingNumber: updatedDelivery.trackingNumber
+                });
+                console.log(`[PRIORITY-NOTIF-SUCCESS] FCM sent to driver`);
             } catch (e) {
                 console.error("[PRIORITY-FCM-ERROR]", e.message || e);
             }
