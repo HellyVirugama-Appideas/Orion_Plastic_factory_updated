@@ -208,7 +208,8 @@ const orderSchema = new mongoose.Schema({
       'delivered',
       'cancelled',
       'rejected',
-      'on_hold'
+      'on_hold',
+      'Returned_to_Factory'
     ],
     default: 'pending',
     index: true

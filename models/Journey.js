@@ -58,7 +58,8 @@ const journeySchema = new mongoose.Schema({
       'Failed',
       'Cancelled',
       'Completed',
-      'Returned'
+      'Returned',
+      'Returned_to_Factory'
     ],
     default: 'Pending',
     index: true

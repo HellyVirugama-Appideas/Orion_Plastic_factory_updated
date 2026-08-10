@@ -27,7 +27,8 @@ const notificationSchema = new mongoose.Schema({
       'expense_rejected',
       'maintenance_due',
       'chat_message',
-      'custom'
+      'custom',
+      'Returned_to_Factory'
     ]
   },
   title: {

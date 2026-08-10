@@ -18,8 +18,6 @@ const Driver = require('../../models/Driver');
 exports.renderOrdersList = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 20,
       status,
       priority,
       search,
@@ -37,20 +35,21 @@ exports.renderOrdersList = async (req, res) => {
       if (endDate) query.createdAt.$lte = new Date(endDate);
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    // Fetch orders with full population (customerId must be ObjectId reference)
+    // ✅ FIX: server-side skip/limit hata diya — DataTables client-side
+    // hi pagination/search sambhal lega. Pehle sirf 20 (default limit)
+    // records DB se aate the, aur DataTables unhi 20 ka pagination dikhata
+    // tha ("of 20"), jabki baaki matching orders dusre server-side page
+    // par the — isliye "gayab" lagte the.
     const orders = await Order.find(query)
-      .populate('customerId', 'name email phone companyName')  // Now works correctly
+      .populate('customerId', 'name email phone companyName')
       .populate({
         path: 'deliveryId',
         populate: { path: 'driverId', select: 'name phone' }
       })
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+      .lean();
 
-    const total = await Order.countDocuments(query);
+    console.log(`[ORDERS-LIST] Query: ${JSON.stringify(query)} | Total orders fetched: ${orders.length}`);
 
     // Statistics calculation
     const stats = await Order.aggregate([
@@ -80,13 +79,13 @@ exports.renderOrdersList = async (req, res) => {
     res.render('order_list', {
       title: 'Orders Management',
       user: req.user,
-      orders,                    // customerId is now populated object
+      orders,                    // ✅ saare matching orders (sliced nahi)
       stats: statistics,
       pagination: {
-        total,
-        page: parseInt(page),
-        pages: Math.ceil(total / parseInt(limit)),
-        limit: parseInt(limit)
+        total: orders.length,
+        page: 1,
+        pages: 1,               // ✅ custom Prev/Next footer hide rahega, DataTables khud sambhalega
+        limit: orders.length
       },
       filters: { status, priority, search, startDate, endDate },
       url: req.originalUrl,
@@ -99,7 +98,6 @@ exports.renderOrdersList = async (req, res) => {
     res.redirect('/admin/dashboard');
   }
 };
-
 // Get all orders (Admin)
 exports.getAllOrders = async (req, res) => {
   try {
