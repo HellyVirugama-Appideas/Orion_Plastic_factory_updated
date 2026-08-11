@@ -152,18 +152,21 @@ exports.renderDeliveriesList = async (req, res) => {
         const orderedGroup = group
           .map(del => {
             const sortedItem = upcomingMap.get(del._id.toString());
+            const stLower = (del.status || '').toLowerCase();
+
+            // ✅ Returned_to_Factory / terminal-non-route statuses ke liye
+            // distance kabhi mat dikhao — na live proximity se, na purani
+            // stored `distance` field se (jo creation time ki purani value hoti hai
+            // aur ab meaningless hai kyunki delivery route se hat chuki hai).
+            const isNonRoutable = ['returned_to_factory'].includes(stLower);
+
             return {
               ...del,
-              // ✅ Display ke liye rank sirf tab set hoti hai jab delivery
-              // active route-chain mein ho. Completed/cancelled deliveries
-              // ke liye null rakha — EJS me "-" dikhega, "#999" nahi.
               __nearestRank: sortedItem ? sortedItem.nearestRank : null,
-              // Chain mein na ho to bhi, agar delivery ka apna record hua
-              // actual distance (delivery complete hote waqt save hua) ho
-              // to wahi dikhado — bilkul N/A nahi.
-              __distance: sortedItem ? sortedItem.distanceFromDriver : (del.distance ? `${del.distance.toFixed(1)} km` : null),
+              __distance: isNonRoutable
+                ? null
+                : (sortedItem ? sortedItem.distanceFromDriver : (del.distance ? `${del.distance.toFixed(1)} km` : null)),
               __hasRank: !!sortedItem,
-              // Sirf INTERNAL sorting ke liye — display mein kabhi use nahi hota
               __sortKey: sortedItem ? sortedItem.nearestRank : 999,
               deliveryLocation: del.deliveryLocation
             };
@@ -370,7 +373,7 @@ exports.renderDeliveryDetails = async (req, res) => {
     res.redirect('/admin/deliveries');
   }
 };
- 
+
 // ============= RENDER CREATE DELIVERY FROM ORDER =============
 exports.renderCreateDeliveryFromOrder = async (req, res) => {
   try {
@@ -417,7 +420,7 @@ exports.renderCreateDeliveryFromOrder = async (req, res) => {
       // isAvailable: true,
       profileStatus: 'approved'
     })
-   
+
       .select('name phone vehicleNumber profileImage isAvailable')
       .lean();
 
@@ -597,8 +600,8 @@ exports.createDeliveryFromOrder = async (req, res) => {
 
     // Update previous delivery's nextDeliveryId
     if (previousDeliveryForDriver?._id) {
-      await Delivery.findByIdAndUpdate(previousDeliveryForDriver._id, { 
-        nextDeliveryId: delivery._id 
+      await Delivery.findByIdAndUpdate(previousDeliveryForDriver._id, {
+        nextDeliveryId: delivery._id
       });
     }
 
@@ -1429,115 +1432,115 @@ exports.getDriversByStatus = async (req, res) => {
 
 // ============= UPDATE DELIVERY PRIORITY (FULL SOCKET UPDATE) =============
 exports.updateDeliveryPriority = async (req, res) => {
-    console.log('\n=== [PRIORITY UPDATE] ENDPOINT HIT ===');
-    console.log('URL:', req.originalUrl);
-    console.log('Params:', req.params);
-    console.log('Body:', req.body);
+  console.log('\n=== [PRIORITY UPDATE] ENDPOINT HIT ===');
+  console.log('URL:', req.originalUrl);
+  console.log('Params:', req.params);
+  console.log('Body:', req.body);
 
-    try {
-        const { deliveryId } = req.params;
-        const { priority } = req.body;
+  try {
+    const { deliveryId } = req.params;
+    const { priority } = req.body;
 
-        if (!deliveryId) {
-            console.log('❌ Missing deliveryId');
-            return res.status(400).json({ success: false, message: 'Delivery ID is required' });
-        }
-
-        if (!['low', 'medium', 'high', 'urgent'].includes(priority)) {
-            console.log('❌ Invalid priority:', priority);
-            return res.status(400).json({ success: false, message: 'Invalid priority value' });
-        }
-
-        // Full delivery fetch with relations
-        const delivery = await Delivery.findById(deliveryId)
-            .populate('driverId', 'name fcmToken vehicleNumber')
-            .populate('customerId', 'name companyName')
-            .lean();
-
-        if (!delivery) {
-            console.log('❌ Delivery not found');
-            return res.status(404).json({ success: false, message: 'Delivery not found' });
-        }
-
-        const oldPriority = delivery.priority;
-
-        // Update in DB
-        await Delivery.findByIdAndUpdate(deliveryId, { priority });
-
-        console.log(`✅ Priority updated: ${oldPriority} → ${priority}`);
-
-        // Refresh full delivery data
-        const updatedDelivery = await Delivery.findById(deliveryId)
-            .populate('driverId', 'name fcmToken vehicleNumber')
-            .populate('customerId', 'name companyName')
-            .lean();
-
-        // ==================== SOCKET PAYLOAD ====================
-        const io = req.app.get('io');
-        const socketPayload = {
-            type: "delivery:priority:updated",
-            deliveryId: updatedDelivery._id.toString(),
-            trackingNumber: updatedDelivery.trackingNumber,
-            priority: updatedDelivery.priority,
-            oldPriority: oldPriority,
-            status: updatedDelivery.status,
-            customerName: updatedDelivery.customerId?.companyName || updatedDelivery.customerId?.name || 'Customer',
-            driverName: updatedDelivery.driverId?.name || null,
-            vehicleNumber: updatedDelivery.driverId?.vehicleNumber || null,
-            pickupAddress: updatedDelivery.pickupLocation?.address || '',
-            deliveryAddress: updatedDelivery.deliveryLocation?.address || '',
-            scheduledPickupTime: updatedDelivery.scheduledPickupTime,
-            scheduledDeliveryTime: updatedDelivery.scheduledDeliveryTime,
-            actualPickupTime: updatedDelivery.actualPickupTime,
-            actualDeliveryTime: updatedDelivery.actualDeliveryTime,
-            timestamp: new Date().toISOString(),
-            message: `Priority changed to ${priority.toUpperCase()}`
-        };
-
-        if (io) {
-            // Admin ko full update
-            io.to("admin-room").emit("delivery:updated", socketPayload);
-            console.log('📤 Socket emitted to admin-room: delivery:updated');
-
-            // Driver ko bhi (agar assigned hai)
-            if (updatedDelivery.driverId) {
-                io.to(`driver-${updatedDelivery.driverId._id}`).emit("delivery:updated", socketPayload);
-                console.log(`📤 Socket emitted to driver room`);
-            }
-        }
-
-        // FCM (optional)
-        if (updatedDelivery.driverId?.fcmToken) {
-            try {
-                await sendNotification(updatedDelivery.driverId.fcmToken, {
-                    title: `Priority Updated: ${priority.toUpperCase()}`,
-                    body: `Your delivery ${updatedDelivery.trackingNumber} priority has been changed.`,
-                    type: 'priority_changed',
-                    deliveryId: updatedDelivery._id.toString(),
-                    trackingNumber: updatedDelivery.trackingNumber
-                });
-                console.log(`[PRIORITY-NOTIF-SUCCESS] FCM sent to driver`);
-            } catch (e) {
-                console.error("[PRIORITY-FCM-ERROR]", e.message || e);
-            }
-        }
-
-        return res.json({
-            success: true,
-            message: `Priority updated to ${priority.toUpperCase()}`,
-            delivery: {
-                _id: updatedDelivery._id,
-                trackingNumber: updatedDelivery.trackingNumber,
-                priority: updatedDelivery.priority,
-                status: updatedDelivery.status,
-                pickupAddress: updatedDelivery.pickupLocation?.address,
-                deliveryAddress: updatedDelivery.deliveryLocation?.address,
-                driverName: updatedDelivery.driverId?.name
-            }
-        });
-
-    } catch (error) {
-        console.error('=== PRIORITY UPDATE ERROR ===', error);
-        return res.status(500).json({ success: false, message: 'Server error' });
+    if (!deliveryId) {
+      console.log('❌ Missing deliveryId');
+      return res.status(400).json({ success: false, message: 'Delivery ID is required' });
     }
+
+    if (!['low', 'medium', 'high', 'urgent'].includes(priority)) {
+      console.log('❌ Invalid priority:', priority);
+      return res.status(400).json({ success: false, message: 'Invalid priority value' });
+    }
+
+    // Full delivery fetch with relations
+    const delivery = await Delivery.findById(deliveryId)
+      .populate('driverId', 'name fcmToken vehicleNumber')
+      .populate('customerId', 'name companyName')
+      .lean();
+
+    if (!delivery) {
+      console.log('❌ Delivery not found');
+      return res.status(404).json({ success: false, message: 'Delivery not found' });
+    }
+
+    const oldPriority = delivery.priority;
+
+    // Update in DB
+    await Delivery.findByIdAndUpdate(deliveryId, { priority });
+
+    console.log(`✅ Priority updated: ${oldPriority} → ${priority}`);
+
+    // Refresh full delivery data
+    const updatedDelivery = await Delivery.findById(deliveryId)
+      .populate('driverId', 'name fcmToken vehicleNumber')
+      .populate('customerId', 'name companyName')
+      .lean();
+
+    // ==================== SOCKET PAYLOAD ====================
+    const io = req.app.get('io');
+    const socketPayload = {
+      type: "delivery:priority:updated",
+      deliveryId: updatedDelivery._id.toString(),
+      trackingNumber: updatedDelivery.trackingNumber,
+      priority: updatedDelivery.priority,
+      oldPriority: oldPriority,
+      status: updatedDelivery.status,
+      customerName: updatedDelivery.customerId?.companyName || updatedDelivery.customerId?.name || 'Customer',
+      driverName: updatedDelivery.driverId?.name || null,
+      vehicleNumber: updatedDelivery.driverId?.vehicleNumber || null,
+      pickupAddress: updatedDelivery.pickupLocation?.address || '',
+      deliveryAddress: updatedDelivery.deliveryLocation?.address || '',
+      scheduledPickupTime: updatedDelivery.scheduledPickupTime,
+      scheduledDeliveryTime: updatedDelivery.scheduledDeliveryTime,
+      actualPickupTime: updatedDelivery.actualPickupTime,
+      actualDeliveryTime: updatedDelivery.actualDeliveryTime,
+      timestamp: new Date().toISOString(),
+      message: `Priority changed to ${priority.toUpperCase()}`
+    };
+
+    if (io) {
+      // Admin ko full update
+      io.to("admin-room").emit("delivery:updated", socketPayload);
+      console.log('📤 Socket emitted to admin-room: delivery:updated');
+
+      // Driver ko bhi (agar assigned hai)
+      if (updatedDelivery.driverId) {
+        io.to(`driver-${updatedDelivery.driverId._id}`).emit("delivery:updated", socketPayload);
+        console.log(`📤 Socket emitted to driver room`);
+      }
+    }
+
+    // FCM (optional)
+    if (updatedDelivery.driverId?.fcmToken) {
+      try {
+        await sendNotification(updatedDelivery.driverId.fcmToken, {
+          title: `Priority Updated: ${priority.toUpperCase()}`,
+          body: `Your delivery ${updatedDelivery.trackingNumber} priority has been changed.`,
+          type: 'priority_changed',
+          deliveryId: updatedDelivery._id.toString(),
+          trackingNumber: updatedDelivery.trackingNumber
+        });
+        console.log(`[PRIORITY-NOTIF-SUCCESS] FCM sent to driver`);
+      } catch (e) {
+        console.error("[PRIORITY-FCM-ERROR]", e.message || e);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Priority updated to ${priority.toUpperCase()}`,
+      delivery: {
+        _id: updatedDelivery._id,
+        trackingNumber: updatedDelivery.trackingNumber,
+        priority: updatedDelivery.priority,
+        status: updatedDelivery.status,
+        pickupAddress: updatedDelivery.pickupLocation?.address,
+        deliveryAddress: updatedDelivery.deliveryLocation?.address,
+        driverName: updatedDelivery.driverId?.name
+      }
+    });
+
+  } catch (error) {
+    console.error('=== PRIORITY UPDATE ERROR ===', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
 };

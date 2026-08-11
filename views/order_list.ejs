@@ -80,6 +80,7 @@
         color: #1565c0;
         border-bottom: 3px solid #1565c0;
       }
+      .status-returned_to_factory { background: #757575; }
     </style>
 </head>
 
@@ -146,7 +147,7 @@
                                     
 
                                     // Updated condition: Allow edit until delivery is completed
-                                     const canEdit = !['completed', 'delivered', 'cancelled', 'assigned'].includes(st);
+                                     const canEdit = !['completed', 'delivered', 'cancelled', 'assigned','returned_to_factory'].includes(st);
                                   %>
                                     <tr class="order-row" data-href="/admin/orders/view/<%= order._id %>" data-status="<%= st %>">
                                       <td><%= index + 1 %></td>

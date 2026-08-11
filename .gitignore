@@ -1,5 +1,5 @@
 .env
-node-modules
+node_modules
 TXT
 temp-fix.js
 public/uploads/

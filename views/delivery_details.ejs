@@ -54,6 +54,8 @@
         .status-cancelled,
         .status-Cancelled           { background: #ffcdd2; color: #b71c1c; }
         .status-failed              { background: #f8d7da; color: #721c24; }
+        /* ✅ NAYA — Returned to Factory ke liye badge */
+        .status-Returned_to_Factory { background: #e0e0e0; color: #555; }
         .info-row { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #eee; }
         .info-label { color: #555; font-weight: 500; }
         .info-value { font-weight: 600; text-align: right; }
@@ -84,6 +86,21 @@
             padding: 14px 16px;
             margin-top: 15px;
         }
+
+        /* ✅ NAYA — Returned to Factory info banner */
+        .returned-banner {
+            background: #f5f5f5;
+            border: 1px solid #d0d0d0;
+            border-left: 4px solid #757575;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-top: 12px;
+            font-size: 0.9rem;
+            color: #444;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
     </style>
 </head>
 
@@ -91,6 +108,12 @@
       data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
 
     <%- include('_layouts/sidenavbar') %>
+
+    <%
+        // ✅ NAYA — is delivery ne factory-return flag hit kiya hai ya nahi,
+        // isi variable se pura page (distance/duration/map) apna behavior badlega
+        const isReturnedToFactory = delivery.status === 'Returned_to_Factory';
+    %>
 
     <div id="main">
         <div class="row">
@@ -133,6 +156,18 @@
                                         </span>
                                     </h5>
 
+                                   <% if (isReturnedToFactory) { %>
+                                    <div class="returned-banner">
+                                        <i class="material-icons">store</i>
+                                        <span>
+                                            This delivery was pending from a previous day — the parcel has been marked as returned to the factory.
+                                            <!-- <% if (delivery.returnedToFactoryAt) { %>
+                                                <br><small class="grey-text">Returned on: <%= new Date(delivery.returnedToFactoryAt).toLocaleString('en-IN') %></small>
+                                            <% } %> -->
+                                        </span>
+                                    </div>
+                                    <% } %>
+
                                     <div class="info-row">
                                         <span class="info-label">Customer</span>
                                         <span class="info-value">
@@ -154,7 +189,10 @@
                                     </div>
                                     <div class="info-row">
                                         <span class="info-label">Priority</span>
-                                        <span class="info-value"><%= (delivery.priority || 'medium').toUpperCase() %></span>
+                                        <span class="info-value">
+                                            <!-- ✅ Returned_to_Factory ke liye priority ab relevant nahi (route se hat chuki hai) -->
+                                            <%= isReturnedToFactory ? '-' : (delivery.priority || 'medium').toUpperCase() %>
+                                        </span>
                                     </div>
                                     <div class="info-row">
                                         <span class="info-label">Pickup</span>
@@ -162,7 +200,7 @@
                                     </div>
 
                                     <!-- Route Chain -->
-                                    <% if (typeof routeChain !== 'undefined' && routeChain && routeChain.length > 0) { %>
+                                    <% if (!isReturnedToFactory && typeof routeChain !== 'undefined' && routeChain && routeChain.length > 0) { %>
                                     <div class="route-chain-card">
                                         <h6><i class="material-icons tiny">alt_route</i> Route Chain (Active Batch)</h6>
                                         <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
@@ -196,6 +234,9 @@
                                         </span>
                                     </div>
 
+                                    <!-- ✅ Returned_to_Factory ke liye Route Information block hi hide kar diya —
+                                         distance/duration ab meaningless hai kyunki delivery route se hat chuki hai -->
+                                    <% if (!isReturnedToFactory) { %>
                                     <div class="route-stats">
                                         <h6><strong>Route Information</strong></h6>
                                         <div class="route-stat-item">
@@ -206,15 +247,21 @@
                                             <span>Est. Duration:</span>
                                             <strong id="totalDuration"><%= delivery.estimatedDuration ? delivery.estimatedDuration+' min' : 'Calculating...' %></strong>
                                         </div>
+                                       
+                                    </div>
+                                    <% } else { %>
+                                    <div class="route-stats">
+                                        <h6><strong>Route Information</strong></h6>
                                         <div class="route-stat-item">
-                                            <span>Current Speed:</span>
-                                            <strong id="currentSpeed">-- km/h</strong>
+                                            <span>Distance:</span>
+                                            <strong>-</strong>
                                         </div>
                                         <div class="route-stat-item">
-                                            <span>Last Update:</span>
-                                            <strong id="lastUpdate">--</strong>
+                                            <span>Est. Duration:</span>
+                                            <strong>-</strong>
                                         </div>
                                     </div>
+                                    <% } %>
                                 </div>
 
                                 <!-- RIGHT: Map -->
@@ -229,7 +276,7 @@
 
                                         <div id="map"></div>
 
-                                        <% if (delivery.driverId) { %>
+                                        <% if (delivery.driverId && !isReturnedToFactory) { %>
                                         <div class="driver-info-overlay" id="driverInfoOverlay">
                                             <strong style="display:block;margin-bottom:8px;color:#1976D2;">
                                                 <i class="material-icons tiny">person</i>
@@ -238,9 +285,7 @@
                                             <p><i class="material-icons">directions_car</i>
                                                 <span id="overlayVehicle"><%= delivery.vehicleNumber || 'N/A' %></span>
                                             </p>
-                                            <p><i class="material-icons">speed</i>
-                                                Speed: <strong id="overlaySpeed">-- km/h</strong>
-                                            </p>
+                                        
                                             <p><i class="material-icons">location_on</i>
                                                 <span id="overlayStatus">Getting location...</span>
                                             </p>
@@ -255,7 +300,7 @@
                         <div class="card-action right-align">
                             <div class="action-buttons">
                                 
-                                <% if (!['delivered','Delivered','cancelled','Cancelled'].includes(delivery.status)) { %>
+                                <% if (!['delivered','Delivered','cancelled','Cancelled','Returned_to_Factory'].includes(delivery.status)) { %>
                                 <a href="#" onclick="confirmCancel('<%= delivery._id %>')" class="btn waves-effect waves-light red">
                                     <i class="material-icons left">cancel</i>Cancel
                                 </a>
@@ -369,6 +414,9 @@
         // Variables
         const deliveryId     = '<%= delivery._id.toString() %>';
         const deliveryStatus = '<%= delivery.status %>';
+        // ✅ NAYA — JS side mein bhi flag chahiye, taaki map/route calls
+        // skip ki ja sakein bina server-render logic dobara likhe
+        const isReturnedToFactory = deliveryStatus === 'Returned_to_Factory';
 
         <% 
             let safeDriverId = '';
@@ -435,19 +483,36 @@
                             content: `<strong>Delivery</strong><br>${deliveryAddress}`
                         });
                         deliveryMarker.addListener('click', () => deliveryInfo.open(map, deliveryMarker));
+
+                        // ✅ Returned_to_Factory ke case mein koi route/traveled data
+                        // nahi khichenge — bas dono marker dikha ke unhi pe map fit
+                        // kar denge, taaki admin ko sirf "kahan tha, kahan jaana tha"
+                        // dikhe, bina galat/purani route line ke.
+                        if (isReturnedToFactory) {
+                            const bounds = new google.maps.LatLngBounds();
+                            if (pickupLat && pickupLng) bounds.extend({ lat: pickupLat, lng: pickupLng });
+                            bounds.extend(results[0].geometry.location);
+                            map.fitBounds(bounds);
+                        }
                     }
                 });
             }
 
-            // ✅ WAPAS ADD KIYA: Driver ne jo asli safar kiya (ya complete
-            // ho chuki delivery ka poora traveled path) — ye function
-            // pehle bhi tha, isliye completed deliveries ka route dikhta
-            // tha. Naye simplified version me ye call hi chhoot gaya tha.
-            drawActualTraveledRoute();
+            // ✅ Returned_to_Factory delivery ke liye traveled/predicted route
+            // dono skip — parcel route se hi hat chuka hai, purani/planned
+            // route dikhana bhramit karega. Baaki saari deliveries ke liye
+            // pehle jaisa hi behavior (koi change nahi).
+            if (!isReturnedToFactory) {
+                // ✅ WAPAS ADD KIYA: Driver ne jo asli safar kiya (ya complete
+                // ho chuki delivery ka poora traveled path) — ye function
+                // pehle bhi tha, isliye completed deliveries ka route dikhta
+                // tha. Naye simplified version me ye call hi chhoot gaya tha.
+                drawActualTraveledRoute();
 
-            // Agar journey abhi start nahi hui / traveled data nahi hai,
-            // to bhi planned (pickup → delivery) route dikha do
-            drawPredictedRoute();
+                // Agar journey abhi start nahi hui / traveled data nahi hai,
+                // to bhi planned (pickup → delivery) route dikha do
+                drawPredictedRoute();
+            }
 
             // Live tracking
             const activeStatuses = ['assigned', 'picked_up', 'in_transit', 'In_transit', 'out_for_delivery'];

@@ -614,6 +614,7 @@
 console.log('🔥🔥🔥 [FILE-LOAD-CHECK] deliveryController.js LOADED at:', new Date().toISOString());
 
 const Delivery = require('../../models/Delivery');
+const Order = require('../../models/Order')
 const Route = require('../../models/Route');
 const Driver = require('../../models/Driver');
 const DeliveryStatusHistory = require('../../models/DeliveryStatusHistory');
@@ -652,6 +653,48 @@ function startOfTodayIST() {
 // dobara fetch karega (naya delivery assign hone ke baad), stale entries
 // automatically queue se hat jaayengi. Data delete nahi hota, sirf status
 // change hota hai — DeliveryStatusHistory mein audit trail reh jaata hai.
+// async function autoReturnStaleDeliveries(driverId) {
+//   const todayStart = startOfTodayIST();
+
+//   const staleDeliveries = await Delivery.find({
+//     driverId,
+//     status: { $in: UPCOMING_STATUSES },
+//     $or: [
+//       { scheduledDeliveryTime: { $ne: null, $lt: todayStart } },
+//       { scheduledDeliveryTime: null, createdAt: { $lt: todayStart } }
+//     ]
+//   });
+
+//   if (staleDeliveries.length === 0) return { flushedCount: 0, flushed: [] };
+
+//   console.log(`[STALE-FLUSH] driverId: ${driverId} | ${staleDeliveries.length} purani pending delivery(ies) mili — factory-return maan ke queue se hata rahe hain`);
+
+//   const flushed = [];
+//   for (const d of staleDeliveries) {
+//     const previousStatus = d.status;
+//     d.status = 'Returned_to_Factory';
+//     d.returnedToFactoryAt = new Date();
+//     d.returnedToFactoryReason = `Auto-flushed: previous day ki pending delivery thi (status "${previousStatus}"), parcel factory mein submit maana gaya`;
+//     await d.save();
+
+//     try {
+//       await DeliveryStatusHistory.create({
+//         deliveryId: d._id,
+//         status: 'Returned_to_Factory',
+//         previousStatus,
+//         timestamp: new Date(),
+//         remarks: 'Auto-returned to factory: stale pending delivery from a previous day'
+//       });
+//     } catch (histErr) {
+//       console.error(`[STALE-FLUSH] History log fail hui ${d.trackingNumber} ke liye: ${histErr.message}`);
+//     }
+
+//     console.log(`[STALE-FLUSH] ✅ ${d.trackingNumber} → Returned_to_Factory (pehle: ${previousStatus})`);
+//     flushed.push(d.trackingNumber);
+//   }
+
+//   return { flushedCount: flushed.length, flushed };
+// }
 async function autoReturnStaleDeliveries(driverId) {
   const todayStart = startOfTodayIST();
 
@@ -676,6 +719,20 @@ async function autoReturnStaleDeliveries(driverId) {
     d.returnedToFactoryReason = `Auto-flushed: previous day ki pending delivery thi (status "${previousStatus}"), parcel factory mein submit maana gaya`;
     await d.save();
 
+    // ✅ NAYA — linked Order ka status bhi sync karo, taaki admin panel
+    // ke Orders list mein bhi wahi order "Returned to Factory" dikhe.
+    if (d.orderId) {
+      try {
+        await Order.findOneAndUpdate(
+          { orderNumber: d.orderId },
+          { status: 'Returned_to_Factory' }   // ✅ FIX — capital, exact enum value ke hisaab se
+        );
+        console.log(`[STALE-FLUSH] ✅ Order "${d.orderId}" ka status bhi 'Returned_to_Factory' set kiya`);
+      } catch (orderErr) {
+        console.error(`[STALE-FLUSH] Order status update fail hui "${d.orderId}" ke liye: ${orderErr.message}`);
+      }
+    }
+
     try {
       await DeliveryStatusHistory.create({
         deliveryId: d._id,
@@ -694,7 +751,6 @@ async function autoReturnStaleDeliveries(driverId) {
 
   return { flushedCount: flushed.length, flushed };
 }
-
 exports.autoReturnStaleDeliveries = autoReturnStaleDeliveries;
 
 async function getDefaultStartPoint() {
