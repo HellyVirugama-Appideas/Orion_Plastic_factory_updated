@@ -2,176 +2,280 @@
 <html class="loading" lang="en" data-textdirection="ltr">
 
 <head>
-    <%- include('_layouts/head') %>
-    <title>Edit Driver - <%= driver.name || 'Driver' %></title>
-    <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/page-users.css">
-    <style>
-        .preview-img { max-width: 180px; border-radius: 8px; margin-top: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .input-field { margin-bottom: 1.5rem; }
-        .file-path-wrapper { margin-top: 8px; }
-    </style>
+  <%- include('_layouts/head') %>
+  <title>Edit Driver - <%= driver.name || 'Driver' %></title>
+
+  <!-- Dropify -->
+  <link rel="stylesheet" type="text/css"
+    href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css">
+
+  <!-- intl-tel-input -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.0/build/css/intlTelInput.css">
+
+  <style>
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1a237e;
+      border-left: 4px solid #3949ab;
+      padding-left: 10px;
+      margin: 20px 0 10px;
+    }
+
+    .info-box {
+      background: #e8f5e9;
+      border-left: 4px solid #43a047;
+      padding: 10px 14px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
+    /* ========== Shared field-wrapper (used by phone for consistent underline look) ========== */
+    .field-wrapper {
+      margin-top: 12px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .field-wrapper > label {
+      display: block;
+      font-size: 12px;
+      color: #9e9e9e;
+      margin-bottom: 6px;
+    }
+
+    /* ========== intl-tel-input Proper Fix ========== */
+    .iti {
+      width: 100% !important;
+      display: block;
+    }
+
+    .iti input {
+      width: 100% !important;
+      height: 3rem !important;
+      font-size: 16px !important;
+      border: none !important;
+      border-bottom: 1px solid #9e9e9e !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      padding-left: 90px !important; /* flag + dial code space */
+    }
+
+    .iti input:focus {
+      border-bottom: 1px solid #26a69a !important;
+      box-shadow: 0 1px 0 0 #26a69a !important;
+    }
+
+    .iti__flag-container {
+      z-index: 5;
+    }
+
+    .iti__selected-flag {
+      padding: 0 8px 0 12px;
+    }
+
+    .preview-img {
+      max-width: 140px;
+      border-radius: 6px;
+      margin-top: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .current-label {
+      font-size: 12px;
+      color: #9e9e9e;
+      margin: 6px 0 2px;
+    }
+  </style>
 </head>
 
-<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
-      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+<body
+  class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+  data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
 
-    <%- include('_layouts/sidenavbar') %>
+  <%- include('_layouts/sidenavbar') %>
 
-    <div id="main">
-        <div class="row">
-            <div id="breadcrumbs-wrapper" style="background-color: white;">
-                <div class="container">
-                    <div class="row">
-                        <div class="col s12 m6 l6">
-                            <h5 class="breadcrumbs-title"><span>Edit Driver - <%= driver.name %></span></h5>
-                        </div>
-                    </div>
-                </div>
+  <div id="main">
+    <div class="row">
+      <div id="breadcrumbs-wrapper" style="background-color:white;">
+        <div class="container">
+          <div class="row">
+            <div class="col s12 m6 l6">
+              <h5 class="breadcrumbs-title">Edit Driver - <%= driver.name %></h5>
             </div>
-
-            <%- include('messages', { messages: messages }) %>
-
-            <div class="col s12">
-                <div class="container">
-                    <div class="section">
-                        <div class="card">
-                            <div class="card-content">
-                                <form action="/admin/drivers/edit/<%= driver._id %>" method="POST" enctype="multipart/form-data">
-
-                                    <!-- Basic Information -->
-                                    <div class="row">
-                                        <div class="col s12"><h5>Basic Information</h5></div>
-
-                                        <div class="input-field col s12 m6">
-                                            <input id="fullName" name="fullName" type="text" value="<%= driver.name || '' %>" required>
-                                            <label for="fullName" class="<%= driver.name ? 'active' : '' %>">Full Name</label>
-                                        </div>
-
-                                        <div class="input-field col s12 m3">
-                                            <select name="contactCountryCode">
-                                                <option value="+91" <%= driver.phone && driver.phone.startsWith('+91') ? 'selected' : '' %>>+91 (India)</option>
-                                                <!-- Add more if needed -->
-                                            </select>
-                                            <label>Country Code</label>
-                                        </div>
-
-                                        <div class="input-field col s12 m3">
-                                            <input id="contactNumber" name="contactNumber" type="tel" 
-                                                   value="<%= driver.phone ? driver.phone.replace(/^\+\d+/, '') : '' %>" required>
-                                            <label for="contactNumber" class="<%= driver.phone ? 'active' : '' %>">Phone Number</label>
-                                        </div>
-
-                                        <div class="input-field col s12 m6">
-                                            <input id="licenseNumber" name="licenseNumber" type="text" value="<%= driver.licenseNumber || '' %>" required>
-                                            <label for="licenseNumber" class="<%= driver.licenseNumber ? 'active' : '' %>">License Number</label>
-                                        </div>
-
-                                        <div class="input-field col s12 m6">
-                                            <input id="emiratesId" name="emiratesId" type="text" value="<%= driver.governmentIds?.emiratesId || '' %>">
-                                            <label for="emiratesId" class="<%= driver.governmentIds?.emiratesId ? 'active' : '' %>">Emirates ID</label>
-                                        </div>
-
-                                        <div class="input-field col s12 m6">
-                                            <input id="vehicleNumber" name="vehicleNumber" type="text" value="<%= driver.vehicleNumber || '' %>">
-                                            <label for="vehicleNumber" class="<%= driver.vehicleNumber ? 'active' : '' %>">Vehicle Number</label>
-                                        </div>
-
-                                        <div class="input-field col s12 m6">
-                                            <input id="region" name="region" type="text" value="<%= driver.region || '' %>">
-                                            <label for="region" class="<%= driver.region ? 'active' : '' %>">Region</label>
-                                        </div>
-                                    </div>
-
-                                    <!-- Documents Update (Optional) -->
-                                    <div class="row">
-                                        <div class="col s12"><h5>Update Documents (Leave blank to keep current)</h5></div>
-
-                                        <!-- License Front -->
-                                        <div class="file-field input-field col s12 m6">
-                                            <div class="btn blue">
-                                                <span>License Front</span>
-                                                <input type="file" name="licenseFront" accept="image/*">
-                                            </div>
-                                            <div class="file-path-wrapper">
-                                                <input class="file-path validate" type="text" placeholder="No new file">
-                                            </div>
-                                            <% if (driver.licenseFront) { %>
-                                                <p>Current:</p>
-                                                <img src="<%= driver.licenseFront %>" class="preview-img">
-                                            <% } %>
-                                        </div>
-
-                                        <!-- License Back -->
-                                        <div class="file-field input-field col s12 m6">
-                                            <div class="btn blue">
-                                                <span>License Back</span>
-                                                <input type="file" name="licenseBack" accept="image/*">
-                                            </div>
-                                            <div class="file-path-wrapper">
-                                                <input class="file-path validate" type="text" placeholder="No new file">
-                                            </div>
-                                            <% if (driver.licenseBack) { %>
-                                                <p>Current:</p>
-                                                <img src="<%= driver.licenseBack %>" class="preview-img">
-                                            <% } %>
-                                        </div>
-
-                                        <!-- RC Front -->
-                                        <div class="file-field input-field col s12 m6">
-                                            <div class="btn blue">
-                                                <span>RC Front</span>
-                                                <input type="file" name="rcFront" accept="image/*">
-                                            </div>
-                                            <div class="file-path-wrapper">
-                                                <input class="file-path validate" type="text" placeholder="No new file">
-                                            </div>
-                                            <% if (driver.rcFront) { %>
-                                                <p>Current:</p>
-                                                <img src="<%= driver.rcFront %>" class="preview-img">
-                                            <% } %>
-                                        </div>
-
-                                        <!-- RC Back -->
-                                        <div class="file-field input-field col s12 m6">
-                                            <div class="btn blue">
-                                                <span>RC Back</span>
-                                                <input type="file" name="rcBack" accept="image/*">
-                                            </div>
-                                            <div class="file-path-wrapper">
-                                                <input class="file-path validate" type="text" placeholder="No new file">
-                                            </div>
-                                            <% if (driver.rcBack) { %>
-                                                <p>Current:</p>
-                                                <img src="<%= driver.rcBack %>" class="preview-img">
-                                            <% } %>
-                                        </div>
-                                    </div>
-
-                                    <!-- Submit -->
-                                    <div class="row">
-                                        <div class="col s12">
-                                            <button type="submit" class="btn waves-effect waves-light green">
-                                                <i class="material-icons left">save</i> Save Changes
-                                            </button>
-                                            <a href="/admin/drivers/view/<%= driver._id %>" class="btn-flat">Cancel</a>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="col s12 m6 l6 right-align-md">
+              <a href="/admin/drivers/view/<%= driver._id %>" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">
+                Back to Driver
+              </a>
             </div>
+          </div>
         </div>
+      </div>
+
+      <%- include('messages', { messages: messages }) %>
+
+      <div class="col s12">
+        <div class="container">
+          <div class="section users-view">
+            <div class="card-panel">
+              <div class="card-content">
+
+                <div class="info-box">
+                  <strong>ℹ️ Note:</strong> Leave document upload fields blank to keep the currently saved files.
+                </div>
+
+                <form id="editDriverForm" action="/admin/drivers/edit/<%= driver._id %>" method="POST"
+                  enctype="multipart/form-data">
+                  <div class="row">
+
+                    <!-- ===================== Personal Information ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Personal Information</p>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="fullName" name="fullName" type="text" value="<%= driver.name || '' %>" required>
+                      <label for="fullName" class="<%= driver.name ? 'active' : '' %>">Full Name <span class="red-text">*</span></label>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="email" name="email" type="email" value="<%= driver.email || '' %>">
+                      <label for="email" class="<%= driver.email ? 'active' : '' %>">Email Address</label>
+                    </div>
+
+                    <!-- ========== Country Code + Phone ========== -->
+                    <div class="col s12 m6">
+                      <div class="field-wrapper">
+                        <label>Contact Number <span class="red-text">*</span></label>
+                        <input id="contactNumber" name="contactNumber" type="tel"
+                          value="<%= driver.phone || '' %>" required>
+                        <input type="hidden" name="contactCountryCode" id="contactCountryCode">
+                      </div>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="eidNumber" name="emiratesId" type="text"
+                        value="<%= driver.governmentIds && driver.governmentIds.emiratesId ? driver.governmentIds.emiratesId : '' %>"
+                        placeholder="e.g. 784-XXXX-XXXXXXX-X">
+                      <label for="eidNumber" class="<%= driver.governmentIds && driver.governmentIds.emiratesId ? 'active' : '' %>">EID Number (Emirates ID)</label>
+                    </div>
+
+                    <!-- ===================== Vehicle Information ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Vehicle Information</p>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="vehicleNumber" name="vehicleNumber" type="text" value="<%= driver.vehicleNumber || '' %>">
+                      <label for="vehicleNumber" class="<%= driver.vehicleNumber ? 'active' : '' %>">Vehicle Number</label>
+                    </div>
+
+                    <!-- ========== Region - Simple Text Input ========== -->
+                    <div class="input-field col s12 m6">
+                      <input id="region" name="region" type="text" value="<%= driver.region || '' %>" placeholder="e.g. Dubai, Abu Dhabi">
+                      <label for="region" class="<%= driver.region ? 'active' : '' %>">Region</label>
+                    </div>
+
+                    <!-- ===================== Documents ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Documents</p>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="licenseNumber" name="licenseNumber" type="text" value="<%= driver.licenseNumber || '' %>" required>
+                      <label for="licenseNumber" class="<%= driver.licenseNumber ? 'active' : '' %>">License Number <span class="red-text">*</span></label>
+                    </div>
+
+                    <div class="col s12 m6">
+                      <label>License Front</label>
+                      <input type="file" name="licenseFront" class="dropify" accept="image/*"
+                        <% if (driver.licenseFront) { %> data-default-file="<%= driver.licenseFront %>" <% } %>>
+                    </div>
+
+                    <div class="col s12 m6">
+                      <label>License Back</label>
+                      <input type="file" name="licenseBack" class="dropify" accept="image/*"
+                        <% if (driver.licenseBack) { %> data-default-file="<%= driver.licenseBack %>" <% } %>>
+                    </div>
+
+                    <div class="col s12 m6">
+                      <label>Mulkia Front</label>
+                      <input type="file" name="rcFront" class="dropify" accept="image/*"
+                        <% if (driver.rcFront) { %> data-default-file="<%= driver.rcFront %>" <% } %>>
+                    </div>
+
+                    <div class="col s12 m6">
+                      <label>Mulkia Back</label>
+                      <input type="file" name="rcBack" class="dropify" accept="image/*"
+                        <% if (driver.rcBack) { %> data-default-file="<%= driver.rcBack %>" <% } %>>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="col s12 right-align" style="margin-top: 24px;">
+                      <button type="submit" class="btn gradient-45deg-purple-deep-orange waves-effect waves-light">
+                        <i class="material-icons left">save</i>
+                        Save Changes
+                      </button>
+                      <a href="/admin/drivers/view/<%= driver._id %>" class="btn grey waves-effect waves-light" style="margin-left:8px;">
+                        Cancel
+                      </a>
+                    </div>
+
+                  </div>
+                </form>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <%- include('_layouts/commonJs') %>
+  <%- include('_layouts/commonJs') %>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            M.FormSelect.init(document.querySelectorAll('select'));
-            M.updateTextFields(); // Activate labels for pre-filled inputs
-        });
-    </script>
+  <!-- Dropify -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
+  <script src="/app-assets/js/scripts/form-file-uploads.min.js"></script>
+
+  <!-- intl-tel-input -->
+  <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.0/build/js/intlTelInput.min.js"></script>
+
+  <script>
+    $(document).ready(function () {
+
+      // ========== 1. Country Code (Proper UI, pre-filled with driver's existing number) ==========
+      const phoneInput = document.querySelector("#contactNumber");
+
+      const iti = window.intlTelInput(phoneInput, {
+        initialCountry: "ae",
+        preferredCountries: ["ae", "in", "sa", "qa", "om", "kw", "bh"],
+        separateDialCode: true,
+        utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.0/build/js/utils.js"
+      });
+
+      // Form submit pe country code set karo
+      $('#editDriverForm').on('submit', function () {
+        const countryData = iti.getSelectedCountryData();
+        $('#contactCountryCode').val('+' + countryData.dialCode);
+      });
+
+      // ========== Dropify (with existing image preview support) ==========
+      $('.dropify').dropify({
+        messages: {
+          'default': 'Drag and drop or click to upload',
+          'remove': 'Remove',
+          'error': 'Something went wrong.'
+        }
+      });
+
+      // Activate Materialize labels for any pre-filled plain inputs
+      M.updateTextFields();
+
+    });
+  </script>
 </body>
+
 </html>
