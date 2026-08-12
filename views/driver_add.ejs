@@ -3,45 +3,151 @@
 
 <head>
   <%- include('_layouts/head') %>
-    <title>Create New Driver | <%= title %>
-    </title>
-    <link rel="stylesheet" type="text/css"
-      href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css">
-    <style>
-      .select-wrapper input.select-dropdown {
-        color: #000 !important;
-      }
+  <title>Create New Driver | <%= title %></title>
 
-      .select-wrapper .caret {
-        fill: #000 !important;
-      }
+  <!-- Dropify -->
+  <link rel="stylesheet" type="text/css"
+    href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css">
 
-      .dropdown-content li>span {
-        color: #000 !important;
-      }
+  <!-- intl-tel-input -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.0/build/css/intlTelInput.css">
 
-      .card-panel .row {
-        overflow: visible !important;
-      }
+  <!-- Select2 -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
-      .section-title {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #1a237e;
-        border-left: 4px solid #3949ab;
-        padding-left: 10px;
-        margin: 20px 0 10px;
-      }
+  <style>
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1a237e;
+      border-left: 4px solid #3949ab;
+      padding-left: 10px;
+      margin: 20px 0 10px;
+    }
 
-      .info-box {
-        background: #e8f5e9;
-        border-left: 4px solid #43a047;
-        padding: 10px 14px;
-        border-radius: 4px;
-        margin-bottom: 12px;
-        font-size: 13px;
-      }
-    </style>
+    .info-box {
+      background: #e8f5e9;
+      border-left: 4px solid #43a047;
+      padding: 10px 14px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
+    /* ========== Shared field-wrapper (used by phone + region for consistent look) ========== */
+    .field-wrapper {
+      margin-top: 12px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .field-wrapper > label {
+      display: block;
+      font-size: 12px;
+      color: #9e9e9e;
+      margin-bottom: 6px;
+    }
+
+    /* ========== intl-tel-input Proper Fix ========== */
+    .iti {
+      width: 100% !important;
+      display: block;
+    }
+
+    .iti input {
+      width: 100% !important;
+      height: 3rem !important;
+      font-size: 16px !important;
+      border: none !important;
+      border-bottom: 1px solid #9e9e9e !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      padding-left: 90px !important; /* flag + dial code space */
+    }
+
+    .iti input:focus {
+      border-bottom: 1px solid #26a69a !important;
+      box-shadow: 0 1px 0 0 #26a69a !important;
+    }
+
+    .iti__flag-container {
+      z-index: 5;
+    }
+
+    .iti__selected-flag {
+      padding: 0 8px 0 12px;
+    }
+
+    /* ========== Select2 Materialize look (matches phone input underline style) ========== */
+    .select2-container {
+      width: 100% !important;
+    }
+
+    .select2-container--default .select2-selection--single {
+      height: 3rem !important;
+      border: none !important;
+      border-bottom: 1px solid #9e9e9e !important;
+      border-radius: 0 !important;
+      background-color: transparent !important;
+      display: flex;
+      align-items: center;
+      padding: 0 !important;
+    }
+
+    .select2-container--default.select2-container--focus .select2-selection--single,
+    .select2-container--default.select2-container--open .select2-selection--single {
+      border-bottom: 1px solid #26a69a !important;
+      box-shadow: 0 1px 0 0 #26a69a !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+      color: #000 !important;
+      line-height: normal !important;
+      padding-left: 0 !important;
+      padding-right: 20px !important;
+      font-size: 16px;
+      width: 100%;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__placeholder {
+      color: #9e9e9e !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+      height: 3rem !important;
+      top: 0 !important;
+      right: 2px !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__clear {
+      margin-right: 18px;
+    }
+
+    .select2-dropdown {
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      z-index: 9999 !important;
+      font-size: 15px;
+    }
+
+    .select2-search--dropdown .select2-search__field {
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 6px 8px;
+      outline: none;
+    }
+
+    .select2-results__option--highlighted[aria-selected] {
+      background-color: #3949ab !important;
+    }
+
+    /* Loading state text inside dropdown */
+    .select2-results__option.loading-results {
+      color: #9e9e9e;
+      font-style: italic;
+    }
+  </style>
 </head>
 
 <body
@@ -50,162 +156,191 @@
 
   <%- include('_layouts/sidenavbar') %>
 
-    <div id="main">
-      <div class="row">
-        <div id="breadcrumbs-wrapper" style="background-color:white;">
-          <div class="container">
-            <div class="row">
-              <div class="col s12 m6 l6">
-                <h5 class="breadcrumbs-title">Create New Driver</h5>
-              </div>
-              <div class="col s12 m6 l6 right-align-md">
-                <a href="/admin/drivers" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">Back
-                  to Drivers</a>
+  <div id="main">
+    <div class="row">
+      <div id="breadcrumbs-wrapper" style="background-color:white;">
+        <div class="container">
+          <div class="row">
+            <div class="col s12 m6 l6">
+              <h5 class="breadcrumbs-title">Create New Driver</h5>
+            </div>
+            <div class="col s12 m6 l6 right-align-md">
+              <a href="/admin/drivers" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">
+                Back to Drivers
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%- include('messages', { messages: messages }) %>
+
+      <div class="col s12">
+        <div class="container">
+          <div class="section users-view">
+            <div class="card-panel">
+              <div class="card-content">
+
+                <div class="info-box">
+                  <strong>ℹ️ Auto Email:</strong> After creating, login credentials will be sent to the driver's
+                  email address automatically via SMTP.
+                </div>
+
+                <form id="createDriverForm" method="POST" action="/admin/drivers/create"
+                  enctype="multipart/form-data">
+                  <div class="row">
+
+                    <!-- ===================== Personal Information ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Personal Information</p>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="fullName" name="fullName" type="text" required>
+                      <label for="fullName">Full Name <span class="red-text">*</span></label>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="email" name="email" type="email" required>
+                      <label for="email">Email Address <span class="red-text">*</span></label>
+                      <span class="helper-text">Login credentials & OTP will be sent to this email</span>
+                    </div>
+
+                    <!-- ========== Country Code + Phone ========== -->
+                    <div class="col s12 m6">
+                      <div class="field-wrapper">
+                        <label>Contact Number <span class="red-text">*</span></label>
+                        <input id="contactNumber" name="contactNumber" type="tel" required>
+                        <input type="hidden" name="contactCountryCode" id="contactCountryCode">
+                      </div>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="eidNumber" name="emiratesId" type="text" placeholder="e.g. 784-XXXX-XXXXXXX-X">
+                      <label for="eidNumber">EID Number (Emirates ID)</label>
+                    </div>
+
+                    <!-- ===================== Vehicle Information ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Vehicle Information</p>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="vehicleNumber" name="vehicleNumber" type="text">
+                      <label for="vehicleNumber">Vehicle Number</label>
+                    </div>
+
+                    <!-- ========== Region - Simple Text Input ========== -->
+                    <div class="input-field col s12 m6">
+                      <input id="region" name="region" type="text" placeholder="e.g. Dubai, Abu Dhabi">
+                      <label for="region">Region</label>
+                    </div>
+
+                    <!-- ===================== Documents ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Documents</p>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="licenseNumber" name="licenseNumber" type="text" required>
+                      <label for="licenseNumber">License Number <span class="red-text">*</span></label>
+                    </div>
+
+                    <div class="col s12 m6">
+                      <label>License Front</label>
+                      <input type="file" name="licenseFront" class="dropify" accept="image/*">
+                    </div>
+
+                    <div class="col s12 m6">
+                      <label>License Back</label>
+                      <input type="file" name="licenseBack" class="dropify" accept="image/*">
+                    </div>
+
+                    <div class="col s12 m6">
+                      <label>Mulkia Front</label>
+                      <input type="file" name="MulkiaFront" class="dropify" accept="image/*">
+                    </div>
+
+                    <div class="col s12 m6">
+                      <label>Mulkia Back</label>
+                      <input type="file" name="MulkiaBack" class="dropify" accept="image/*">
+                    </div>
+
+                    <!-- ===================== Additional Information ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Additional Information</p>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="pin" name="pin" type="text" placeholder="e.g. 1234">
+                      <label for="pin">Initial PIN / Password</label>
+                      <span class="helper-text">Set a temporary PIN — driver can change after first login</span>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="col s12 right-align" style="margin-top: 24px;">
+                      <button type="submit" class="btn gradient-45deg-purple-deep-orange waves-effect waves-light">
+                        <i class="material-icons left">person_add</i>
+                        Create Driver &amp; Send Login Email
+                      </button>
+                      <a href="/admin/drivers" class="btn grey waves-effect waves-light" style="margin-left:8px;">
+                        Cancel
+                      </a>
+                    </div>
+
+                  </div>
+                </form>
+
               </div>
             </div>
           </div>
         </div>
-
-        <%- include('messages', { messages: messages }) %>
-
-          <div class="col s12">
-            <div class="container">
-              <div class="section users-view">
-                <div class="card-panel">
-                  <div class="card-content">
-
-                    <div class="info-box">
-                      <strong>ℹ️ Auto Email:</strong> After creating, login credentials will be sent to the driver's
-                      email address automatically via SMTP.
-                    </div>
-
-                    <form id="createDriverForm" method="POST" action="/admin/drivers/create"
-                      enctype="multipart/form-data">
-                      <div class="row">
-
-                        <!-- Personal Information -->
-                        <div class="col s12">
-                          <p class="section-title">Personal Information</p>
-                        </div>
-                        <div class="input-field col s12 m6">
-                          <input id="fullName" name="fullName" type="text" required>
-                          <label for="fullName">Full Name <span class="red-text">*</span></label>
-                        </div>
-                        <div class="input-field col s12 m6">
-                          <input id="email" name="email" type="email" required>
-                          <label for="email">Email Address <span class="red-text">*</span></label>
-                          <span class="helper-text">Login credentials & OTP will be sent to this email</span>
-                        </div>
-                        <div class="input-field col s12 m3">
-                          <select id="contactCountryCode" name="contactCountryCode" required>
-                            <option value="+971" selected>+971 (UAE)</option>
-                            <option value="+91">+91 (India)</option>
-                            <option value="+1">+1 (USA)</option>
-                          </select>
-                          <label for="contactCountryCode">Country Code <span class="red-text">*</span></label>
-                        </div>
-                        <div class="input-field col s12 m3">
-                          <input id="contactNumber" name="contactNumber" type="text" required>
-                          <label for="contactNumber">Contact Number <span class="red-text">*</span></label>
-                        </div>
-
-                        <!-- EID Number only (no Aadhar) -->
-                        <div class="input-field col s12 m6">
-                          <input id="eidNumber" name="emiratesId" type="text" placeholder="e.g. 784-XXXX-XXXXXXX-X">
-                          <label for="eidNumber">EID Number (Emirates ID)</label>
-                        </div>
-
-                        <!-- Vehicle Information -->
-                        <div class="col s12">
-                          <p class="section-title">Vehicle Information</p>
-                        </div>
-                        <!-- Only ONE vehicle number field — registration number removed -->
-                        <div class="input-field col s12 m6">
-                          <input id="vehicleNumber" name="vehicleNumber" type="text">
-                          <label for="vehicleNumber">Vehicle Number</label>
-                        </div>
-
-                        <div class="row">
-                          <div class="input-field col s12 m6">
-                            <select name="region" id="region">
-                              <option value="" disabled selected>Select Region</option>
-                              <% if (regions && regions.length> 0) { %>
-                                <% regions.forEach(region=> { %>
-                                  <option value="<%= region._id %>">
-                                    <%= region.regionName %> (<%= region.regionCode %> - <%= region.state %>)
-                                  </option>
-                                  <% }) %>
-                                    <% } else { %>
-                                      <option value="" disabled>No regions available</option>
-                                      <% } %>
-                            </select>
-                          </div>
-                        </div>
-
-                        <!-- Documents -->
-                        <div class="col s12">
-                          <p class="section-title">Documents</p>
-                        </div>
-                        <div class="input-field col s12 m6">
-                          <input id="licenseNumber" name="licenseNumber" type="text" required>
-                          <label for="licenseNumber">License Number <span class="red-text">*</span></label>
-                        </div>
-                        <div class="col s12 m6">
-                          <label>License Front</label>
-                          <input type="file" name="licenseFront" class="dropify" accept="image/*">
-                        </div>
-                        <div class="col s12 m6">
-                          <label>License Back</label>
-                          <input type="file" name="licenseBack" class="dropify" accept="image/*">
-                        </div>
-
-                        <!-- RC renamed to Mulkia as per requirement -->
-                        <div class="col s12 m6">
-                          <label>Mulkia Front</label>
-                          <input type="file" name="MulkiaFront" class="dropify" accept="image/*">
-                        </div>
-                        <div class="col s12 m6">
-                          <label>Mulkia Back</label>
-                          <input type="file" name="MulkiaBack" class="dropify" accept="image/*">
-                        </div>
-
-                        <!-- Additional Info -->
-                        <div class="col s12">
-                          <p class="section-title">Additional Information</p>
-                        </div>
-                        <div class="input-field col s12 m6">
-                          <input id="pin" name="pin" type="text" placeholder="e.g. 1234">
-                          <label for="pin">Initial PIN / Password</label>
-                          <span class="helper-text">Set a temporary PIN — driver can change after first login</span>
-                        </div>
-
-                        <div class="col s12 right-align" style="margin-top:16px;">
-                          <button type="submit" class="btn gradient-45deg-purple-deep-orange waves-effect waves-light">
-                            <i class="material-icons left">person_add</i> Create Driver &amp; Send Login Email
-                          </button>
-                          <a href="/admin/drivers" class="btn grey waves-effect waves-light"
-                            style="margin-left:8px;">Cancel</a>
-                        </div>
-
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
       </div>
     </div>
+  </div>
 
-    <%- include('_layouts/commonJs') %>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
-      <script src="/app-assets/js/scripts/form-file-uploads.min.js"></script>
-      <script>
-        $(document).ready(function () {
-          $('select').formSelect();
-          $('.dropify').dropify({ messages: { 'default': 'Drag and drop or click to upload', 'remove': 'Remove', 'error': 'Something went wrong.' } });
-        });
-      </script>
+  <%- include('_layouts/commonJs') %>
+
+  <!-- Dropify -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
+  <script src="/app-assets/js/scripts/form-file-uploads.min.js"></script>
+
+  <!-- intl-tel-input -->
+  <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.0/build/js/intlTelInput.min.js"></script>
+
+  <!-- Select2 -->
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+  <script>
+    $(document).ready(function () {
+
+      // ========== 1. Country Code (Proper UI) ==========
+      const phoneInput = document.querySelector("#contactNumber");
+
+      const iti = window.intlTelInput(phoneInput, {
+        initialCountry: "ae",
+        preferredCountries: ["ae", "in", "sa", "qa", "om", "kw", "bh"],
+        separateDialCode: true,
+        utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.0/build/js/utils.js"
+      });
+
+      // Form submit pe country code set karo
+      $('#createDriverForm').on('submit', function () {
+        const countryData = iti.getSelectedCountryData();
+        $('#contactCountryCode').val('+' + countryData.dialCode);
+      });
+
+      // ========== Dropify ==========
+      $('.dropify').dropify({
+        messages: {
+          'default': 'Drag and drop or click to upload',
+          'remove': 'Remove',
+          'error': 'Something went wrong.'
+        }
+      });
+
+    });
+  </script>
 </body>
 
 </html>
