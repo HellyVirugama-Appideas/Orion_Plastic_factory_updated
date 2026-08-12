@@ -3,159 +3,245 @@
 
 <head>
     <%- include('_layouts/head') %>
-    <title>Customers Management | <%= title %></title>
+        <title>Customers Management | <%= title %>
+        </title>
 
-    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/extensions/responsive/css/responsive.dataTables.min.css">
-    <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/select.dataTables.min.css">
-    <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
+        <link rel="stylesheet" type="text/css"
+            href="/app-assets/vendors/data-tables/extensions/responsive/css/responsive.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/select.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="/app-assets/css/pages/data-tables.css">
 
-    <style>
-        table tr td, th { text-align: center; }
-        [type='checkbox']+span:not(.lever):before { border-color: black; }
-        [type='checkbox']:checked+span:not(.lever):before { border-right-color: black; border-bottom-color: black; }
+        <style>
+            table tr td,
+            th {
+                text-align: center;
+            }
 
-        /* Name cell with ellipsis */
-        .name-cell {
-            max-width: 240px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .company-name { font-weight: bold; display: block; }
-        .individual-name { font-size: 0.9em; color: #555; }
+            [type='checkbox']+span:not(.lever):before {
+                border-color: black;
+            }
 
-        /* Hide DataTables sorting icons */
-        /* table.dataTable thead th { background-image: none !important; } */
-        table.dataTable thead .sorting:before,
-        table.dataTable thead .sorting:after,
-        table.dataTable thead .sorting_asc:before,
-        table.dataTable thead .sorting_asc:after,
-        table.dataTable thead .sorting_desc:before,
-        table.dataTable thead .sorting_desc:after { display: none !important; }
+            [type='checkbox']:checked+span:not(.lever):before {
+                border-right-color: black;
+                border-bottom-color: black;
+            }
 
-        /* Make rows look clickable */
-        tr.customer-row {
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
+            /* Name cell with ellipsis */
+            .name-cell {
+                max-width: 240px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
 
-        tr.customer-row:hover {
-            background-color: #f5f5f5 !important;
-        }
+            .company-name {
+                font-weight: bold;
+                display: block;
+            }
 
-        /* Prevent row click interference in special columns */
-        td.checkbox-column,
-        td.actions-column {
-            cursor: default;
-        }
+            .individual-name {
+                font-size: 0.9em;
+                color: #555;
+            }
 
-        td.actions-column a,
-        td.checkbox-column input,
-        td.checkbox-column label,
-        .status-toggle,
-        .lever {
-            pointer-events: auto !important;
-        }
-    </style>
+            /* Hide DataTables sorting icons */
+            table.dataTable thead .sorting:before,
+            table.dataTable thead .sorting:after,
+            table.dataTable thead .sorting_asc:before,
+            table.dataTable thead .sorting_asc:after,
+            table.dataTable thead .sorting_desc:before,
+            table.dataTable thead .sorting_desc:after {
+                display: none !important;
+            }
+
+            /* Make rows look clickable */
+            tr.customer-row {
+                cursor: pointer;
+                transition: background-color 0.2s;
+            }
+
+            tr.customer-row:hover {
+                background-color: #f5f5f5 !important;
+            }
+
+            /* Prevent row click interference in special columns */
+            td.checkbox-column,
+            td.actions-column {
+                cursor: default;
+            }
+
+            td.actions-column a,
+            td.checkbox-column input,
+            td.checkbox-column label,
+            .status-toggle,
+            .lever {
+                pointer-events: auto !important;
+            }
+        </style>
 </head>
 
-<body class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
-      data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
+<body
+    class="vertical-layout page-header-light vertical-menu-collapsible vertical-dark-menu preload-transitions 2-columns"
+    data-open="click" data-menu="vertical-dark-menu" data-col="2-columns">
 
     <%- include('_layouts/sidenavbar') %>
 
-    <div id="main">
-        <div class="row">
-            <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+        <div id="main">
+            <div class="row">
+                <div class="pt-1 pb-0" id="breadcrumbs-wrapper">
+                    <div class="container">
+                        <div class="row">
+                            <%- include('messages', { messages: messages }) %>
+                                <div class="col s12 m6 l6">
+                                    <h6 class="breadcrumbs-title"><span>Manage Customers</span></h6>
+                                </div>
+                                <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
+                                    <ol class="breadcrumbs mb-0">
+                                        <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                                        <li class="breadcrumb-item active">Customers</li>
+                                    </ol>
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="breadcrumbs-wrapper" style="background-color: white;">
                 <div class="container">
                     <div class="row">
-                        <%- include('messages', { messages: messages }) %>
-                        <div class="col s12 m6 l6">
-                            <h6 class="breadcrumbs-title"><span>Manage Customers</span></h6>
-                        </div>
-                        <div class="col s12 m6 l6 right-align-md" style="margin-top: -10px;">
-                            <ol class="breadcrumbs mb-0">
-                                <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
-                                <li class="breadcrumb-item active">Customers</li>
-                            </ol>
+                        <div class="col s12 right-align-md">
+                            <a class="btn pull-right btn-add btn-breadcrumbs white-text"
+                                href="/admin/customers/create-customer">Create Customer</a>
+
+                            <a class="btn pull-right btn-breadcrumbs white-text grey darken-1"
+                                style="margin-right:10px;" href="/admin/customers/export">
+                                <i class="material-icons left">file_download</i>Export CSV
+                            </a>
+
+                            <a href="#csvImportModal"
+                                class="btn pull-right btn-breadcrumbs white-text blue darken-1 modal-trigger"
+                                style="margin-right:10px;">
+                                <i class="material-icons left">file_upload</i>Import CSV
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div id="breadcrumbs-wrapper" style="background-color: white;">
-            <div class="container">
-                <div class="row">
-                    <div class="col s12 right-align-md">
-                        <a class="btn pull-right btn-add btn-breadcrumbs white-text"
-                           href="/admin/customers/create-customer">Create Customer</a>
-                    </div>
+            <!-- IMPORT CSV MODAL -->
+            <div id="csvImportModal" class="modal">
+                <div class="modal-content">
+                    <h5><i class="material-icons left">file_upload</i>Import Customers via CSV</h5>
+                    <p class="grey-text">
+                        To add a new customer, leave the <strong>Customer ID column empty</strong>.
+                        To <strong>update</strong> an existing customer, enter their exact Customer ID
+                        (e.g. <code>CUST000123</code>) — it will replace the details of that row.
+                    </p>
+                    <p>
+                        <a href="/admin/customers/csv-template" class="btn-flat waves-effect blue-text">
+                            <i class="material-icons left">description</i>Download Sample CSV Format
+                        </a>
+                    </p>
+                    <form id="csvImportForm" action="/admin/customers/import" method="POST"
+                        enctype="multipart/form-data">
+                        <div class="file-field input-field">
+                            <div class="btn blue darken-1">
+                                <span>Choose File</span>
+                                <input type="file" name="csvFile" accept=".csv" required>
+                            </div>
+                            <div class="file-path-wrapper">
+                                <input class="file-path validate" type="text"
+                                    placeholder="Select a .csv file to import">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <a href="#!" class="modal-close btn-flat">Cancel</a>
+                    <button type="submit" form="csvImportForm" class="btn blue darken-1">
+                        <i class="material-icons left">file_upload</i>Import
+                    </button>
                 </div>
             </div>
-        </div>
 
-        <div class="col s12">
-            <div class="container">
-                <div class="section section-data-tables">
-                    <div class="row">
-                        <div class="col s12">
-                            <div class="card">
-                                <div class="card-content">
-                                    <div class="row">
-                                        <div class="col s12 overflow">
-                                            <table id="page-length-option" class="display">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Sr</th>
-                                                        <th>Name</th>
-                                                        <th>Phone</th>
-                                                        <th>Email</th>
-                                                        <th>Type</th>
-                                                        <th>Category</th>
-                                                        <th>Status</th>
-                                                        <th>Created Date</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <% if (customers && customers.length > 0) { %>
-                                                        <% customers.forEach((customer, index) => { %>
-                                                            <% 
-                                                                const primaryLocation = customer.getPrimaryLocation ? 
-                                                                    customer.getPrimaryLocation() : 
-                                                                    customer.locations.find(loc => loc.isPrimary) || 
+            <div class="col s12">
+                <div class="container">
+                    <div class="section section-data-tables">
+                        <div class="row">
+                            <div class="col s12">
+                                <div class="card">
+                                    <div class="card-content">
+                                        <div class="row">
+                                            <div class="col s12 overflow">
+                                                <table id="page-length-option" class="display">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Sr</th>
+                                                            <th>Name</th>
+                                                            <th>Phone</th>
+                                                            <th>Email</th>
+                                                            <th>Type</th>
+                                                            <th>Category</th>
+                                                            <th>Status</th>
+                                                            <th>Created Date</th>
+                                                            <th>Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% if (customers && customers.length> 0) { %>
+                                                            <% customers.forEach((customer, index)=> { %>
+                                                                <% const primaryLocation=customer.getPrimaryLocation ?
+                                                                    customer.getPrimaryLocation() :
+                                                                    customer.locations.find(loc=> loc.isPrimary) ||
                                                                     customer.locations[0] || {};
-                                                                const primaryAddress = primaryLocation ? 
-                                                                    `${primaryLocation.city || ''}, ${primaryLocation.state || ''}`.trim() : 'N/A';
-                                                                let formattedDate = '-'; 
-                                                                if (customer.createdAt) { 
-                                                                    const d = new Date(customer.createdAt); 
-                                                                    const day = String(d.getUTCDate()).padStart(2, '0'); 
-                                                                    const month = String(d.getUTCMonth() + 1).padStart(2, '0'); 
-                                                                    const year = d.getUTCFullYear(); 
-                                                                    const hours = String(d.getUTCHours()).padStart(2, '0'); 
-                                                                    const minutes = String(d.getUTCMinutes()).padStart(2, '0'); 
-                                                                    formattedDate = `${day}-${month}-${year} ${hours}:${minutes}`; 
-                                                                }
-                                                            %>
-                                                            <!-- Clickable row -->
-                                                            <tr class="customer-row" 
-                                                                data-href="/admin/customers/view/<%= customer._id %>">
-                                                                <td><%= index + 1 + ((pagination?.page - 1) * (pagination?.limit || 20) || 0) %></td>
-                                                                
-                                                                <td class="name-cell" title="<%= customer.companyName || customer.name %>">
-                                                                    <% if (customer.companyName) { %>
-                                                                        <span class="company-name"><%= customer.companyName %></span>
-                                                                    <% } else { %>
-                                                                        <span class="individual-name"><%= customer.name %></span>
-                                                                    <% } %>
-                                                                </td>
-                                                                <td><%= customer.phone || customer.alternatePhone || 'N/A' %></td>
-                                                                <td><%= customer.email || 'N/A' %></td>
-                                                                <td>
-                                                                    <span class="badge" style="background-color: <%= 
+                                                                    const primaryAddress = primaryLocation ?
+                                                                    `${primaryLocation.city || ''},
+                                                                    ${primaryLocation.state || ''}`.trim() : 'N/A';
+                                                                    let formattedDate = '-';
+                                                                    if (customer.createdAt) {
+                                                                    const d = new Date(customer.createdAt);
+                                                                    const day = String(d.getUTCDate()).padStart(2, '0');
+                                                                    const month = String(d.getUTCMonth() +
+                                                                    1).padStart(2, '0');
+                                                                    const year = d.getUTCFullYear();
+                                                                    const hours = String(d.getUTCHours()).padStart(2,
+                                                                    '0');
+                                                                    const minutes =
+                                                                    String(d.getUTCMinutes()).padStart(2, '0');
+                                                                    formattedDate = `${day}-${month}-${year}
+                                                                    ${hours}:${minutes}`;
+                                                                    }
+                                                                    %>
+                                                                    <!-- Clickable row -->
+                                                                    <tr class="customer-row"
+                                                                        data-href="/admin/customers/view/<%= customer._id %>">
+                                                                        <td>
+                                                                            <%= index + 1 + ((pagination?.page - 1) *
+                                                                                (pagination?.limit || 20) || 0) %>
+                                                                        </td>
+
+                                                                        <td class="name-cell"
+                                                                            title="<%= customer.companyName || customer.name %>">
+                                                                            <% if (customer.companyName) { %>
+                                                                                <span class="company-name">
+                                                                                    <%= customer.companyName %>
+                                                                                </span>
+                                                                                <% } else { %>
+                                                                                    <span class="individual-name">
+                                                                                        <%= customer.name %>
+                                                                                    </span>
+                                                                                    <% } %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= customer.phone ||
+                                                                                customer.alternatePhone || 'N/A' %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= customer.email || 'N/A' %>
+                                                                        </td>
+                                                                        <td>
+                                                                            <span class="badge" style="background-color: <%= 
                                                                         customer.customerType === 'enterprise' ? 'purple' :
                                                                         customer.customerType === 'business' ? 'rgb(214,221, 235)' :
                                                                         'rgb(212, 240, 216)' %>;
@@ -163,170 +249,187 @@
                                                                         customer.customerType === 'enterprise' ? 'white' :
                                                                         customer.customerType === 'business' ? 'blue' :
                                                                         'green' %>;">
-                                                                        <%= customer.customerType?.toUpperCase() || 'INDIVIDUAL' %>
-                                                                    </span>
-                                                                </td>
-                                                                <td>
-                                                                    <span class="badge" style="background-color: <%= customer.category === 'vip' ? 'rgb(243, 248, 174)' : 'rgb(180, 228, 228)' %>;
+                                                                                <%= customer.customerType?.toUpperCase()
+                                                                                    || 'INDIVIDUAL' %>
+                                                                            </span>
+                                                                        </td>
+                                                                        <td>
+                                                                            <span class="badge"
+                                                                                style="background-color: <%= customer.category === 'vip' ? 'rgb(243, 248, 174)' : 'rgb(180, 228, 228)' %>;
                                                                         color: <%= customer.category === 'vip' ? 'orange' : 'teal' %>;">
-                                                                        <%= customer.category?.toUpperCase() || 'REGULAR' %>
-                                                                    </span>
-                                                                </td>
-                                                                <td>
-                                                                    <div class="switch">
-                                                                        <label>
-                                                                            <input type="checkbox" 
-                                                                                   class="status-toggle" 
-                                                                                   data-customer-id="<%= customer._id %>" 
-                                                                                   <%= customer.status === 'active' ? 'checked' : '' %>>
-                                                                            <span class="lever"></span>
-                                                                        </label>
-                                                                    </div>
-                                                                </td>
-                                                                <td><%= formattedDate %></td>
-                                                                
-                                                                <td class="actions-column">
-                                                                    <a href="/admin/customers/view/<%= customer._id %>" 
-                                                                       class="waves-effect waves-light accent-2 btn-edit" 
-                                                                       title="View Details">
-                                                                        <i class="material-icons">visibility</i>
-                                                                    </a>
-                                                                    &nbsp;&nbsp;
-                                                                    <a href="/admin/customers/<%= customer._id %>/edit" 
-                                                                       class="btn-floating waves-effect waves-light accent-2 btn-edit" 
-                                                                       title="Edit">
-                                                                        <i class="material-icons">edit</i>
-                                                                    </a>
-                                                                    &nbsp;&nbsp;
-                                                                    <a href="#" 
-                                                                       class="btn-floating waves-effect waves-light red" 
-                                                                       onclick="confirmCustomerDelete('<%= customer._id %>', '<%= (customer.companyName || customer.name || customer.customerId) %>')"
-                                                                       title="Delete Customer">
-                                                                        <i class="material-icons">delete</i>
-                                                                    </a>
-                                                                </td>
-                                                            </tr>
-                                                        <% }) %>
-                                                    <% } else { %>
-                                                        <tr>
-                                                            <td colspan="11" class="center-align grey-text">
-                                                                No customers found matching your criteria
-                                                            </td>
-                                                        </tr>
-                                                    <% } %>
-                                                </tbody>
-                                            </table>
+                                                                                <%= customer.category?.toUpperCase()
+                                                                                    || 'REGULAR' %>
+                                                                            </span>
+                                                                        </td>
+                                                                        <td>
+                                                                            <div class="switch">
+                                                                                <label>
+                                                                                    <input type="checkbox"
+                                                                                        class="status-toggle"
+                                                                                        data-customer-id="<%= customer._id %>"
+                                                                                        <%=customer.status==='active'
+                                                                                        ? 'checked' : '' %>>
+                                                                                    <span class="lever"></span>
+                                                                                </label>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td>
+                                                                            <%= formattedDate %>
+                                                                        </td>
+
+                                                                        <td class="actions-column">
+                                                                            <a href="/admin/customers/view/<%= customer._id %>"
+                                                                                class="waves-effect waves-light accent-2 btn-edit"
+                                                                                title="View Details">
+                                                                                <i class="material-icons">visibility</i>
+                                                                            </a>
+                                                                            &nbsp;&nbsp;
+                                                                            <a href="/admin/customers/<%= customer._id %>/edit"
+                                                                                class="btn-floating waves-effect waves-light accent-2 btn-edit"
+                                                                                title="Edit">
+                                                                                <i class="material-icons">edit</i>
+                                                                            </a>
+                                                                            &nbsp;&nbsp;
+                                                                            <a href="#"
+                                                                                class="btn-floating waves-effect waves-light red"
+                                                                                onclick="confirmCustomerDelete('<%= customer._id %>', '<%= (customer.companyName || customer.name || customer.customerId) %>')"
+                                                                                title="Delete Customer">
+                                                                                <i class="material-icons">delete</i>
+                                                                            </a>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <% }) %>
+                                                                        <% } else { %>
+                                                                            <tr>
+                                                                                <td colspan="11"
+                                                                                    class="center-align grey-text">
+                                                                                    No customers found matching your
+                                                                                    criteria
+                                                                                </td>
+                                                                            </tr>
+                                                                            <% } %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Pagination -->
-                    <% if (pagination && pagination.pages > 1) { %>
-                        <div class="right-align mt-2">
-                            Page <%= pagination.page %> of <%= pagination.pages %> (Total: <%= pagination.total %>)
-                            <% if (pagination.page > 1) { %>
-                                <a href="?page=<%= pagination.page - 1 %>&<%= new URLSearchParams(Object.assign({}, req.query, {page: pagination.page - 1})).toString() %>" 
-                                   class="btn-flat">Prev</a>
+                        <!-- Pagination -->
+                        <% if (pagination && pagination.pages> 1) { %>
+                            <div class="right-align mt-2">
+                                Page <%= pagination.page %> of <%= pagination.pages %> (Total: <%= pagination.total %>)
+                                            <% if (pagination.page> 1) { %>
+                                                <a href="?page=<%= pagination.page - 1 %>&<%= new URLSearchParams(Object.assign({}, req.query, {page: pagination.page - 1})).toString() %>"
+                                                    class="btn-flat">Prev</a>
+                                                <% } %>
+                                                    <% if (pagination.page < pagination.pages) { %>
+                                                        <a href="?page=<%= pagination.page + 1 %>&<%= new URLSearchParams(Object.assign({}, req.query, {page: pagination.page + 1})).toString() %>"
+                                                            class="btn-flat">Next</a>
+                                                        <% } %>
+                            </div>
                             <% } %>
-                            <% if (pagination.page < pagination.pages) { %>
-                                <a href="?page=<%= pagination.page + 1 %>&<%= new URLSearchParams(Object.assign({}, req.query, {page: pagination.page + 1})).toString() %>" 
-                                   class="btn-flat">Next</a>
-                            <% } %>
-                        </div>
-                    <% } %>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <%- include('_layouts/commonJs') %>
+            <%- include('_layouts/commonJs') %>
 
-        <script src="/app-assets/vendors/data-tables/js/jquery.dataTables.min.js"></script>
-        <script src="/app-assets/js/scripts/data-tables.js"></script>
+                <script src="/app-assets/vendors/data-tables/js/jquery.dataTables.min.js"></script>
+                <script src="/app-assets/js/scripts/data-tables.js"></script>
 
-        <script>
-            // Select All Checkbox + Status Toggle + Row Click
-            document.addEventListener('DOMContentLoaded', function () {
-                // Select All
-                const selectAll = document.getElementById('selectAll');
-                const checkboxes = document.querySelectorAll('input[name="selectedCustomers[]"]');
+                <script>
+                    // Select All Checkbox + Status Toggle + Row Click + Modal Init
+                    document.addEventListener('DOMContentLoaded', function () {
 
-                if (selectAll) {
-                    selectAll.addEventListener('change', function () {
-                        checkboxes.forEach(cb => cb.checked = this.checked);
-                    });
-                }
+                        // ✅ FIX: Initialize Materialize Modal.
+                        // Without this, clicking "Import CSV" only appended #csvImportModal
+                        // to the URL instead of opening the popup — because no JS was
+                        // listening on elements with class "modal-trigger" on this page.
+                        var modalElems = document.querySelectorAll('.modal');
+                        M.Modal.init(modalElems);
 
-                M.FormSelect.init(document.querySelectorAll('select'));
+                        // Select All
+                        const selectAll = document.getElementById('selectAll');
+                        const checkboxes = document.querySelectorAll('input[name="selectedCustomers[]"]');
 
-                // Status Toggle AJAX
-                document.querySelectorAll('.status-toggle').forEach(toggle => {
-                    toggle.addEventListener('change', async function () {
-                        const customerId = this.getAttribute('data-customer-id');
-                        const isActive = this.checked;
-                        const newStatus = isActive ? 'active' : 'inactive';
-
-                        this.disabled = true;
-
-                        try {
-                            const response = await fetch(`/admin/customers/${customerId}/toggle-status`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({ status: newStatus })
+                        if (selectAll) {
+                            selectAll.addEventListener('change', function () {
+                                checkboxes.forEach(cb => cb.checked = this.checked);
                             });
-
-                            const result = await response.json();
-
-                            if (result.success) {
-                                M.toast({ html: `Status updated to ${newStatus.toUpperCase()}`, classes: 'green' });
-                            } else {
-                                this.checked = !isActive;
-                                M.toast({ html: result.message || 'Failed to update status', classes: 'red' });
-                            }
-                        } catch (err) {
-                            this.checked = !isActive;
-                            M.toast({ html: 'Network error. Try again.', classes: 'red' });
-                        } finally {
-                            this.disabled = false;
                         }
+
+                        M.FormSelect.init(document.querySelectorAll('select'));
+
+                        // Status Toggle AJAX
+                        document.querySelectorAll('.status-toggle').forEach(toggle => {
+                            toggle.addEventListener('change', async function () {
+                                const customerId = this.getAttribute('data-customer-id');
+                                const isActive = this.checked;
+                                const newStatus = isActive ? 'active' : 'inactive';
+
+                                this.disabled = true;
+
+                                try {
+                                    const response = await fetch(`/admin/customers/${customerId}/toggle-status`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({ status: newStatus })
+                                    });
+
+                                    const result = await response.json();
+
+                                    if (result.success) {
+                                        M.toast({ html: `Status updated to ${newStatus.toUpperCase()}`, classes: 'green' });
+                                    } else {
+                                        this.checked = !isActive;
+                                        M.toast({ html: result.message || 'Failed to update status', classes: 'red' });
+                                    }
+                                } catch (err) {
+                                    this.checked = !isActive;
+                                    M.toast({ html: 'Network error. Try again.', classes: 'red' });
+                                } finally {
+                                    this.disabled = false;
+                                }
+                            });
+                        });
+
+                        // Make entire row clickable (except special areas)
+                        document.querySelectorAll('tr.customer-row').forEach(row => {
+                            row.addEventListener('click', function (e) {
+                                // Prevent navigation if clicked on these elements
+                                if (e.target.closest('.checkbox-column') ||
+                                    e.target.closest('.actions-column') ||
+                                    e.target.closest('.status-toggle') ||
+                                    e.target.closest('.lever') ||
+                                    e.target.tagName === 'INPUT' ||
+                                    e.target.tagName === 'LABEL' ||
+                                    e.target.tagName === 'A') {
+                                    return;
+                                }
+
+                                const href = this.getAttribute('data-href');
+                                if (href) {
+                                    window.location.href = href;
+                                }
+                            });
+                        });
                     });
-                });
 
-                // Make entire row clickable (except special areas)
-                document.querySelectorAll('tr.customer-row').forEach(row => {
-                    row.addEventListener('click', function (e) {
-                        // Prevent navigation if clicked on these elements
-                        if (e.target.closest('.checkbox-column') || 
-                            e.target.closest('.actions-column') || 
-                            e.target.closest('.status-toggle') ||
-                            e.target.closest('.lever') ||
-                            e.target.tagName === 'INPUT' || 
-                            e.target.tagName === 'LABEL' ||
-                            e.target.tagName === 'A') {
-                            return;
+                    function confirmCustomerDelete(customerId, customerName) {
+                        if (confirm(`Are you sure you want to PERMANENTLY delete customer "${customerName}"?\n\nThis action cannot be undone and will remove all data and uploaded documents.`)) {
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = `/admin/customers/${customerId}/delete`;
+                            document.body.appendChild(form);
+                            form.submit();
                         }
-
-                        const href = this.getAttribute('data-href');
-                        if (href) {
-                            window.location.href = href;
-                        }
-                    });
-                });
-            });
-
-            function confirmCustomerDelete(customerId, customerName) {
-                if (confirm(`Are you sure you want to PERMANENTLY delete customer "${customerName}"?\n\nThis action cannot be undone and will remove all data and uploaded documents.`)) {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = `/admin/customers/${customerId}/delete`;
-                    document.body.appendChild(form);
-                    form.submit();
-                }
-            }
-        </script>
+                    }
+                </script>
 </body>
+
 </html>

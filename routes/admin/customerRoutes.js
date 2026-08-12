@@ -5,7 +5,7 @@ const { isAdmin, protectAdmin } = require('../../middleware/authMiddleware');
 const { checkPermission } = require('../../middleware/authMiddleware');
 const multer = require('multer');
 const path = require('path');
-const { uploadUpdateDriverDocuments, uploadUpdateCustomerDocuments } = require('../../middleware/uploadMiddleware');
+const { uploadUpdateDriverDocuments, uploadUpdateCustomerDocuments, uploadCustomerCsv } = require('../../middleware/uploadMiddleware');
 
 //  CUSTOMER CRUD 
 
@@ -16,6 +16,33 @@ router.get(
   checkPermission('customers', 'create'),
   customerController.getCreateCustomer
 )
+// Download sample CSV template (correct headers + example row)
+router.get(
+  '/csv-template',
+  protectAdmin,
+  isAdmin,
+  checkPermission('customers', 'read'),
+  customerController.downloadCustomerCsvTemplate
+);
+
+// Export all (filtered) customers as CSV
+router.get(
+  '/export',
+  protectAdmin,
+  isAdmin,
+  checkPermission('customers', 'read'),
+  customerController.bulkExportCustomers
+);
+
+// Import customers from CSV (creates new, updates existing by customerId/phone/email)
+router.post(
+  '/import',
+  protectAdmin,
+  isAdmin,
+  checkPermission('customers', 'create'),
+  uploadCustomerCsv,
+  customerController.bulkImportCustomers
+);
 
 // Create customer
 // router.post(
@@ -34,6 +61,7 @@ router.post(
   uploadUpdateCustomerDocuments, 
   customerController.createCustomer
 );
+
 
 // Get all customers
 router.get(
