@@ -160,8 +160,6 @@ const { sendNotification } = require("../../utils/sendNotification")
 exports.getAllExpenses = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 20,
       expenseType,
       approvalStatus,
       driverId,
@@ -186,21 +184,18 @@ exports.getAllExpenses = async (req, res) => {
       if (endDate) query.expenseDate.$lte = new Date(endDate);
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
     const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
-    // 1. Get Expenses + Pagination
+    // 1. Get ALL Expenses (no limit)
     const expenses = await Expense.find(query)
       .populate('driver', 'name email phone')
-      .populate('vehicle', 'vehicleNumber')   // agar vehicle populate chahiye to
+      .populate('vehicle', 'vehicleNumber')
       .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit))
       .lean();
 
-    const total = await Expense.countDocuments(query);
+    const total = expenses.length;
 
-    // 2. Filtered Summary (Current tab ke liye)
+    // 2. Filtered Summary
     const filteredSummary = await Expense.aggregate([
       { $match: query },
       {
@@ -214,9 +209,9 @@ exports.getAllExpenses = async (req, res) => {
       }
     ]);
 
-    // 3. Global Summary (Saare counts - tabs ke liye) ← Yeh important hai!
+    // 3. Global Summary
     const globalSummary = await Expense.aggregate([
-      { $match: {} },   // No filter - saari expenses pe
+      { $match: {} },
       {
         $group: {
           _id: null,
@@ -232,16 +227,16 @@ exports.getAllExpenses = async (req, res) => {
     res.render('expenses', {
       title: 'Expense Management',
       expenses,
-      summary: filteredSummary[0] || {},           // Table + current tab ke liye
-      globalSummary: globalSummary[0] || {},       // ← Tabs ke counts ke liye (New)
+      summary: filteredSummary[0] || {},
+      globalSummary: globalSummary[0] || {},
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: 1,
+        limit: total,
         total,
-        pages: Math.ceil(total / parseInt(limit))
+        pages: 1
       },
       currentQuery,
-      approvalStatus: approvalStatus || 'all',     // Tab active karne ke liye
+      approvalStatus: approvalStatus || 'all',
       messages: req.flash(),
       url: req.originalUrl,
       admin: req.admin

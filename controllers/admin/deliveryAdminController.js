@@ -91,8 +91,6 @@ async function getVerifiedFactoryLocation() {
 exports.renderDeliveriesList = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 20,
       status,
       search,
       startDate,
@@ -120,10 +118,9 @@ exports.renderDeliveriesList = async (req, res) => {
     let deliveries = await Delivery.find(query)
       .populate('customerId', 'name email phone companyName customerId')
       .populate('driverId', 'name phone vehicleNumber currentLocation')
-      .sort({ createdAt: -1 }) // ✅ Naya-se-purana order — nayi delivery hamesha upar/Page 1 ke paas dikhegi
+      .sort({ createdAt: -1 })
       .lean();
 
-    // ✅ DIAGNOSTIC: raw fetch count aur query print karo
     console.log(`[DELIVERIES-LIST] Query: ${JSON.stringify(query)} | Raw deliveries fetched from DB: ${deliveries.length}`);
 
     // === Proximity Sorting ===
@@ -134,7 +131,6 @@ exports.renderDeliveriesList = async (req, res) => {
       driverGroups[dId].push(del);
     }
 
-    // ✅ DIAGNOSTIC: har driver group mein kitni deliveries hain
     console.log(`[DELIVERIES-LIST] Driver groups: ${Object.entries(driverGroups).map(([k, v]) => `${k}(${v.length})`).join(', ')}`);
 
     let finalDeliveries = [];
@@ -153,11 +149,6 @@ exports.renderDeliveriesList = async (req, res) => {
           .map(del => {
             const sortedItem = upcomingMap.get(del._id.toString());
             const stLower = (del.status || '').toLowerCase();
-
-            // ✅ Returned_to_Factory / terminal-non-route statuses ke liye
-            // distance kabhi mat dikhao — na live proximity se, na purani
-            // stored `distance` field se (jo creation time ki purani value hoti hai
-            // aur ab meaningless hai kyunki delivery route se hat chuki hai).
             const isNonRoutable = ['returned_to_factory'].includes(stLower);
 
             return {
@@ -173,18 +164,11 @@ exports.renderDeliveriesList = async (req, res) => {
           })
           .sort((a, b) => a.__sortKey - b.__sortKey);
 
-        // ✅ Pickup Location ab route-chain ke hisaab se set hoti hai:
-        // Rank #1 (chain ki pehli delivery) → "Factory (Start)" label
-        // Rank #2, #3... → chain mein unse turant pehle wali delivery ka deliveryLocation
-        // Jinke paas rank nahi hai (completed/unassigned) → unka original pickup as-is
-        // (Same wording jo Route Chain widget mein use hoti hai, list view mein bhi consistent dikhegi)
         let previousInChain = null;
         for (const del of orderedGroup) {
           if (del.__hasRank && previousInChain) {
             del.pickupLocation = previousInChain.deliveryLocation;
           } else if (del.__hasRank) {
-            // Chain ki sabse pehli delivery — is order ka apna sahi pickup
-            // (agar valid hai), warna verified default factory pe fallback
             del.pickupLocation = await resolveFactoryLocation(del);
           } else {
             del.pickupLocation = del.originalPickupLocation || del.pickupLocation;
@@ -195,8 +179,6 @@ exports.renderDeliveriesList = async (req, res) => {
         }
 
         finalDeliveries.push(...orderedGroup);
-
-        // ✅ DIAGNOSTIC: is driver ke liye kitni deliveries push hui
         console.log(`[DELIVERIES-LIST] Driver ${dId}: ${orderedGroup.length} deliveries pushed to finalDeliveries`);
 
       } catch (e) {
@@ -206,19 +188,8 @@ exports.renderDeliveriesList = async (req, res) => {
       }
     }
 
-    // ✅ DIAGNOSTIC: final total (query filter ke baad)
     console.log(`[DELIVERIES-LIST] Final total: ${finalDeliveries.length}`);
-
-    // ⚠️ IMPORTANT FIX: pehle yahan server-side slicing (skip/limit) hoti thi,
-    // jabki neeche table par DataTables (client-side plugin) bhi apna khud ka
-    // pagination/search laga deta hai. Do pagination systems ek saath chalne
-    // se DataTables ko sirf current page ki 20 rows dikhti thi, aur wo "of 20"
-    // dikhata tha — baaki saari deliveries "gayab" lagti thi, jabki asal mein
-    // wo dusre server-side page par thi. Ab SAARI matching deliveries ek saath
-    // bhej rahe hain — DataTables khud pagination/search sambhal lega.
-    const paginatedDeliveries = finalDeliveries;
-
-    console.log(`[DELIVERIES-LIST] Sending all ${paginatedDeliveries.length} deliveries to DataTables (client-side pagination)`);
+    console.log(`[DELIVERIES-LIST] Sending all ${finalDeliveries.length} deliveries to DataTables (client-side pagination)`);
 
     // Stats
     const stats = await Delivery.aggregate([{
@@ -240,12 +211,12 @@ exports.renderDeliveriesList = async (req, res) => {
     res.render('deliveries_list', {
       title: 'Deliveries Management',
       user: req.user,
-      deliveries: paginatedDeliveries,
+      deliveries: finalDeliveries,
       stats: statistics,
       pagination: {
         total: finalDeliveries.length,
         page: 1,
-        pages: 1, // ✅ DataTables ab client-side pagination khud handle karta hai, isliye custom Prev/Next footer hide rahega
+        pages: 1,
         limit: finalDeliveries.length
       },
       filters: { status, search, startDate, endDate, driverId },

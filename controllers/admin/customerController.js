@@ -226,11 +226,12 @@ exports.createCustomer = async (req, res) => {
 };
 
 // GET ALL CUSTOMERS 
+// GET ALL CUSTOMERS 
 exports.getAllCustomers = async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 20,
+      limit,                    // default hata diya
       status,
       customerType,
       category,
@@ -261,34 +262,51 @@ exports.getAllCustomers = async (req, res) => {
       ];
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
     const sortOptions = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
-    const [customers, total] = await Promise.all([
-      Customer.find(query)
-        .populate('locations.regionId', 'regionName regionCode')
-        .populate('accountManager', 'name email')
-        .populate('createdBy', 'name email')
-        .sort(sortOptions)
-        .skip(skip)
-        .limit(parseInt(limit)),
-      Customer.countDocuments(query)
+    // Agar limit diya gaya hai to pagination apply karo, warna saara data lao
+    let customersQuery = Customer.find(query)
+      .populate('locations.regionId', 'regionName regionCode')
+      .populate('accountManager', 'name email')
+      .populate('createdBy', 'name email')
+      .sort(sortOptions);
+
+    let total;
+    let pagination = null;
+
+    if (limit) {
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      customersQuery = customersQuery.skip(skip).limit(parseInt(limit));
+      
+      total = await Customer.countDocuments(query);
+      pagination = {
+        page: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit)),
+        total
+      };
+    }
+
+    const [customers, count] = await Promise.all([
+      customersQuery,
+      limit ? Promise.resolve(total) : Customer.countDocuments(query)
     ]);
+
+    // Agar limit nahi diya to total count bhi set kar do
+    if (!pagination) {
+      total = count;
+      pagination = {
+        page: 1,
+        pages: 1,
+        total
+      };
+    }
 
     res.render('customers', {
       title: 'Customers Management',
       customers,
       url: req.originalUrl,
-      pagination: {
-        page: parseInt(page),
-        pages: Math.ceil(total / parseInt(limit)),
-        total
-      },
+      pagination,
       filters: req.query,
-      // messages: {
-      //   success: req.flash('success'),
-      //   error: req.flash('error')
-      // },
       messages: req.flash()
     });
 
@@ -870,30 +888,31 @@ exports.toggleCustomerStatus = async (req, res) => {
   }
 };
 
-
 const CSV_TEMPLATE_FIELDS = [
-   'name', 'companyName', 'email', 'phone',
-  'alternatePhone', 'gstNumber', 'panNumber', 'paymentTerms', 'creditLimit',
+  'name', 'companyName', 'email',
+  'countryCode', 'phoneNumber',
+  'altCountryCode', 'altPhoneNumber',
+  'gstNumber', 'panNumber', 'paymentTerms', 'creditLimit',
   'category', 'status', 'locationName', 'addressLine1', 'addressLine2',
-  'city', 'state', 'zipcode', 'contactPersonName', 'contactPersonPhone',
+  'city', 'state', 'zipcode', 'contactPersonName',
+  'contactPersonCountryCode', 'contactPersonPhoneNumber',
   'contactPersonEmail', 'googleMapLink', 'specialInstructions'
 ];
 
 // GET /admin/customers/csv-template — sample CSV to download
-// GET /admin/customers/csv-template — sample CSV to download
-// GET /admin/customers/csv-template — sample CSV to download
 exports.downloadCustomerCsvTemplate = async (req, res) => {
   try {
-    // ✅ Phone numbers use the Excel "text formula" trick: ="+971501234567"
-    // This stops Excel from treating the leading "+" as the start of a
-    // formula (which was corrupting the number / dropping digits when
-    // users typed their own numbers into the sheet).
+    // ✅ Country code and phone number are now SEPARATE plain-digit columns.
+    // Neither one starts with "+", so Excel never mistakes them for a
+    // formula — no more corruption, no more ="..." trick needed.
     const sampleRow = {
       name: 'Ahmed Al Mansoori',
       companyName: 'Al Mansoori Trading LLC',
       email: 'ahmed@example.com',
-      phone: '="+971501234567"',
-      alternatePhone: '',
+      countryCode: '971',
+      phoneNumber: '501234567',
+      altCountryCode: '',
+      altPhoneNumber: '',
       gstNumber: '',
       panNumber: '',
       paymentTerms: 'cod',
@@ -907,10 +926,11 @@ exports.downloadCustomerCsvTemplate = async (req, res) => {
       state: 'Dubai',
       zipcode: 'DXB1',
       contactPersonName: 'Ahmed Al Mansoori',
-      contactPersonPhone: '="+971501234567"',
+      contactPersonCountryCode: '971',
+      contactPersonPhoneNumber: '501234567',
       contactPersonEmail: 'ahmed@example.com',
       googleMapLink: '',
-      specialInstructions: 'PHONE FORMAT: keep the ="+971XXXXXXXXX" style (= sign + quotes) in the phone / alternatePhone / contactPersonPhone columns so Excel does not corrupt the + sign. UAE mobile = +971 followed by 9 digits (50/52/54/55/56/58 + 7 more digits).',
+      specialInstructions: 'PHONE FORMAT: countryCode and phoneNumber (and the alt/contactPerson versions) are digits only — no +, no spaces, no dashes. e.g. countryCode=971, phoneNumber=501234567.',
     };
 
     const parser = new Parser({ fields: CSV_TEMPLATE_FIELDS });
@@ -944,12 +964,22 @@ exports.bulkImportCustomers = async (req, res) => {
         .on('error', reject);
     });
 
-    const phoneRegex = /^\+971\s?(50|52|54|55|56|58)[0-9]{7}$/;
+    // ✅ Digits only, any length — no + sign, no country restriction.
+    const digitsOnlyRegex = /^[0-9]+$/;
     const zipcodeRegex = /^[A-Za-z0-9]{4}$/;
     const validCategories = ['vip', 'regular', 'wholesale', 'retail', 'distributor'];
     const validPaymentTerms = ['cod', 'credit_30', 'credit_45', 'credit_60', 'credit_90', 'credit_120'];
     const validStatuses = ['active', 'inactive', 'blocked', 'suspended'];
     const validCustomerTypes = ['individual', 'business', 'enterprise'];
+
+    // Combines countryCode + number into a stored phone value like "+971501234567".
+    // Returns null if the number part is missing/empty (so optional phones stay empty).
+    const combinePhone = (countryCode, number) => {
+      if (!number) return null;
+      const cc = (countryCode || '').trim();
+      const num = number.trim();
+      return cc ? `+${cc}${num}` : num;
+    };
 
     let created = 0, updated = 0, failed = 0, skipped = 0;
     const errors = [];
@@ -971,33 +1001,43 @@ exports.bulkImportCustomers = async (req, res) => {
         const clean = {};
         Object.keys(raw).forEach(k => {
           const key = k.replace(/^\uFEFF/, '').trim();
-          let val = typeof raw[k] === 'string'
+          clean[key] = typeof raw[k] === 'string'
             ? raw[k].replace(/^\uFEFF/, '').trim()
             : raw[k];
-
-          // ✅ Strip Excel's ="..." text-formula wrapper if the user
-          // kept the format from the sample template (or Excel added it).
-          // e.g. ="+971501234567"  ->  +971501234567
-          if (typeof val === 'string') {
-            const formulaMatch = val.match(/^="(.*)"$/);
-            if (formulaMatch) val = formulaMatch[1];
-
-            // Also collapse any internal spaces that sometimes creep in
-            // when phone numbers are typed/pasted from different sources
-            // e.g. "+971 50 123 4567" -> "+971 501234567"
-            if (key === 'phone' || key === 'alternatePhone' || key === 'contactPersonPhone') {
-              val = val.replace(/(?!^\+)(?<=\d)\s+(?=\d)/g, '');
-            }
-          }
-
-          clean[key] = val;
         });
 
         if (!clean.name) { errors.push({ row: rowNum, error: 'Name is required' }); failed++; continue; }
         if (!clean.email || !/^\S+@\S+\.\S+$/.test(clean.email)) { errors.push({ row: rowNum, error: 'Valid email is required' }); failed++; continue; }
-        if (!clean.phone || !phoneRegex.test(clean.phone)) { errors.push({ row: rowNum, error: `Valid UAE phone required, e.g. +971501234567 (got: "${clean.phone}")` }); failed++; continue; }
-        if (clean.alternatePhone && !phoneRegex.test(clean.alternatePhone)) { errors.push({ row: rowNum, error: `Invalid alternate phone (got: "${clean.alternatePhone}")` }); failed++; continue; }
+
+        // ---- Main phone: required ----
+        if (!clean.phoneNumber || !digitsOnlyRegex.test(clean.phoneNumber)) {
+          errors.push({ row: rowNum, error: `phoneNumber must contain digits only (got: "${clean.phoneNumber}")` }); failed++; continue;
+        }
+        if (clean.countryCode && !digitsOnlyRegex.test(clean.countryCode)) {
+          errors.push({ row: rowNum, error: `countryCode must contain digits only (got: "${clean.countryCode}")` }); failed++; continue;
+        }
+
+        // ---- Alternate phone: optional ----
+        if (clean.altPhoneNumber && !digitsOnlyRegex.test(clean.altPhoneNumber)) {
+          errors.push({ row: rowNum, error: `altPhoneNumber must contain digits only (got: "${clean.altPhoneNumber}")` }); failed++; continue;
+        }
+        if (clean.altCountryCode && !digitsOnlyRegex.test(clean.altCountryCode)) {
+          errors.push({ row: rowNum, error: `altCountryCode must contain digits only (got: "${clean.altCountryCode}")` }); failed++; continue;
+        }
+
+        // ---- Contact person phone: optional ----
+        if (clean.contactPersonPhoneNumber && !digitsOnlyRegex.test(clean.contactPersonPhoneNumber)) {
+          errors.push({ row: rowNum, error: `contactPersonPhoneNumber must contain digits only (got: "${clean.contactPersonPhoneNumber}")` }); failed++; continue;
+        }
+        if (clean.contactPersonCountryCode && !digitsOnlyRegex.test(clean.contactPersonCountryCode)) {
+          errors.push({ row: rowNum, error: `contactPersonCountryCode must contain digits only (got: "${clean.contactPersonCountryCode}")` }); failed++; continue;
+        }
+
         if (clean.zipcode && !zipcodeRegex.test(clean.zipcode)) { errors.push({ row: rowNum, error: `Zipcode must be exactly 4 alphanumeric characters (got: "${clean.zipcode}")` }); failed++; continue; }
+
+        const phone = combinePhone(clean.countryCode, clean.phoneNumber);
+        const alternatePhone = combinePhone(clean.altCountryCode, clean.altPhoneNumber);
+        const contactPersonPhone = combinePhone(clean.contactPersonCountryCode, clean.contactPersonPhoneNumber) || phone;
 
         let assignedRegion = null;
         let regionAutoAssigned = false;
@@ -1008,7 +1048,7 @@ exports.bulkImportCustomers = async (req, res) => {
 
         const contactPerson = {
           name: clean.contactPersonName || clean.name,
-          phone: clean.contactPersonPhone || clean.phone,
+          phone: contactPersonPhone,
           email: clean.contactPersonEmail || clean.email,
           designation: 'Primary Contact'
         };
@@ -1034,8 +1074,8 @@ exports.bulkImportCustomers = async (req, res) => {
         payload.name = clean.name;
         payload.companyName = clean.companyName || null;
         payload.email = clean.email.toLowerCase();
-        payload.phone = clean.phone;
-        payload.alternatePhone = clean.alternatePhone || null;
+        payload.phone = phone;
+        payload.alternatePhone = alternatePhone || null;
         payload.gstNumber = clean.gstNumber ? clean.gstNumber.toUpperCase() : null;
         payload.panNumber = clean.panNumber ? clean.panNumber.toUpperCase() : null;
         if (validPaymentTerms.includes(clean.paymentTerms)) payload.paymentTerms = clean.paymentTerms;
@@ -1055,7 +1095,7 @@ exports.bulkImportCustomers = async (req, res) => {
         }
         if (!existingCustomer) {
           existingCustomer = await Customer.findOne({
-            $or: [{ phone: clean.phone }, { email: clean.email.toLowerCase() }]
+            $or: [{ phone: payload.phone }, { email: payload.email }]
           });
         }
 

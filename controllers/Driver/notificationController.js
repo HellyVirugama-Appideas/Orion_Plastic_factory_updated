@@ -29,19 +29,17 @@ exports.getNotifications = async (req, res) => {
     console.log("[GET-NOTIF-DEBUG] Fetching for driver:", driverId.toString());
 
     const {
-      page = 1,
-      limit = 20,
       unreadOnly = false,
       type
     } = req.query;
 
-    const query = { 
-      recipientId: driverId,                    
-      recipientType: 'Driver'                  
+    const query = {
+      recipientId: driverId,
+      recipientType: 'Driver'
     };
 
     if (unreadOnly === 'true' || unreadOnly === true) {
-      query['channels.push.sent'] = true;     
+      query['channels.push.sent'] = true;
       query.isRead = false;
     }
 
@@ -49,15 +47,12 @@ exports.getNotifications = async (req, res) => {
       query.type = type;
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
+    // Fetch ALL notifications (no limit)
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
       .lean();
 
-    const total = await Notification.countDocuments(query);
+    const total = notifications.length;
 
     console.log(`[GET-NOTIF-DEBUG] Found ${notifications.length} / ${total} notifications`);
 
@@ -76,10 +71,10 @@ exports.getNotifications = async (req, res) => {
         timeAgo: getTimeAgo(notif.createdAt)
       })),
       pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / parseInt(limit)),
+        currentPage: 1,
+        totalPages: 1,
         totalItems: total,
-        hasNext: skip + notifications.length < total
+        hasNext: false
       }
     });
   } catch (error) {

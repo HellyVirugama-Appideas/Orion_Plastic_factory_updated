@@ -1429,11 +1429,9 @@ exports.uploadReceipts = async (req, res) => {
 exports.getMyExpenses = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 20,
-      expenseType = 'all',          // 'all', 'fuel', 'maintenance', 'vehicle'
-      status,                       // common name used in frontend/postman
-      approvalStatus,               // optional - for backward compatibility
+      expenseType = 'all',
+      status,
+      approvalStatus,
       startDate,
       endDate
     } = req.query;
@@ -1445,7 +1443,7 @@ exports.getMyExpenses = async (req, res) => {
 
     const query = { driver: driver._id };
 
-    // 1. Expense Type Filter (Tabs)
+    // 1. Expense Type Filter
     if (expenseType && expenseType !== 'all') {
       if (expenseType === 'vehicle') {
         query.expenseType = { $in: ['vehicle', 'repair', 'toll', 'parking', 'washing', 'other', 'general', 'insurance'] };
@@ -1456,14 +1454,12 @@ exports.getMyExpenses = async (req, res) => {
       }
     }
 
-    // 2. Approval Status Filter (most important fix)
+    // 2. Approval Status Filter
     const finalStatus = status || approvalStatus;
     if (finalStatus) {
-      if (finalStatus.toLowerCase() === 'Approved') {
-        // Show both types of approved status
+      if (finalStatus.toLowerCase() === 'approved') {
         query.approvalStatus = { $in: ['approved_by_admin', 'approved_by_finance'] };
       } else {
-        // direct match: pending, rejected, resubmitted, etc.
         query.approvalStatus = finalStatus;
       }
     }
@@ -1475,15 +1471,11 @@ exports.getMyExpenses = async (req, res) => {
       if (endDate) query.expenseDate.$lte = new Date(endDate);
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    // Fetch expenses
+    // Fetch ALL expenses (no limit)
     const expenses = await Expense.find(query)
       .populate('journey', 'startTime endTime distance')
       .populate('delivery', 'trackingNumber orderId')
-      .sort({ expenseDate: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+      .sort({ expenseDate: -1 });
 
     // Separate formatting
     const Fuel = [];
@@ -1498,7 +1490,7 @@ exports.getMyExpenses = async (req, res) => {
         vehicle: exp.vehicle,
         status: exp.approvalStatus,
         meterReading: exp.meterReading?.current || null,
-        totalAmount: exp.totalAmount || 0, // using virtual
+        totalAmount: exp.totalAmount || 0,
       };
 
       if (exp.expenseType === 'fuel') {
@@ -1511,7 +1503,6 @@ exports.getMyExpenses = async (req, res) => {
           mileage: exp.mileageData?.averageMileage || null,
         });
       } else {
-        // All other types go to vehicle/maintenance tab
         Vehicle.push({
           ...base,
           amount: exp.vehicleExpenseDetails?.expenseAmount || 0,
@@ -1521,10 +1512,9 @@ exports.getMyExpenses = async (req, res) => {
       }
     });
 
-    // Total count for pagination (with all current filters applied)
-    const total = await Expense.countDocuments(query);
+    const total = expenses.length;
 
-    // Optional: Current tab counts (pending/approved/rejected)
+    // Current tab counts
     const currentTabCounts = {
       pending: await Expense.countDocuments({ ...query, approvalStatus: 'pending' }),
       approved: await Expense.countDocuments({
@@ -1540,21 +1530,18 @@ exports.getMyExpenses = async (req, res) => {
       data: {
         Fuel,
         Vehicle,
-
-        // Combined for 'all' tab (sorted by date)
         expenses: expenseType === 'all'
           ? [...Fuel, ...Vehicle].sort((a, b) => new Date(b.date) - new Date(a.date))
           : expenseType === 'fuel' ? Fuel : Vehicle,
 
         pagination: {
           total,
-          page: parseInt(page),
-          pages: Math.ceil(total / parseInt(limit)),
-          limit: parseInt(limit)
+          page: 1,
+          pages: 1,
+          limit: total
         },
 
-        currentTabCounts,          // NEW: shows counts for current filter
-
+        currentTabCounts,
         activeFilter: expenseType,
         activeStatus: finalStatus || 'all'
       }

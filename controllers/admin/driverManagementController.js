@@ -283,8 +283,6 @@ exports.getDriverPerformance = async (req, res) => {
 exports.getAllDrivers = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 20,
       status,
       profileStatus,
       isBlocked,
@@ -318,25 +316,21 @@ exports.getAllDrivers = async (req, res) => {
       ];
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
     const sortOptions = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
-    const [drivers, total] = await Promise.all([
-      Driver.find(query)
-        .select('-password -pin -resetPinToken -resetPinExpires')
-        .sort(sortOptions)
-        .skip(skip)
-        .limit(parseInt(limit)),
-      Driver.countDocuments(query)
-    ]);
+    const drivers = await Driver.find(query)
+      .select('-password -pin -resetPinToken -resetPinExpires')
+      .sort(sortOptions);
+
+    const total = drivers.length;
 
     return successResponse(res, 'Drivers retrieved successfully', {
       drivers,
       messages: req.flash(),
       pagination: {
         total,
-        page: parseInt(page),
-        pages: Math.ceil(total / parseInt(limit))
+        page: 1,
+        pages: 1
       }
     });
 
