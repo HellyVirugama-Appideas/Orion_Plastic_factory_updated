@@ -949,6 +949,7 @@ exports.bulkImportCustomers = async (req, res) => {
     const validCategories = ['vip', 'regular', 'wholesale', 'retail', 'distributor'];
     const validPaymentTerms = ['cod', 'credit_30', 'credit_45', 'credit_60', 'credit_90', 'credit_120'];
     const validStatuses = ['active', 'inactive', 'blocked', 'suspended'];
+    const validCustomerTypes = ['individual', 'business', 'enterprise'];
 
     let created = 0, updated = 0, failed = 0, skipped = 0;
     const errors = [];
