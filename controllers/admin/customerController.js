@@ -876,7 +876,7 @@ const CSV_TEMPLATE_FIELDS = [
   'alternatePhone', 'gstNumber', 'panNumber', 'paymentTerms', 'creditLimit',
   'category', 'status', 'locationName', 'addressLine1', 'addressLine2',
   'city', 'state', 'zipcode', 'contactPersonName', 'contactPersonPhone',
-  'contactPersonEmail', 'googleMapLink', 'specialInstructions', 'notes'
+  'contactPersonEmail', 'googleMapLink', 'specialInstructions'
 ];
 
 // GET /admin/customers/csv-template — sample CSV to download
@@ -905,7 +905,6 @@ exports.downloadCustomerCsvTemplate = async (req, res) => {
       contactPersonEmail: 'ahmed@example.com',
       googleMapLink: '',
       specialInstructions: '',
-      notes: 'Leave customerId BLANK to create a NEW customer. To UPDATE an existing one, put their exact Customer ID (e.g. CUST000123) here.'
     };
 
     const parser = new Parser({ fields: CSV_TEMPLATE_FIELDS });
