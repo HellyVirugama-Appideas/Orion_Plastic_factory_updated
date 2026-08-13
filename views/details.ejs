@@ -40,25 +40,6 @@
             font-style: italic;
         }
 
-        .stat-box {
-            text-align: center;
-            padding: 20px 10px;
-            border-radius: 8px;
-            background: #f8f9fa;
-            border: 1px solid #e0e0e0;
-        }
-        .stat-box .stat-value {
-            font-size: 28px;
-            font-weight: 600;
-            display: block;
-        }
-        .stat-box .stat-label {
-            color: #777;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: .3px;
-        }
-
         @media (max-width: 768px) {
             .commission-section { flex-direction: column !important; align-items: flex-end !important; gap: 15px !important; }
             .driver-img { max-height: 160px; }
@@ -190,7 +171,7 @@
                                                     <th>Emirates ID</th>
                                                     <td><%= driver.governmentIds?.emiratesId || '-' %></td>
                                                 </tr>
-                                               
+                                              
                                                 <tr><th>Vehicle Number</th><td><%= driver.vehicleNumber || 'Not Assigned' %></td></tr>
                                                 <tr><th>Joined Date</th><td><%= driver.createdAt ? new Date(driver.createdAt).toLocaleDateString('en-IN') : '-' %></td></tr>
                                                 <tr>
@@ -209,7 +190,7 @@
                                                         </span>
                                                     </td>
                                                 </tr>
-                                               
+                                              
                                                 <tr>
                                                     <th>Profile Approval</th>
                                                     <td>
@@ -231,6 +212,10 @@
                                                             <%= driver.blockStatus?.isBlocked ? 'BLOCKED' : 'UNBLOCKED' %>
                                                         </span>
                                                     </td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Total Deliveries</th>
+                                                    <td><%= stats?.totalDeliveries ?? driver.performance?.totalDeliveries ?? 0 %></td>
                                                 </tr>
                                                 
                                             </tbody>
@@ -320,39 +305,6 @@
                                                             <% } %>
                                                         </tbody>
                                                     </table>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Bank & Performance -->
-                        <div class="row">
-                            <div class="col s12">
-                                <h5>Bank Details & Performance Stats</h5>
-                            </div>
-                            <div class="col s12" style="padding: 0;">
-                                <div class="card">
-                                    <div class="card-content">
-                                        <div class="row">
-                                            <div class="col s12 m4">
-                                                <div class="stat-box">
-                                                    <span class="stat-value"><%= stats?.totalDeliveries ?? driver.performance?.totalDeliveries ?? 0 %></span>
-                                                    <span class="stat-label">Total Deliveries</span>
-                                                </div>
-                                            </div>
-                                            <div class="col s12 m4">
-                                                <div class="stat-box">
-                                                    <span class="stat-value"><%= stats?.completed ?? driver.performance?.completedDeliveries ?? 0 %></span>
-                                                    <span class="stat-label">Completed Deliveries</span>
-                                                </div>
-                                            </div>
-                                            <div class="col s12 m4">
-                                                <div class="stat-box">
-                                                    <span class="stat-value"><%= driver.performance?.cancelledDeliveries ?? 0 %></span>
-                                                    <span class="stat-label">Cancelled Deliveries</span>
                                                 </div>
                                             </div>
                                         </div>
