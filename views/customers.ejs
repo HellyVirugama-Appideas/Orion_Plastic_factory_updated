@@ -322,11 +322,11 @@
                             <div class="right-align mt-2">
                                 Page <%= pagination.page %> of <%= pagination.pages %> (Total: <%= pagination.total %>)
                                             <% if (pagination.page> 1) { %>
-                                                <a href="?page=<%= pagination.page - 1 %>&<%= new URLSearchParams(Object.assign({}, req.query, {page: pagination.page - 1})).toString() %>"
+                                                <a href="?page=<%= pagination.page - 1 %>&<%= new URLSearchParams(Object.assign({}, filters, {page: pagination.page - 1})).toString() %>"
                                                     class="btn-flat">Prev</a>
                                                 <% } %>
                                                     <% if (pagination.page < pagination.pages) { %>
-                                                        <a href="?page=<%= pagination.page + 1 %>&<%= new URLSearchParams(Object.assign({}, req.query, {page: pagination.page + 1})).toString() %>"
+                                                        <a href="?page=<%= pagination.page + 1 %>&<%= new URLSearchParams(Object.assign({}, filters, {page: pagination.page + 1})).toString() %>"
                                                             class="btn-flat">Next</a>
                                                         <% } %>
                             </div>
