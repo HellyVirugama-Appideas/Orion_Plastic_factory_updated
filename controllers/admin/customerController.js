@@ -872,7 +872,7 @@ exports.toggleCustomerStatus = async (req, res) => {
 
 
 const CSV_TEMPLATE_FIELDS = [
-  'customerId', 'customerType', 'name', 'companyName', 'email', 'phone',
+   'name', 'companyName', 'email', 'phone',
   'alternatePhone', 'gstNumber', 'panNumber', 'paymentTerms', 'creditLimit',
   'category', 'status', 'locationName', 'addressLine1', 'addressLine2',
   'city', 'state', 'zipcode', 'contactPersonName', 'contactPersonPhone',
@@ -883,8 +883,6 @@ const CSV_TEMPLATE_FIELDS = [
 exports.downloadCustomerCsvTemplate = async (req, res) => {
   try {
     const sampleRow = {
-      customerId: '',
-      customerType: 'business',
       name: 'Ahmed Al Mansoori',
       companyName: 'Al Mansoori Trading LLC',
       email: 'ahmed@example.com',
@@ -951,7 +949,6 @@ exports.bulkImportCustomers = async (req, res) => {
     const validCategories = ['vip', 'regular', 'wholesale', 'retail', 'distributor'];
     const validPaymentTerms = ['cod', 'credit_30', 'credit_45', 'credit_60', 'credit_90', 'credit_120'];
     const validStatuses = ['active', 'inactive', 'blocked', 'suspended'];
-    const validCustomerTypes = ['individual', 'business', 'enterprise'];
 
     let created = 0, updated = 0, failed = 0, skipped = 0;
     const errors = [];
