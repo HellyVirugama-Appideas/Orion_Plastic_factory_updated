@@ -880,13 +880,19 @@ const CSV_TEMPLATE_FIELDS = [
 ];
 
 // GET /admin/customers/csv-template — sample CSV to download
+// GET /admin/customers/csv-template — sample CSV to download
+// GET /admin/customers/csv-template — sample CSV to download
 exports.downloadCustomerCsvTemplate = async (req, res) => {
   try {
+    // ✅ Phone numbers use the Excel "text formula" trick: ="+971501234567"
+    // This stops Excel from treating the leading "+" as the start of a
+    // formula (which was corrupting the number / dropping digits when
+    // users typed their own numbers into the sheet).
     const sampleRow = {
       name: 'Ahmed Al Mansoori',
       companyName: 'Al Mansoori Trading LLC',
       email: 'ahmed@example.com',
-      phone: '+971501234567',
+      phone: '="+971501234567"',
       alternatePhone: '',
       gstNumber: '',
       panNumber: '',
@@ -901,10 +907,10 @@ exports.downloadCustomerCsvTemplate = async (req, res) => {
       state: 'Dubai',
       zipcode: 'DXB1',
       contactPersonName: 'Ahmed Al Mansoori',
-      contactPersonPhone: '+971501234567',
+      contactPersonPhone: '="+971501234567"',
       contactPersonEmail: 'ahmed@example.com',
       googleMapLink: '',
-      specialInstructions: '',
+      specialInstructions: 'PHONE FORMAT: keep the ="+971XXXXXXXXX" style (= sign + quotes) in the phone / alternatePhone / contactPersonPhone columns so Excel does not corrupt the + sign. UAE mobile = +971 followed by 9 digits (50/52/54/55/56/58 + 7 more digits).',
     };
 
     const parser = new Parser({ fields: CSV_TEMPLATE_FIELDS });
@@ -919,11 +925,6 @@ exports.downloadCustomerCsvTemplate = async (req, res) => {
     return res.redirect('/admin/customers');
   }
 };
-
-// POST /admin/customers/import — upload CSV → create/update customers
-// DEBUG-INSTRUMENTED VERSION — temporary, just to find the exact failing line.
-// Replace your existing bulkImportCustomers with this ONE TIME, run the import,
-// then paste the console output. Revert to the normal version afterwards.
 
 // POST /admin/customers/import — upload CSV → create/update customers
 exports.bulkImportCustomers = async (req, res) => {
@@ -970,19 +971,34 @@ exports.bulkImportCustomers = async (req, res) => {
         const clean = {};
         Object.keys(raw).forEach(k => {
           const key = k.replace(/^\uFEFF/, '').trim();
-          clean[key] = typeof raw[k] === 'string'
+          let val = typeof raw[k] === 'string'
             ? raw[k].replace(/^\uFEFF/, '').trim()
             : raw[k];
+
+          // ✅ Strip Excel's ="..." text-formula wrapper if the user
+          // kept the format from the sample template (or Excel added it).
+          // e.g. ="+971501234567"  ->  +971501234567
+          if (typeof val === 'string') {
+            const formulaMatch = val.match(/^="(.*)"$/);
+            if (formulaMatch) val = formulaMatch[1];
+
+            // Also collapse any internal spaces that sometimes creep in
+            // when phone numbers are typed/pasted from different sources
+            // e.g. "+971 50 123 4567" -> "+971 501234567"
+            if (key === 'phone' || key === 'alternatePhone' || key === 'contactPersonPhone') {
+              val = val.replace(/(?!^\+)(?<=\d)\s+(?=\d)/g, '');
+            }
+          }
+
+          clean[key] = val;
         });
 
         if (!clean.name) { errors.push({ row: rowNum, error: 'Name is required' }); failed++; continue; }
         if (!clean.email || !/^\S+@\S+\.\S+$/.test(clean.email)) { errors.push({ row: rowNum, error: 'Valid email is required' }); failed++; continue; }
-        if (!clean.phone || !phoneRegex.test(clean.phone)) { errors.push({ row: rowNum, error: 'Valid UAE phone required, e.g. +971501234567' }); failed++; continue; }
-        if (clean.alternatePhone && !phoneRegex.test(clean.alternatePhone)) { errors.push({ row: rowNum, error: 'Invalid alternate phone' }); failed++; continue; }
+        if (!clean.phone || !phoneRegex.test(clean.phone)) { errors.push({ row: rowNum, error: `Valid UAE phone required, e.g. +971501234567 (got: "${clean.phone}")` }); failed++; continue; }
+        if (clean.alternatePhone && !phoneRegex.test(clean.alternatePhone)) { errors.push({ row: rowNum, error: `Invalid alternate phone (got: "${clean.alternatePhone}")` }); failed++; continue; }
         if (clean.zipcode && !zipcodeRegex.test(clean.zipcode)) { errors.push({ row: rowNum, error: `Zipcode must be exactly 4 alphanumeric characters (got: "${clean.zipcode}")` }); failed++; continue; }
 
-        // ✅ FIXED: zipcodes is an array of objects ({ zipcode, area, city }),
-        // so query the nested field, not the array itself.
         let assignedRegion = null;
         let regionAutoAssigned = false;
         if (clean.zipcode) {
@@ -1129,6 +1145,7 @@ exports.bulkImportCustomers = async (req, res) => {
     return res.redirect('/admin/customers');
   }
 };
+
 
 // GET /admin/customers/export — download all (filtered) customers as CSV
 exports.bulkExportCustomers = async (req, res) => {
