@@ -508,7 +508,7 @@ exports.adminSignin = async (req, res) => {
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     });
 
-    // res.cookie('jwtAdmin', accessToken, {
+    // res.cookie('jwtAdmin', accessToken, {red
     //   expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
     //   httpOnly: true,
     // });
