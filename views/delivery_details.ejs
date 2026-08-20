@@ -56,9 +56,47 @@
         .status-failed              { background: #f8d7da; color: #721c24; }
         /* ✅ NAYA — Returned to Factory ke liye badge */
         .status-Returned_to_Factory { background: #e0e0e0; color: #555; }
-        .info-row { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #eee; }
-        .info-label { color: #555; font-weight: 500; }
-        .info-value { font-weight: 600; text-align: right; }
+
+        /* ✅ FIX — lambe address/text ke liye responsive info-row.
+           Pehle .info-value shrink nahi hota tha aur overflow ho ke
+           map card ke bahar bhar jaata tha. Ab flex properly shrink/wrap hoga. */
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 11px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .info-label {
+            color: #555;
+            font-weight: 500;
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+        .info-value {
+            font-weight: 600;
+            text-align: right;
+            flex: 1 1 auto;
+            min-width: 0;           /* flex item ko shrink karne deta hai, warna text overflow hota */
+            word-break: break-word; /* lamba single word / address bhi wrap ho jayega */
+            overflow-wrap: break-word;
+        }
+
+        /* Chhote screens (mobile) par label + value stack ho jaye, taaki bahut lamba
+           address squeeze ho ke ajeeb na dikhe */
+        @media (max-width: 600px) {
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            .info-value {
+                text-align: left;
+                width: 100%;
+            }
+        }
+
         .route-stats { background: #f5f5f5; padding: 15px; border-radius: 8px; margin-top: 15px; }
         .route-stat-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; }
         .route-stat-item:last-child { margin-bottom: 0; }
@@ -72,6 +110,7 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
             min-width: 240px;
+            max-width: 90%;
             font-size: 0.9rem;
         }
         .driver-info-overlay p { margin: 5px 0; display: flex; align-items: center; gap: 8px; }
@@ -214,7 +253,7 @@
                                     </div>
                                     <% } %>
 
-                                    <div class="info-row" style="align-items:flex-start;">
+                                    <div class="info-row">
                                         <span class="info-label">Delivery Address</span>
                                         <span class="info-value" id="delivery-addr-display">
                                             <%= delivery.deliveryLocation?.address || 'N/A' %>
