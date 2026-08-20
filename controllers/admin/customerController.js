@@ -24,7 +24,8 @@ exports.getCreateCustomer = async (req, res) => {
       url: req.originalUrl,
       regions,
       errors: req.flash('error'),
-      success: req.flash('success')
+      success: req.flash('success'),
+      messages: req.flash()
     });
   } catch (error) {
     console.error('[GET-CREATE-CUSTOMER] ERROR:', error);
@@ -33,9 +34,202 @@ exports.getCreateCustomer = async (req, res) => {
   }
 };
 
+// exports.createCustomer = async (req, res) => {
+//   try {
+//     console.log('[CREATE-CUSTOMER] Body:', req.body);
+
+//     const {
+//       customerType = 'individual',
+//       name,
+//       companyName,
+//       email,
+//       phone,
+//       alternatePhone,
+//       gstNumber,
+//       panNumber,
+//       paymentTerms = 'cod',
+//       creditLimit = 0,
+//       category = 'regular',
+//       status = 'active',
+//       addressLine1,
+//       addressLine2,
+//       city,
+//       state,
+//       zipcode,
+//       locationName,
+//       contactPersonName,
+//       contactPersonPhone,
+//       contactPersonEmail,
+//       specialInstructions,
+//       googleMapLink,
+//       region
+//     } = req.body;
+
+//     // ✅ Zipcode validation (UAE: 4 digit)
+//     if (zipcode && !/^[A-Za-z0-9]{4}$/.test(zipcode)) {
+//       req.flash('error', 'Zipcode must be exactly 4 alphanumeric characters');
+//       return res.redirect('/admin/customers/create-customer');
+//     }
+
+//     // ✅ UAE Phone Validation
+//     const phoneRegex = /^\+971\s?(50|52|54|55|56|58)[0-9]{7}$/;
+
+//     if (!phoneRegex.test(phone)) {
+//       req.flash('error', 'Invalid UAE phone number');
+//       return res.redirect('/admin/customers/create-customer');
+//     }
+
+//     if (alternatePhone && !phoneRegex.test(alternatePhone)) {
+//       req.flash('error', 'Invalid alternate phone number');
+//       return res.redirect('/admin/customers/create-customer');
+//     }
+
+//     if (contactPersonPhone && !phoneRegex.test(contactPersonPhone)) {
+//       req.flash('error', 'Invalid contact person phone');
+//       return res.redirect('/admin/customers/create-customer');
+//     }
+
+//     // ========== REGION ==========
+//     let assignedRegion = null;
+//     let regionAutoAssigned = false;
+
+//     if (!region) {
+//       const foundRegion = await Region.findOne({
+//         zipcodes: zipcode,
+//         isActive: true
+//       }).select('_id');
+
+//       if (foundRegion) {
+//         assignedRegion = foundRegion._id;
+//         regionAutoAssigned = true;
+//       }
+//     } else {
+//       assignedRegion = region;
+//     }
+
+//     // ========== LOCATION ==========
+//     const locations = [{
+//       locationName: locationName || `${name}'s Location`,
+//       addressLine1,
+//       addressLine2: addressLine2 || '',
+//       city,
+//       state,
+//       zipcode,
+//       country: 'UAE',
+//       regionId: assignedRegion,
+//       regionAutoAssigned,
+//       googleMapLink: googleMapLink || null,
+//       isPrimary: true,
+//       isActive: true
+//     }];
+
+//     // ========== CONTACT PERSON ==========
+//     const contactPerson = {
+//       name: contactPersonName || '',
+//       phone: contactPersonPhone || '',
+//       email: contactPersonEmail || '',
+//       designation: 'Primary Contact'
+//     };
+
+//     // ========== DOCUMENTS ==========
+//     const documents = [];
+//     const basePath = '/uploads/documents/';
+
+//     const addDoc = (field, type) => {
+//       if (req.files?.[field]?.[0]) {
+//         documents.push({
+//           documentType: type,
+//           fileUrl: basePath + req.files[field][0].filename,
+//           uploadedAt: new Date()
+//         });
+//       }
+//     };
+
+//     addDoc('gstCertificate', 'gst_certificate');
+//     addDoc('panCard', 'pan_card');
+//     addDoc('shopLicense', 'shop_license');
+//     addDoc('otherDoc', 'other_document');
+
+//     // ========== 🔥 CUSTOMER ID GENERATION ==========
+//     let saved = false;
+//     let newCustomer;
+
+//     while (!saved) {
+//       try {
+//         const lastCustomer = await Customer.findOne().sort({ createdAt: -1 });
+
+//         let newId = 1;
+//         if (lastCustomer?.customerId) {
+//           const lastNumber = parseInt(lastCustomer.customerId.replace('CUST', ''));
+//           newId = lastNumber + 1;
+//         }
+
+//         const customerId = `CUST${String(newId).padStart(6, '0')}`;
+
+//         newCustomer = new Customer({
+//           customerId,
+//           customerType,
+//           name: name.trim(),
+//           companyName: companyName || null,
+//           email: email.toLowerCase().trim(),
+//           phone,
+//           alternatePhone: alternatePhone || null,
+//           gstNumber: gstNumber || null,
+//           panNumber: panNumber || null,
+//           locations,
+//           billingAddress: {
+//             addressLine1,
+//             addressLine2: addressLine2 || '',
+//             city,
+//             zipcode,
+//             country: 'UAE'
+//           },
+//           paymentTerms,
+//           creditLimit: parseFloat(creditLimit) || 0,
+//           category,
+//           status,
+//           documents,
+//           contactPerson,
+//           isActive: status === 'active'
+//         });
+
+//         await newCustomer.save();
+//         saved = true;
+
+//       } catch (err) {
+//         if (err.code === 11000) {
+//           console.log('Retrying customerId...');
+//         } else {
+//           throw err;
+//         }
+//       }
+//     }
+
+//     console.log('[CREATE-CUSTOMER] Created:', newCustomer.customerId);
+
+//     req.flash('success', `Customer ${newCustomer.customerId} created successfully`);
+//     res.redirect(`/admin/customers/view/${newCustomer.customerId}`);
+
+//   } catch (error) {
+//     console.error('[CREATE-CUSTOMER] ERROR:', error);
+
+//     let msg = 'Failed to create customer';
+
+//     if (error.code === 11000) {
+//       msg = 'Duplicate field already exists';
+//     } else if (error.message) {
+//       msg = error.message;
+//     }
+
+//     req.flash('error', msg);
+//     res.redirect('/admin/customers/create-customer');
+//   }
+// };
 exports.createCustomer = async (req, res) => {
   try {
-    console.log('[CREATE-CUSTOMER] Body:', req.body);
+    console.log('========== [CREATE-CUSTOMER] START ==========');
+    console.log('[CREATE-CUSTOMER] Body:', JSON.stringify(req.body, null, 2));
+    console.log('[CREATE-CUSTOMER] Files:', req.files ? Object.keys(req.files) : 'No files');
 
     const {
       customerType = 'individual',
@@ -43,7 +237,11 @@ exports.createCustomer = async (req, res) => {
       companyName,
       email,
       phone,
+      phoneCountryCode,
       alternatePhone,
+      alternatePhoneCountryCode,
+      contactPersonPhone,
+      contactPersonPhoneCountryCode,
       gstNumber,
       panNumber,
       paymentTerms = 'cod',
@@ -57,63 +255,177 @@ exports.createCustomer = async (req, res) => {
       zipcode,
       locationName,
       contactPersonName,
-      contactPersonPhone,
       contactPersonEmail,
       specialInstructions,
       googleMapLink,
       region
     } = req.body;
 
-    // ✅ Zipcode validation (UAE: 4 digit)
+    // ========== Helper: Build full international phone ==========
+    const buildFullPhone = (countryCode, number) => {
+      if (!number || !String(number).trim()) return null;
+
+      // Only digits from number
+      const digits = String(number).replace(/\D/g, '');
+      if (!digits) return null;
+
+      // Country code (default UAE)
+      let cc = (countryCode || '+971').toString().trim();
+      cc = cc.replace(/\D/g, ''); // remove + and spaces
+      if (!cc) cc = '971';
+
+      return `+${cc}${digits}`;
+    };
+
+    const fullPhone = buildFullPhone(phoneCountryCode, phone);
+    const fullAlternatePhone = buildFullPhone(alternatePhoneCountryCode, alternatePhone);
+    const fullContactPersonPhone = buildFullPhone(contactPersonPhoneCountryCode, contactPersonPhone);
+
+    console.log('[CREATE-CUSTOMER] Phone built:', {
+      rawPhone: phone,
+      phoneCountryCode,
+      fullPhone,
+      fullAlternatePhone,
+      fullContactPersonPhone
+    });
+
+    // ========== Basic required checks ==========
+    if (!name || !name.trim()) {
+      console.log('[CREATE-CUSTOMER] FAIL: Name missing');
+      req.flash('error', 'Full Name is required');
+      return res.redirect('/admin/customers/create-customer');
+    }
+
+    if (!email || !email.trim()) {
+      console.log('[CREATE-CUSTOMER] FAIL: Email missing');
+      req.flash('error', 'Email is required');
+      return res.redirect('/admin/customers/create-customer');
+    }
+
+    if (!fullPhone) {
+      console.log('[CREATE-CUSTOMER] FAIL: Phone missing/invalid');
+      req.flash('error', 'Phone Number is required');
+      return res.redirect('/admin/customers/create-customer');
+    }
+
+    if (!addressLine1 || !addressLine1.trim()) {
+      console.log('[CREATE-CUSTOMER] FAIL: Address Line 1 missing');
+      req.flash('error', 'Address Line 1 is required');
+      return res.redirect('/admin/customers/create-customer');
+    }
+
+    // ========== Zipcode validation ==========
     if (zipcode && !/^[A-Za-z0-9]{4}$/.test(zipcode)) {
+      console.log('[CREATE-CUSTOMER] FAIL: Invalid zipcode →', zipcode);
       req.flash('error', 'Zipcode must be exactly 4 alphanumeric characters');
       return res.redirect('/admin/customers/create-customer');
     }
 
-    // ✅ UAE Phone Validation
-    const phoneRegex = /^\+971\s?(50|52|54|55|56|58)[0-9]{7}$/;
+    // ========== Phone validation (flexible UAE + international) ==========
+    // Accepts: +97150xxxxxxx, +971 50xxxxxxx, +9715xxxxxxxx etc.
+    const uaePhoneRegex = /^\+971\s?(50|52|54|55|56|58)[0-9]{7}$/;
+    // Clean version without spaces for strict check
+    const cleanPhone = fullPhone.replace(/\s/g, '');
 
-    if (!phoneRegex.test(phone)) {
-      req.flash('error', 'Invalid UAE phone number');
-      return res.redirect('/admin/customers/create-customer');
+    if (!uaePhoneRegex.test(fullPhone) && !uaePhoneRegex.test(cleanPhone)) {
+      // Agar UAE nahi hai to bhi allow karo (international support)
+      // Minimum length check
+      if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+        console.log('[CREATE-CUSTOMER] FAIL: Invalid phone format →', fullPhone);
+        req.flash('error', `Invalid phone number format: ${fullPhone}. Use UAE format like +971 50 123 4567`);
+        return res.redirect('/admin/customers/create-customer');
+      }
+      console.log('[CREATE-CUSTOMER] Non-UAE phone accepted:', fullPhone);
+    } else {
+      console.log('[CREATE-CUSTOMER] UAE phone validated:', fullPhone);
     }
 
-    if (alternatePhone && !phoneRegex.test(alternatePhone)) {
-      req.flash('error', 'Invalid alternate phone number');
-      return res.redirect('/admin/customers/create-customer');
+    if (fullAlternatePhone) {
+      const cleanAlt = fullAlternatePhone.replace(/\s/g, '');
+      if (!uaePhoneRegex.test(fullAlternatePhone) && !uaePhoneRegex.test(cleanAlt)) {
+        if (cleanAlt.length < 10 || cleanAlt.length > 15) {
+          console.log('[CREATE-CUSTOMER] FAIL: Invalid alternate phone →', fullAlternatePhone);
+          req.flash('error', 'Invalid alternate phone number');
+          return res.redirect('/admin/customers/create-customer');
+        }
+      }
     }
 
-    if (contactPersonPhone && !phoneRegex.test(contactPersonPhone)) {
-      req.flash('error', 'Invalid contact person phone');
-      return res.redirect('/admin/customers/create-customer');
+    if (fullContactPersonPhone) {
+      const cleanContact = fullContactPersonPhone.replace(/\s/g, '');
+      if (!uaePhoneRegex.test(fullContactPersonPhone) && !uaePhoneRegex.test(cleanContact)) {
+        if (cleanContact.length < 10 || cleanContact.length > 15) {
+          console.log('[CREATE-CUSTOMER] FAIL: Invalid contact person phone →', fullContactPersonPhone);
+          req.flash('error', 'Invalid contact person phone');
+          return res.redirect('/admin/customers/create-customer');
+        }
+      }
     }
 
-    // ========== REGION ==========
+    // ========== REGION handling ==========
     let assignedRegion = null;
     let regionAutoAssigned = false;
 
-    if (!region) {
-      const foundRegion = await Region.findOne({
-        zipcodes: zipcode,
-        isActive: true
-      }).select('_id');
+    console.log('[CREATE-CUSTOMER] Region input:', region);
+    console.log('[CREATE-CUSTOMER] Zipcode input:', zipcode);
 
-      if (foundRegion) {
-        assignedRegion = foundRegion._id;
-        regionAutoAssigned = true;
-      }
-    } else {
+    if (region && mongoose.Types.ObjectId.isValid(region)) {
+      // ObjectId aaya (purana select se)
       assignedRegion = region;
+      console.log('[CREATE-CUSTOMER] Region set as ObjectId:', region);
+    } else if (region && String(region).trim()) {
+      // Text se aaya → name se search
+      const foundByName = await Region.findOne({
+        regionName: { $regex: new RegExp('^' + String(region).trim() + '$', 'i') },
+        isActive: true
+      }).select('_id regionName');
+
+      if (foundByName) {
+        assignedRegion = foundByName._id;
+        console.log('[CREATE-CUSTOMER] Region found by name:', foundByName.regionName);
+      } else {
+        console.log('[CREATE-CUSTOMER] Region name not found in DB:', region);
+      }
     }
+
+    // Zipcode se auto-assign (agar abhi region nahi mila)
+    if (!assignedRegion && zipcode) {
+      try {
+        let foundRegion = await Region.findOne({
+          'zipcodes.zipcode': String(zipcode).trim(),
+          isActive: true
+        }).select('_id regionName');
+
+        // fallback (agar kabhi simple string array ho)
+        if (!foundRegion) {
+          foundRegion = await Region.findOne({
+            zipcodes: String(zipcode).trim(),
+            isActive: true
+          }).select('_id regionName').catch(() => null);
+        }
+
+        if (foundRegion) {
+          assignedRegion = foundRegion._id;
+          regionAutoAssigned = true;
+          console.log('[CREATE-CUSTOMER] Region auto-assigned from zipcode:', foundRegion.regionName);
+        } else {
+          console.log('[CREATE-CUSTOMER] No region found for zipcode:', zipcode);
+        }
+      } catch (regionErr) {
+        console.error('[CREATE-CUSTOMER] Region lookup error:', regionErr.message);
+      }
+    }
+
+    console.log('[CREATE-CUSTOMER] Final assignedRegion:', assignedRegion);
 
     // ========== LOCATION ==========
     const locations = [{
       locationName: locationName || `${name}'s Location`,
       addressLine1,
       addressLine2: addressLine2 || '',
-      city,
-      state,
-      zipcode,
+      city: city || '',
+      state: state || '',
+      zipcode: zipcode || '',
       country: 'UAE',
       regionId: assignedRegion,
       regionAutoAssigned,
@@ -125,7 +437,7 @@ exports.createCustomer = async (req, res) => {
     // ========== CONTACT PERSON ==========
     const contactPerson = {
       name: contactPersonName || '',
-      phone: contactPersonPhone || '',
+      phone: fullContactPersonPhone || '',
       email: contactPersonEmail || '',
       designation: 'Primary Contact'
     };
@@ -141,6 +453,7 @@ exports.createCustomer = async (req, res) => {
           fileUrl: basePath + req.files[field][0].filename,
           uploadedAt: new Date()
         });
+        console.log('[CREATE-CUSTOMER] Document added:', type, req.files[field][0].filename);
       }
     };
 
@@ -149,21 +462,24 @@ exports.createCustomer = async (req, res) => {
     addDoc('shopLicense', 'shop_license');
     addDoc('otherDoc', 'other_document');
 
-    // ========== 🔥 CUSTOMER ID GENERATION ==========
+    // ========== CUSTOMER ID GENERATION + SAVE ==========
     let saved = false;
     let newCustomer;
+    let attempts = 0;
 
-    while (!saved) {
+    while (!saved && attempts < 10) {
+      attempts++;
       try {
         const lastCustomer = await Customer.findOne().sort({ createdAt: -1 });
 
         let newId = 1;
         if (lastCustomer?.customerId) {
-          const lastNumber = parseInt(lastCustomer.customerId.replace('CUST', ''));
+          const lastNumber = parseInt(lastCustomer.customerId.replace('CUST', '')) || 0;
           newId = lastNumber + 1;
         }
 
         const customerId = `CUST${String(newId).padStart(6, '0')}`;
+        console.log('[CREATE-CUSTOMER] Trying customerId:', customerId);
 
         newCustomer = new Customer({
           customerId,
@@ -171,16 +487,16 @@ exports.createCustomer = async (req, res) => {
           name: name.trim(),
           companyName: companyName || null,
           email: email.toLowerCase().trim(),
-          phone,
-          alternatePhone: alternatePhone || null,
+          phone: fullPhone,                          // ✅ Full international number
+          alternatePhone: fullAlternatePhone || null,
           gstNumber: gstNumber || null,
           panNumber: panNumber || null,
           locations,
           billingAddress: {
             addressLine1,
             addressLine2: addressLine2 || '',
-            city,
-            zipcode,
+            city: city || '',
+            zipcode: zipcode || '',
             country: 'UAE'
           },
           paymentTerms,
@@ -189,39 +505,51 @@ exports.createCustomer = async (req, res) => {
           status,
           documents,
           contactPerson,
-          isActive: status === 'active'
+          isActive: status === 'active',
+          preferences: specialInstructions ? { specialInstructions } : undefined
         });
 
         await newCustomer.save();
         saved = true;
+        console.log('[CREATE-CUSTOMER] SUCCESS →', newCustomer.customerId);
 
       } catch (err) {
         if (err.code === 11000) {
-          console.log('Retrying customerId...');
+          console.log('[CREATE-CUSTOMER] Duplicate key, retrying... attempt:', attempts);
+          console.log('[CREATE-CUSTOMER] Duplicate details:', err.keyValue);
         } else {
+          console.error('[CREATE-CUSTOMER] Save error:', err);
           throw err;
         }
       }
     }
 
-    console.log('[CREATE-CUSTOMER] Created:', newCustomer.customerId);
+    if (!saved) {
+      console.log('[CREATE-CUSTOMER] FAIL: Could not generate unique customerId');
+      req.flash('error', 'Failed to generate unique Customer ID. Please try again.');
+      return res.redirect('/admin/customers/create-customer');
+    }
 
     req.flash('success', `Customer ${newCustomer.customerId} created successfully`);
-    res.redirect(`/admin/customers/view/${newCustomer.customerId}`);
+    return res.redirect(`/admin/customers/view/${newCustomer._id}`);
 
   } catch (error) {
-    console.error('[CREATE-CUSTOMER] ERROR:', error);
+    console.error('========== [CREATE-CUSTOMER] CRITICAL ERROR ==========');
+    console.error(error);
 
     let msg = 'Failed to create customer';
 
     if (error.code === 11000) {
-      msg = 'Duplicate field already exists';
+      const field = Object.keys(error.keyPattern || {})[0] || 'field';
+      msg = `Duplicate ${field}: This value already exists`;
+    } else if (error.name === 'ValidationError') {
+      msg = Object.values(error.errors).map(e => e.message).join(', ');
     } else if (error.message) {
       msg = error.message;
     }
 
     req.flash('error', msg);
-    res.redirect('/admin/customers/create-customer');
+    return res.redirect('/admin/customers/create-customer');
   }
 };
 
@@ -277,7 +605,7 @@ exports.getAllCustomers = async (req, res) => {
     if (limit) {
       const skip = (parseInt(page) - 1) * parseInt(limit);
       customersQuery = customersQuery.skip(skip).limit(parseInt(limit));
-      
+
       total = await Customer.countDocuments(query);
       pagination = {
         page: parseInt(page),

@@ -3,30 +3,145 @@
 
 <head>
   <%- include('_layouts/head') %>
-    <title>Create New Customer | <%= title %>
-    </title>
-    <link rel="stylesheet" type="text/css"
-      href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css">
-    <style>
+  <title>Create New Customer | <%= title %></title>
+
+  <!-- Dropify -->
+  <link rel="stylesheet" type="text/css"
+    href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css">
+
+  <!-- intl-tel-input -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.0/build/css/intlTelInput.css">
+
+  <style>
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1a237e;
+      border-left: 4px solid #3949ab;
+      padding-left: 10px;
+      margin: 20px 0 12px;
+    }
+
+    .required-star {
+      color: #e53935;
+    }
+
+    .form-note {
+      font-size: 12px;
+      color: #757575;
+      margin-top: 4px;
+    }
+
+    /* ========== Field Wrapper ========== */
+    .field-wrapper {
+      margin-top: 8px;
+      margin-bottom: 18px;
+      position: relative;
+      width: 100%;
+    }
+
+    .field-wrapper > label {
+      display: block;
+      font-size: 12px;
+      color: #9e9e9e;
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+
+    /* ========== intl-tel-input ========== */
+    .iti {
+      width: 100% !important;
+      display: block;
+    }
+
+    .iti input {
+      width: 100% !important;
+      height: 3rem !important;
+      font-size: 16px !important;
+      border: none !important;
+      border-bottom: 1px solid #9e9e9e !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      padding-left: 92px !important;
+      box-sizing: border-box !important;
+    }
+
+    .iti input:focus {
+      border-bottom: 1px solid #26a69a !important;
+      box-shadow: 0 1px 0 0 #26a69a !important;
+      outline: none !important;
+    }
+
+    .iti__flag-container {
+      z-index: 5;
+    }
+
+    .iti__selected-flag {
+      padding: 0 6px 0 10px !important;
+    }
+
+    .iti__selected-dial-code {
+      font-size: 15px;
+    }
+
+    /* ========== Dropify ========== */
+    .dropify-wrapper {
+      height: 140px !important;
+    }
+
+    /* ========== Responsive ========== */
+    @media only screen and (max-width: 600px) {
       .section-title {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #1a237e;
-        border-left: 4px solid #3949ab;
-        padding-left: 10px;
-        margin: 20px 0 10px;
+        font-size: 0.95rem;
+        margin: 16px 0 10px;
       }
 
-      .required-star {
-        color: #e53935;
+      .field-wrapper {
+        margin-top: 6px;
+        margin-bottom: 16px;
       }
 
-      .form-note {
-        font-size: 12px;
-        color: #757575;
-        margin-top: 4px;
+      .iti input {
+        padding-left: 82px !important;
+        height: 2.9rem !important;
       }
-    </style>
+
+      .iti__selected-flag {
+        padding: 0 4px 0 8px !important;
+      }
+
+      .dropify-wrapper {
+        height: 120px !important;
+      }
+
+      .right-align {
+        text-align: center !important;
+      }
+
+      .right-align .btn {
+        width: 100%;
+        margin-bottom: 10px;
+        margin-left: 0 !important;
+      }
+    }
+
+    @media only screen and (min-width: 601px) and (max-width: 992px) {
+      .iti input {
+        padding-left: 88px !important;
+      }
+    }
+
+    .card-panel,
+    .card-content,
+    form {
+      overflow-x: hidden;
+    }
+
+    .row {
+      margin-bottom: 0;
+    }
+  </style>
 </head>
 
 <body
@@ -35,218 +150,305 @@
 
   <%- include('_layouts/sidenavbar') %>
 
-    <div id="main">
-      <div class="row">
-        <div id="breadcrumbs-wrapper" style="background-color:white;">
-          <div class="container">
-            <div class="row">
-              <div class="col s12 m6 l6">
-                <h5 class="breadcrumbs-title">Create New Customer</h5>
-              </div>
-              <div class="col s12 m6 l6 right-align-md">
-                <a href="/admin/customers" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">Back
-                  to Customers</a>
+  <div id="main">
+    <div class="row">
+      <div id="breadcrumbs-wrapper" style="background-color:white;">
+        <div class="container">
+          <div class="row">
+            <div class="col s12 m6 l6">
+              <h5 class="breadcrumbs-title">Create New Customer</h5>
+            </div>
+            <div class="col s12 m6 l6 right-align-md">
+              <a href="/admin/customers" class="btn gradient-45deg-purple-deep-orange pull-right btn-breadcrumbs">
+                Back to Customers
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%- include('messages', { messages: messages }) %>
+
+      <div class="col s12">
+        <div class="container">
+          <div class="section users-view">
+            <div class="card-panel">
+              <div class="card-content">
+                <form id="createCustomerForm" method="POST" action="/admin/customers" enctype="multipart/form-data">
+                  <div class="row">
+
+                    <!-- ===================== Personal Information ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Personal Information</p>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="name" name="name" type="text" required>
+                      <label for="name">Full Name <span class="required-star">*</span></label>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="email" name="email" type="email" required>
+                      <label for="email">Email Address <span class="required-star">*</span></label>
+                    </div>
+
+                    <!-- Main Phone -->
+                    <div class="col s12 m6">
+                      <div class="field-wrapper">
+                        <label>Phone Number <span class="required-star">*</span></label>
+                        <input id="phone" name="phone" type="tel" required>
+                        <input type="hidden" name="phoneCountryCode" id="phoneCountryCode">
+                      </div>
+                    </div>
+
+                    <!-- Alternate Phone -->
+                    <div class="col s12 m6">
+                      <div class="field-wrapper">
+                        <label>Alternate Phone (Optional)</label>
+                        <input id="alternatePhone" name="alternatePhone" type="tel">
+                        <input type="hidden" name="alternatePhoneCountryCode" id="alternatePhoneCountryCode">
+                      </div>
+                    </div>
+
+                    <div class="input-field col s12">
+                      <input id="companyName" name="companyName" type="text">
+                      <label for="companyName">Company Name</label>
+                    </div>
+
+                    <!-- ===================== Business / Tax ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Business / Tax Information</p>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="gstNumber" name="gstNumber" type="text" placeholder="VAT Number">
+                      <label for="gstNumber">VAT Number</label>
+                    </div>
+
+                    <!-- ===================== Address ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Primary Address / Billing Location</p>
+                    </div>
+
+                    <div class="input-field col s12 m6">
+                      <input id="locationName" name="locationName" type="text">
+                      <label for="locationName">Location Name (e.g. Head Office)</label>
+                    </div>
+
+                    <div class="input-field col s12">
+                      <input id="addressLine1" name="addressLine1" type="text" required>
+                      <label for="addressLine1">Address Line 1 <span class="required-star">*</span></label>
+                    </div>
+
+                    <div class="input-field col s12">
+                      <input id="addressLine2" name="addressLine2" type="text">
+                      <label for="addressLine2">Address Line 2 (Optional)</label>
+                    </div>
+
+                    <div class="input-field col s12 m4">
+                      <input id="city" name="city" type="text">
+                      <label for="city">City</label>
+                    </div>
+
+                    <div class="input-field col s12 m4">
+                      <input id="zipcode" name="zipcode" type="text" maxlength="4" pattern="[A-Za-z0-9]{4}">
+                      <label for="zipcode">Pincode / Zipcode (4 digits)</label>
+                      <span class="helper-text form-note">Enter 4-character alphanumeric ZIP code (e.g. A123, AB45, 12AB, DXB1)</span>
+                    </div>
+
+                    <!-- Region - Simple Text Input (Driver form jaisa) -->
+                    <div class="input-field col s12 m4">
+                      <input id="region" name="region" type="text" placeholder="e.g. Dubai, Abu Dhabi">
+                      <label for="region">Region</label>
+                    </div>
+
+                    <div class="input-field col s12">
+                      <input id="googleMapLink" name="googleMapLink" type="url"
+                        placeholder="https://maps.google.com/...">
+                      <label for="googleMapLink">Google Map Link (Optional)</label>
+                      <span class="helper-text form-note">Paste Google Maps link — admin/driver can open it directly for navigation</span>
+                    </div>
+
+                    <!-- ===================== Contact Person ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Contact Person (Optional)</p>
+                    </div>
+
+                    <div class="input-field col s12 m4">
+                      <input id="contactPersonName" name="contactPersonName" type="text">
+                      <label for="contactPersonName">Name</label>
+                    </div>
+
+                    <div class="col s12 m4">
+                      <div class="field-wrapper">
+                        <label>Phone</label>
+                        <input id="contactPersonPhone" name="contactPersonPhone" type="tel">
+                        <input type="hidden" name="contactPersonPhoneCountryCode" id="contactPersonPhoneCountryCode">
+                      </div>
+                    </div>
+
+                    <div class="input-field col s12 m4">
+                      <input id="contactPersonEmail" name="contactPersonEmail" type="email">
+                      <label for="contactPersonEmail">Email</label>
+                    </div>
+
+                    <!-- ===================== Payment & Status ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Payment &amp; Status</p>
+                    </div>
+
+                    <div class="input-field col s12 m4">
+                      <select id="paymentTerms" name="paymentTerms">
+                        <option value="cod" selected>Cash On Delivery (COD)</option>
+                        <option value="credit_30">Credit — 30 Days</option>
+                        <option value="credit_45">Credit — 45 Days</option>
+                        <option value="credit_60">Credit — 60 Days</option>
+                        <option value="credit_90">Credit — 90 Days</option>
+                        <option value="credit_120">Credit — 120 Days</option>
+                      </select>
+                      <label>Payment Terms</label>
+                    </div>
+
+                    <div class="input-field col s12 m4">
+                      <input id="creditLimit" name="creditLimit" type="number" min="0" step="100" value="0">
+                      <label for="creditLimit">Credit Limit</label>
+                    </div>
+
+                    <div class="input-field col s12 m4">
+                      <select id="status" name="status">
+                        <option value="active" selected>Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                      <label>Status</label>
+                    </div>
+
+                    <div class="input-field col s12">
+                      <textarea id="specialInstructions" name="specialInstructions"
+                        class="materialize-textarea"></textarea>
+                      <label for="specialInstructions">Special Instructions / Delivery Notes</label>
+                    </div>
+
+                    <!-- ===================== Documents ===================== -->
+                    <div class="col s12">
+                      <p class="section-title">Documents (Optional)</p>
+                    </div>
+
+                    <div class="col s12 m6 l4">
+                      <label>VAT / GST Certificate</label>
+                      <input type="file" name="gstCertificate" class="dropify" accept="image/*,application/pdf">
+                    </div>
+                    <div class="col s12 m6 l4">
+                      <label>Shop License</label>
+                      <input type="file" name="shopLicense" class="dropify" accept="image/*,application/pdf">
+                    </div>
+                    <div class="col s12 m6 l4">
+                      <label>Other Document</label>
+                      <input type="file" name="otherDoc" class="dropify" accept="image/*,application/pdf">
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="col s12 right-align" style="margin-top: 24px;">
+                      <button type="submit" class="btn gradient-45deg-purple-deep-orange waves-effect waves-light">
+                        <i class="material-icons left">person_add</i> Create Customer
+                      </button>
+                      <a href="/admin/customers" class="btn grey waves-effect waves-light" style="margin-left:8px;">
+                        Cancel
+                      </a>
+                    </div>
+
+                  </div>
+                </form>
               </div>
             </div>
           </div>
         </div>
-
-        <%- include('messages', { messages: messages }) %>
-
-          <div class="col s12">
-            <div class="container">
-              <div class="section users-view">
-                <div class="card-panel">
-                  <div class="card-content">
-                    <form id="createCustomerForm" method="POST" action="/admin/customers" enctype="multipart/form-data">
-                      <div class="row">
-
-                        <div class="col s12">
-                          <p class="section-title">Personal Information</p>
-                        </div>
-                        <div class="input-field col s12 m6">
-                          <input id="name" name="name" type="text" required>
-                          <label for="name">Full Name <span class="required-star">*</span></label>
-                        </div>
-                        <div class="input-field col s12 m6">
-                          <input id="email" name="email" type="email" required>
-                          <label for="email">Email Address <span class="required-star">*</span></label>
-                        </div>
-                        <div class="input-field col s12 m6">
-                          <input id="phone" name="phone" type="tel" value="+971 " maxlength="14" required
-                            pattern="^\+971\s?(50|52|54|55|56|58)[0-9]{7}$">
-                          <label for="phone">Phone Number (+971) <span class="required-star">*</span></label>
-                        </div>
-
-                        <div class="input-field col s12 m6">
-                          <input id="alternatePhone" name="alternatePhone" type="tel" value="+971 " maxlength="14"
-                            pattern="^\+971\s?(50|52|54|55|56|58)[0-9]{7}$">
-                          <label for="alternatePhone">Alternate Phone (+971) (Optional)</label>
-                        </div>
-                        <div class="input-field col s12">
-                          <input id="companyName" name="companyName" type="text">
-                          <label for="companyName">Company Name</label>
-                        </div>
-
-                        <div class="col s12">
-                          <p class="section-title">Business / Tax Information</p>
-                        </div>
-                        <div class="input-field col s12 m6">
-                          <input id="gstNumber" name="gstNumber" type="text" placeholder="VAT Number">
-                          <label for="gstNumber">VAT Number</label>
-                        </div>
-                        <!-- PAN Number removed as per requirement -->
-
-                        <div class="col s12">
-                          <p class="section-title">Primary Address / Billing Location</p>
-                        </div>
-                        <div class="input-field col s12 m6">
-                          <input id="locationName" name="locationName" type="text">
-                          <label for="locationName">Location Name (e.g. Head Office)</label>
-                        </div>
-                        <div class="input-field col s12">
-                          <input id="addressLine1" name="addressLine1" type="text" required>
-                          <label for="addressLine1">Address Line 1 <span class="required-star">*</span></label>
-                        </div>
-                        <div class="input-field col s12">
-                          <input id="addressLine2" name="addressLine2" type="text">
-                          <label for="addressLine2">Address Line 2 (Optional)</label>
-                        </div>
-                        <div class="input-field col s12 m4">
-                          <input id="city" name="city" type="text">
-                          <label for="city">City</label>
-                        </div>
-                        <div class="input-field col s12 m4">
-                          <!-- <input id="zipcode" name="zipcode" type="text" maxlength="4" pattern="\d{4}"> -->
-                          <input id="zipcode" name="zipcode" type="text" maxlength="4" pattern="[A-Za-z0-9]{4}">
-                          <label for="zipcode">Pincode / Zipcode (4 digits)</label>
-                          <span class="helper-text form-note">Enter 4-character alphanumeric ZIP code (e.g. A123, AB45,
-                            12AB, DXB1)</span>
-                        </div>
-                        <div class="input-field col s12 m4">
-                          <select id="region" name="region">
-                            <option value="" selected>— Select Region —</option>
-                            <% if (regions && regions.length> 0) { %>
-                              <% regions.forEach(r=> { %>
-                                <option value="<%= r._id %>">
-                                  <%= r.regionName %> (<%= r.regionCode %>)
-                                </option>
-                                <% }) %>
-                                  <% } else { %>
-                                    <option value="" disabled>No active regions found</option>
-                                    <% } %>
-                          </select>
-                          <label>Region (provided by client)</label>
-                        </div>
-
-                        <!-- Google Map Link -->
-                        <div class="input-field col s12">
-                          <input id="googleMapLink" name="googleMapLink" type="url"
-                            placeholder="https://maps.google.com/...">
-                          <label for="googleMapLink">Google Map Link (Optional)</label>
-                          <span class="helper-text form-note">Paste Google Maps link — admin/driver can open it directly
-                            for navigation</span>
-                        </div>
-
-                        <div class="col s12">
-                          <p class="section-title">Contact Person (Optional)</p>
-                        </div>
-                        <div class="input-field col s12 m4">
-                          <input id="contactPersonName" name="contactPersonName" type="text">
-                          <label for="contactPersonName">Name</label>
-                        </div>
-                        <div class="input-field col s12 m4">
-                          <input id="contactPersonPhone" name="contactPersonPhone" type="tel" value="+971 "
-                            maxlength="14" pattern="^\+971\s?(50|52|54|55|56|58)[0-9]{7}$">
-                          <label for="contactPersonPhone">Phone (+971)</label>
-                        </div>
-                        <div class="input-field col s12 m4">
-                          <input id="contactPersonEmail" name="contactPersonEmail" type="email">
-                          <label for="contactPersonEmail">Email</label>
-                        </div>
-
-                        <div class="col s12">
-                          <p class="section-title">Payment &amp; Status</p>
-                        </div>
-                        <div class="input-field col s12 m4">
-                          <select id="paymentTerms" name="paymentTerms">
-                            <option value="cod" selected>Cash On Delivery (COD)</option>
-                            <option value="credit_30">Credit — 30 Days</option>
-                            <option value="credit_45">Credit — 45 Days</option>
-                            <option value="credit_60">Credit — 60 Days</option>
-                            <option value="credit_90">Credit — 90 Days</option>
-                            <option value="credit_120">Credit — 120 Days</option>
-                          </select>
-                          <label>Payment Terms</label>
-                        </div>
-                        <div class="input-field col s12 m4">
-                          <input id="creditLimit" name="creditLimit" type="number" min="0" step="100" value="0">
-                          <label for="creditLimit">Credit Limit</label>
-                        </div>
-                        <div class="input-field col s12 m4">
-                          <select id="status" name="status">
-                            <option value="active" selected>Active</option>
-                            <option value="inactive">Inactive</option>
-                          </select>
-                          <label>Status</label>
-                        </div>
-                        <div class="input-field col s12">
-                          <textarea id="specialInstructions" name="specialInstructions"
-                            class="materialize-textarea"></textarea>
-                          <label for="specialInstructions">Special Instructions / Delivery Notes</label>
-                        </div>
-
-                        <div class="col s12">
-                          <p class="section-title">Documents (Optional)</p>
-                        </div>
-                        <div class="col s12 m6 l4"><label>VAT / GST Certificate</label><input type="file"
-                            name="gstCertificate" class="dropify" accept="image/*,application/pdf"></div>
-                        <div class="col s12 m6 l4"><label>Shop License</label><input type="file" name="shopLicense"
-                            class="dropify" accept="image/*,application/pdf"></div>
-                        <div class="col s12 m6 l4"><label>Other Document</label><input type="file" name="otherDoc"
-                            class="dropify" accept="image/*,application/pdf"></div>
-
-                        <div class="col s12 right-align" style="margin-top:20px;">
-                          <button type="submit" class="btn gradient-45deg-purple-deep-orange waves-effect waves-light">
-                            <i class="material-icons left">person_add</i> Create Customer
-                          </button>
-                          <a href="/admin/customers" class="btn grey waves-effect waves-light"
-                            style="margin-left:8px;">Cancel</a>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
       </div>
     </div>
+  </div>
 
-    <%- include('_layouts/commonJs') %>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
-      <script src="/app-assets/js/scripts/form-file-uploads.min.js"></script>
-      <script>
-        $(document).ready(function () {
-          $('.dropify').dropify({ messages: { 'default': 'Drag & drop or click', 'remove': 'Remove', 'error': 'Error' } });
-          $('select').formSelect();
-          M.updateTextFields();
-          M.textareaAutoResize($('#specialInstructions'));
+  <%- include('_layouts/commonJs') %>
 
-          $('#zipcode').on('blur', function () {
-            var v = $(this).val().trim();
+  <!-- Dropify -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/js/dropify.min.js"></script>
+  <script src="/app-assets/js/scripts/form-file-uploads.min.js"></script>
 
-            if (v && !/^[A-Za-z0-9]{4}$/.test(v)) {
-              M.toast({
-                html: 'Pincode must be exactly 4 alphanumeric characters',
-                classes: 'red darken-1',
-                displayLength: 3000
-              });
-            }
+  <!-- intl-tel-input -->
+  <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.0/build/js/intlTelInput.min.js"></script>
+
+  <script>
+    $(document).ready(function () {
+
+      // Dropify
+      $('.dropify').dropify({
+        messages: {
+          'default': 'Drag & drop or click',
+          'remove': 'Remove',
+          'error': 'Error'
+        }
+      });
+
+      // Materialize
+      $('select').formSelect();
+      M.updateTextFields();
+      M.textareaAutoResize($('#specialInstructions'));
+
+      // Zipcode validation
+      $('#zipcode').on('blur', function () {
+        var v = $(this).val().trim();
+        if (v && !/^[A-Za-z0-9]{4}$/.test(v)) {
+          M.toast({
+            html: 'Pincode must be exactly 4 alphanumeric characters',
+            classes: 'red darken-1',
+            displayLength: 3000
           });
+        }
+      });
 
-        });
-      </script>
+      // ========== intl-tel-input ==========
+      const itiOptions = {
+        initialCountry: "ae",
+        preferredCountries: ["ae", "in", "sa", "qa", "om", "kw", "bh"],
+        separateDialCode: true,
+        utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.0/build/js/utils.js"
+      };
+
+      const phoneInput = document.querySelector("#phone");
+      const itiPhone = window.intlTelInput(phoneInput, itiOptions);
+
+      const altPhoneInput = document.querySelector("#alternatePhone");
+      const itiAltPhone = window.intlTelInput(altPhoneInput, itiOptions);
+
+      const contactPhoneInput = document.querySelector("#contactPersonPhone");
+      const itiContactPhone = window.intlTelInput(contactPhoneInput, itiOptions);
+
+      // ========== Form Submit ==========
+      $('#createCustomerForm').on('submit', function (e) {
+
+        // Main Phone required
+        if (!phoneInput.value.trim()) {
+          e.preventDefault();
+          M.toast({ html: 'Phone Number is required', classes: 'red darken-1' });
+          phoneInput.focus();
+          return false;
+        }
+
+        // Set Country Codes
+        const phoneData = itiPhone.getSelectedCountryData();
+        $('#phoneCountryCode').val('+' + phoneData.dialCode);
+
+        if (altPhoneInput.value.trim()) {
+          const altData = itiAltPhone.getSelectedCountryData();
+          $('#alternatePhoneCountryCode').val('+' + altData.dialCode);
+        }
+
+        if (contactPhoneInput.value.trim()) {
+          const contactData = itiContactPhone.getSelectedCountryData();
+          $('#contactPersonPhoneCountryCode').val('+' + contactData.dialCode);
+        }
+      });
+
+    });
+  </script>
 </body>
 
 </html>

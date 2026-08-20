@@ -198,16 +198,7 @@
                                                     </tbody>
                                                 </table>
                                             </div>
-                                            <div class="col s12 m6">
-                                                <div class="row">
-                                                    <!-- You can add profile/company logo here later -->
-                                                    <div class="col s12 center-align">
-                                                        <h6>Customer Logo / Image</h6>
-                                                        <img src="/img/placeholder-company.png"
-                                                            style="max-width: 100%; border-radius: 8px;" />
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            
                                         </div>
                                     </div>
                                 </div>
@@ -290,10 +281,10 @@
                                                                     <thead>
                                                                         <tr>
                                                                             <th>Sr</th>
-                                                                            <th>Order ID</th>
+                                                                           
                                                                             <th>Status</th>
                                                                             <th>Date</th>
-                                                                            <th>Amount</th>
+                                                                           
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
@@ -305,10 +296,7 @@
                                                                                     <td>
                                                                                         <%= index + 1 %>
                                                                                     </td>
-                                                                                    <td>
-                                                                                        <%= delivery.orderId?.orderNumber
-                                                                                            || 'N/A' %>
-                                                                                    </td>
+                                                                                    
                                                                                     <td>
                                                                                         <span
                                                                                             class="badge <%= delivery.status === 'delivered' ? 'green' : 'orange' %>">
@@ -321,10 +309,7 @@
                                                                                             Date(delivery.createdAt).toLocaleDateString('en-IN')
                                                                                             %>
                                                                                     </td>
-                                                                                    <td>₹ <%=
-                                                                                            delivery.amount?.toLocaleString()
-                                                                                            || 'N/A' %>
-                                                                                    </td>
+                                                                                   
                                                                                 </tr>
                                                                                 <% }) %>
                                                                                     <% } else { %>
@@ -346,7 +331,7 @@
                                 </div>
 
                                 <!-- Statistics -->
-                                <div class="card">
+                                <!-- <div class="card">
                                     <div class="card-content">
                                         <h5>Statistics</h5>
                                         <table class="striped">
@@ -369,21 +354,12 @@
                                                         <%= stats.pending || 0 %>
                                                     </td>
                                                 </tr>
-                                                <tr>
-                                                    <th>Total Spent</th>
-                                                    <td>₹ <%= stats.totalSpent?.toLocaleString() || '0' %>
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Last Order Date</th>
-                                                    <td>
-                                                        <%= stats.lastOrderDate || 'Never' %>
-                                                    </td>
-                                                </tr>
+                                              
+                                                
                                             </tbody>
                                         </table>
                                     </div>
-                                </div>
+                                </div> -->
 
                             </div>
                         </div>
