@@ -260,8 +260,8 @@
                         <%- include('messages', { messages: messages }) %>
                         <div class="col s12 m6 l6">
                             <h6 class="breadcrumbs-title">
-                                <a href="/admin/orders">Orders</a> /
-                                <a href="/admin/orders/view/<%= order._id %>"><%= order.orderNumber %></a> /
+                                <a href="/admin/orders"  style="color: #000 !important;">Orders</a> / 
+                                <a href="/admin/orders/view/<%= order._id %>" style="color: #000 !important;"><%= order.orderNumber %></a> /
                                 Create Delivery
                             </h6>
                         </div>
@@ -836,6 +836,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             M.updateTextFields();
             var instrEl = document.getElementById('instructions');
+
             if (instrEl) M.textareaAutoResize(instrEl);
 
             /* Set initial driver count */
