@@ -11,15 +11,30 @@
 // const { PickupLocation } = require('../../models/Order');
 
 
-// // ✅ "Factory (Start)" ke liye hamesha MASTER Pickup Locations table se
-// // hi asli/verified coordinates lete hain — delivery record ke apne
-// // originalPickupLocation par bharosa nahi karte, kyunki wo kabhi kabhi
-// // missing/stale ho sakta hai aur galat jagah map par dikha deta hai.
+// // ✅ "Factory (Start)" ke liye hamesha us ORDER ka apna dynamic pickup
+// // location use karo (jo admin ne order-create time pe select kiya tha) —
+// // har order alag pickup branch/location se ho sakta hai, isliye kabhi bhi
+// // ek single "master default" location har order pe hardcode nahi karni.
+// // Master Pickup Locations table sirf tab use hota hai jab order/delivery
+// // ka apna data genuinely corrupt/missing ho — normal case mein kabhi trigger
+// // nahi hona chahiye.
 // // ✅ India ke bounds ke bahar wale (jaise Abu Dhabi glitch) ya missing
 // // coordinates ko "implausible" maankar reject karta hai.
+// // ✅ Sirf basic sanity check — genuinely corrupt/missing coordinates (jaise
+// // 0,0, undefined, ya out-of-world-bounds values) ko reject karta hai.
+// // ⚠️ PEHLE ye function sirf INDIA ke bounds (lat 6-38, lng 68-98) accept
+// // karta tha — jo galat assumption thi. Business ab UAE/Dubai se bhi pickup
+// // karta hai (lat ~24, lng ~54), jo India ke bounds se bahar hai, isliye wo
+// // hamesha "implausible/corrupt" maan liya jaata tha aur ek alag (India wali)
+// // default location par silently switch ho jaata tha. Ab koi bhi valid
+// // real-world coordinate accept hoga, chahe wo kisi bhi desh ka ho.
 // function isPlausibleLocation(loc) {
-//   if (!loc?.latitude || !loc?.longitude) return false;
-//   return loc.latitude >= 6 && loc.latitude <= 38 && loc.longitude >= 68 && loc.longitude <= 98;
+//   if (loc?.latitude == null || loc?.longitude == null) return false;
+//   const lat = Number(loc.latitude);
+//   const lng = Number(loc.longitude);
+//   if (Number.isNaN(lat) || Number.isNaN(lng)) return false;
+//   if (lat === 0 && lng === 0) return false; // classic "unset" placeholder
+//   return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 // }
 
 // // ✅ "Factory (Start)" ke liye — SABSE PEHLE order ka apna asli chuna hua
@@ -38,7 +53,22 @@
 //     return { address: 'Factory (Start)', coordinates: ownPickup.coordinates };
 //   }
 
-//   console.warn(`[FACTORY-LOCATION] ⚠️ ${delivery.trackingNumber} ka originalPickupLocation missing/corrupt hai — verified default pe fallback kar rahe hain`);
+//   // ✅ SAFETY NET: resolveFactoryLocation is only ever called for the FIRST
+//   // delivery in a driver's chain (rank #1 / no previous stop). For that exact
+//   // case, delivery.pickupLocation was ALREADY set correctly at creation time
+//   // from order.pickupLocation (see createDeliveryFromOrder) — it only becomes
+//   // a "chained" (non-factory) value for deliveries LATER in the chain, which
+//   // never reach this function. So before falling back to the generic master
+//   // default (which is the SAME location for every order and caused the
+//   // "static Unja/Ahmedabad" bug), try the delivery's own stored pickup first.
+//   // This self-heals old records even without running the backfill migration.
+//   const storedPickup = delivery.pickupLocation;
+//   if (storedPickup?.address && isPlausibleLocation(storedPickup?.coordinates)) {
+//     console.warn(`[FACTORY-LOCATION] ⚠️ ${delivery.trackingNumber} ka originalPickupLocation missing hai — apne stored pickupLocation se recover kar rahe hain (${storedPickup.address})`);
+//     return { address: 'Factory (Start)', coordinates: storedPickup.coordinates };
+//   }
+
+//   console.warn(`[FACTORY-LOCATION] ⚠️ ${delivery.trackingNumber} ka originalPickupLocation aur pickupLocation dono missing/corrupt hain — verified default pe fallback kar rahe hain`);
 //   const verifiedDefault = await getVerifiedFactoryLocation();
 //   if (verifiedDefault) return verifiedDefault;
 
@@ -374,15 +404,24 @@
 //       return res.redirect(`/admin/deliveries/${existingDelivery._id}`);
 //     }
 
-//     // Ensure coordinates exist with fallback
-//     if (!order.pickupLocation?.coordinates) {
-//       order.pickupLocation = order.pickupLocation || {};
-//       order.pickupLocation.coordinates = { latitude: 23.0225, longitude: 72.5714 };
+//     // ✅ NO silent hardcoded fallback here anymore. The pickup location must
+//     // be exactly what was chosen at order-creation time (order.pickupLocation).
+//     // If it's genuinely missing, we surface a warning instead of quietly
+//     // showing a fake/static coordinate — that silent substitution was the
+//     // root cause of the "static location" bug.
+//     let locationWarning = null;
+//     if (!order.pickupLocation?.coordinates?.latitude || !order.pickupLocation?.coordinates?.longitude) {
+//       locationWarning = 'This order has no valid pickup coordinates saved. Please fix the pickup location on the order before creating a delivery.';
+//       console.warn(`[RENDER-CREATE-DELIVERY] ⚠️ Order ${order.orderNumber} has missing/invalid pickupLocation.coordinates`);
 //     }
 
-//     if (!order.deliveryLocation?.coordinates) {
-//       order.deliveryLocation = order.deliveryLocation || {};
-//       order.deliveryLocation.coordinates = { latitude: 23.0225, longitude: 72.5714 };
+//     if (!order.deliveryLocation?.coordinates?.latitude || !order.deliveryLocation?.coordinates?.longitude) {
+//       locationWarning = (locationWarning ? locationWarning + ' ' : '') + 'This order has no valid delivery coordinates saved.';
+//       console.warn(`[RENDER-CREATE-DELIVERY] ⚠️ Order ${order.orderNumber} has missing/invalid deliveryLocation.coordinates`);
+//     }
+
+//     if (locationWarning) {
+//       req.flash('warning', locationWarning);
 //     }
 
 //     // Get available drivers
@@ -517,16 +556,29 @@
 //       console.log(`[CREATE-DELIVERY] Using original factory pickup`);
 //     }
 
-//     // Safe coordinates
-//     const pickupCoords = {
-//       latitude: effectivePickupLocation?.coordinates?.latitude || 23.0225,
-//       longitude: effectivePickupLocation?.coordinates?.longitude || 72.5714
-//     };
+//     // ✅ NO hardcoded Ahmedabad/Unja fallback anymore. Pickup/delivery
+//     // coordinates must come from the real order (or, for a chained stop,
+//     // from the previous delivery's real dropoff). If they're genuinely
+//     // missing we stop and tell the admin to fix the order — silently
+//     // substituting a fixed coordinate is exactly what caused deliveries to
+//     // always show the same static location on the map.
+//     const pickupLat = effectivePickupLocation?.coordinates?.latitude;
+//     const pickupLng = effectivePickupLocation?.coordinates?.longitude;
+//     const deliveryLat = order?.deliveryLocation?.coordinates?.latitude;
+//     const deliveryLng = order?.deliveryLocation?.coordinates?.longitude;
 
-//     const deliveryCoords = {
-//       latitude: order?.deliveryLocation?.coordinates?.latitude || 23.0225,
-//       longitude: order?.deliveryLocation?.coordinates?.longitude || 72.5714
-//     };
+//     if (!pickupLat || !pickupLng) {
+//       req.flash('error', 'This order\'s pickup location has no valid coordinates. Please fix the pickup location before creating a delivery.');
+//       return res.redirect(`/admin/deliveries/create-from-order/${orderId}`);
+//     }
+
+//     if (!deliveryLat || !deliveryLng) {
+//       req.flash('error', 'This order\'s delivery location has no valid coordinates. Please fix the delivery location before creating a delivery.');
+//       return res.redirect(`/admin/deliveries/create-from-order/${orderId}`);
+//     }
+
+//     const pickupCoords = { latitude: pickupLat, longitude: pickupLng };
+//     const deliveryCoords = { latitude: deliveryLat, longitude: deliveryLng };
 
 //     // ==================== CREATE DELIVERY ====================
 //     const delivery = await Delivery.create({
@@ -1517,6 +1569,7 @@
 // };
 
 
+
 const Delivery = require('../../models/Delivery');
 const Order = require('../../models/Order');
 const Driver = require('../../models/Driver');
@@ -1713,19 +1766,20 @@ exports.renderDeliveriesList = async (req, res) => {
           })
           .sort((a, b) => a.__sortKey - b.__sortKey);
 
-        let previousInChain = null;
-        for (const del of orderedGroup) {
-          if (del.__hasRank && previousInChain) {
-            del.pickupLocation = previousInChain.deliveryLocation;
-          } else if (del.__hasRank) {
-            del.pickupLocation = await resolveFactoryLocation(del);
-          } else {
-            del.pickupLocation = del.originalPickupLocation || del.pickupLocation;
-          }
-          if (del.__hasRank) {
-            previousInChain = del;
-          }
-        }
+        // ✅ FIX: pehle yahan ek loop tha jo har delivery ka pickupLocation
+        // is LIVE proximity-sorted (__sortKey) order ke hisaab se dobara
+        // overwrite kar deta tha (previous item ka deliveryLocation, ya
+        // resolveFactoryLocation agar rank #1 ban gaya). Driver GPS move
+        // karte hi yeh order refresh pe badal jaata tha — isi wajah se
+        // list me bhi delivery complete karke agli start karne ke baad
+        // pickup "Factory (Start)" galat dikhta tha.
+        //
+        // delivery.pickupLocation already assignment ke time (fixed
+        // previousDeliveryId chain se) sahi set ho chuka hota hai —
+        // isliye yahan usse dobara compute/overwrite karne ki zaroorat
+        // nahi hai. __nearestRank/__distance columns (jo sirf "driver ke
+        // current location se kitni door hai" dikhane ke liye hain) waise
+        // hi live rehte hain — sirf pickupLocation ab STATIC/correct hai.
 
         finalDeliveries.push(...orderedGroup);
         console.log(`[DELIVERIES-LIST] Driver ${dId}: ${orderedGroup.length} deliveries pushed to finalDeliveries`);
@@ -1808,68 +1862,80 @@ exports.renderDeliveryDetails = async (req, res) => {
     }
 
     // ================================================================
-    // ✅ STRONG FIXED ROUTE CHAIN LOGIC
+    // ✅ FIXED ROUTE CHAIN LOGIC (previousDeliveryId / nextDeliveryId walk)
+    // ----------------------------------------------------------------
+    // PEHLE: yeh function har render par getSortedUpcomingForDriver() se
+    // driver ki LIVE GPS proximity ke hisaab se dobara sort karta tha.
+    // Isse do problems ho rahi thi:
+    //   1) Driver jaise-jaise move karta, chain ka order/"my rank" refresh
+    //      har baar badal sakta tha — isliye pehli delivery complete karke
+    //      dusri start karne ke baad admin refresh karta to pickup location
+    //      galat tarike se "Factory (Start)" dikhne lagta tha (kyunki naya
+    //      proximity-sort myIndex ko 0 bana raha tha).
+    //   2) Completed delivery "upcoming" list se hi filter ho jaati thi,
+    //      isliye route chain se poori tarah GAYAB ho jaati thi.
+    //
+    // AB: chain ko delivery document par already maujood FIXED pointers
+    // (previousDeliveryId / nextDeliveryId) follow karke banate hain —
+    // yeh pointers sirf ek baar, assignment ke time set hote hain aur
+    // kabhi live GPS se badalte nahi. Completed/delivered stop chain se
+    // remove nahi hoti — bas "isCompleted" flag ke saath dikhti hai.
     // ================================================================
-    let effectivePickupLocation = delivery.pickupLocation;
     let routeChain = [];
 
     if (delivery.driverId) {
       try {
-        const driverIdForSort = delivery.driverId._id || delivery.driverId;
-        const sorted = await getSortedUpcomingForDriver(driverIdForSort);
+        // Step 1: Chain ke root tak peeche walk karo
+        let rootId = delivery._id;
+        let guard = 0;
+        while (guard < 50) {
+          const cur = await Delivery.findById(rootId).select('previousDeliveryId').lean();
+          if (!cur || !cur.previousDeliveryId) break;
+          rootId = cur.previousDeliveryId;
+          guard++;
+        }
 
-        // ✅ Bahut Strong Filter
-        const validUpcoming = sorted.upcoming.filter(u => {
-          const status = String(u.status || '').toLowerCase().trim();
-          return !['delivered', 'completed', 'cancelled', 'Delivered', 'Completed', 'Cancelled'].includes(status);
-        });
+        // Step 2: Root se aage (nextDeliveryId) poora chain collect karo
+        const chainDocs = [];
+        let nodeId = rootId;
+        guard = 0;
+        while (nodeId && guard < 50) {
+          const node = await Delivery.findById(nodeId)
+            .select('trackingNumber status nextDeliveryId')
+            .lean();
+          if (!node) break;
+          chainDocs.push(node);
+          nodeId = node.nextDeliveryId;
+          guard++;
+        }
 
-        const myIndex = validUpcoming.findIndex(u => u.id === delivery._id.toString());
+        console.log(`[DELIVERY-DETAILS] Fixed chain length: ${chainDocs.length} | root: ${chainDocs[0]?.trackingNumber}`);
 
-        console.log(`[DELIVERY-DETAILS] Valid Upcoming: ${validUpcoming.length} | My Rank: ${myIndex >= 0 ? myIndex + 1 : 'Not Found'}`);
-
-        // Route Chain Build
+        // Step 3: Route Chain build karo — Factory (Start) + har fixed stop
         routeChain.push({ label: 'Factory (Start)', isFactory: true, isCurrent: false });
 
-        validUpcoming.forEach((u) => {
+        chainDocs.forEach((node) => {
+          const status = String(node.status || '').toLowerCase().trim();
           routeChain.push({
-            label: u.trackingNumber,
+            label: node.trackingNumber,
             isFactory: false,
-            isCurrent: u.id === delivery._id.toString()
+            isCurrent: node._id.toString() === delivery._id.toString(),
+            isCompleted: ['delivered', 'completed'].includes(status),
+            isCancelled: status === 'cancelled'
           });
         });
-
-        // Effective Pickup Logic - Sirf Active Delivery se
-        if (myIndex > 0) {
-          const previousItem = validUpcoming[myIndex - 1];
-          const previousDoc = await Delivery.findById(previousItem.id)
-            .select('deliveryLocation trackingNumber status')
-            .lean();
-
-          const prevStatus = String(previousDoc?.status || '').toLowerCase().trim();
-
-          if (previousDoc && !['delivered', 'completed', 'cancelled'].includes(prevStatus)) {
-            effectivePickupLocation = previousDoc.deliveryLocation;
-            console.log(`[DELIVERY-DETAILS] Pickup chained from active delivery: ${previousDoc.trackingNumber}`);
-          } else {
-            console.log(`[DELIVERY-DETAILS] Previous delivery was already delivered - Using original pickup`);
-          }
-        } else if (myIndex === 0) {
-          // ✅ Chain ki sabse pehli delivery — is order ka apna sahi pickup
-          // location use hoga (agar valid hai), warna verified default pe
-          // fallback hoga — dono cases mein "Factory (Start)" label lagega.
-          effectivePickupLocation = await resolveFactoryLocation(delivery);
-          console.log(`[DELIVERY-DETAILS] Rank #1 - Factory (Start) coords: ${JSON.stringify(effectivePickupLocation.coordinates)}`);
-        } else {
-          console.log(`[DELIVERY-DETAILS] Active chain mein nahi mila (completed/cancelled) - stored pickup as-is`);
-        }
 
       } catch (err) {
         console.error('[DELIVERY-DETAILS] Chain resolution failed:', err.message);
       }
     }
 
-    delivery.pickupLocation = effectivePickupLocation;
+    // ✅ NOTE: delivery.pickupLocation ab yahan recompute NAHI karte.
+    // Yeh already assignment ke time (createDeliveryFromOrder mein)
+    // sahi chain ke saath set ho chuka hai — pehli delivery ke liye
+    // Factory, aur baad ki har delivery ke liye pichli delivery ka
+    // deliveryLocation. Usko yahan live-proximity se dobara overwrite
+    // karna hi galat "Factory se location aa raha hai" wala bug tha.
 
     // Status History
     const statusHistory = await DeliveryStatusHistory.find({ deliveryId: delivery._id })

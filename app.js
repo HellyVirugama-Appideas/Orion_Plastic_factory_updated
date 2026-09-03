@@ -65,6 +65,8 @@ app.set('io', io);
 // ====================== SOCKET HANDLERS ======================
 // ✅ Yahan setup karo — sab kuch socketHandlers.js mein hai
 const setupSocketHandlers = require('./utils/sockethandler');
+console.log('DEBUG typeof setupSocketHandlers:', typeof setupSocketHandlers);
+console.log('DEBUG value:', setupSocketHandlers);
 const { activeDrivers, driverLocations } = setupSocketHandlers(io);
 
 // Expose on io for controllers to use
