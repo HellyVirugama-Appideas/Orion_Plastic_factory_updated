@@ -5,7 +5,7 @@ const Delivery = require('../../models/Delivery');
 const Region = require('../../models/Region')
 const DriverActivityLog = require("../../models/DriverActivityLog")
 const { successResponse, errorResponse } = require('../../utils/responseHelper');
-const {logDriverActivity} = require("../../utils/activityLogger")
+const { logDriverActivity } = require("../../utils/activityLogger")
 
 //BLOCK DRIVER
 exports.blockDriver = async (req, res) => {
@@ -17,7 +17,7 @@ exports.blockDriver = async (req, res) => {
     // More lenient body check
     const reason = req.body?.reason?.trim() || 'No reason provided';
     const blockType = req.body?.blockType || 'temporary';
-    
+
     // Use current date if no date provided
     const unblockDate = req.body?.unblockDate || null;
 
@@ -640,7 +640,8 @@ exports.createDriver = async (req, res) => {
     const newDriver = new Driver({
       name: fullName,
       email: email.toLowerCase().trim(),
-      phone: fullPhone,
+      phone: number,                
+      countryCode: code,
       licenseNumber,
       vehicleNumber: vehicleNumber || null,
       governmentIds: { emiratesId: emiratesId?.trim() || null },

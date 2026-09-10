@@ -3,7 +3,7 @@
 
 <head>
     <%- include('_layouts/head') %>
-        <title>Deliveries Management | <%= title %>
+        <title><%= title %>
         </title>
 
         <link rel="stylesheet" type="text/css" href="/app-assets/vendors/data-tables/css/jquery.dataTables.min.css">
@@ -76,11 +76,6 @@
             .status-failed {
                 background-color: #ffcdd2;
                 color: #b71c1c;
-            }
-
-            .priority-urgent {
-                color: #d32f2f;
-                font-weight: 700;
             }
 
             .priority-high {
@@ -356,10 +351,7 @@
                                                                                                 <%=dp==='high'
                                                                                                 ?'selected':'' %>>HIGH
                                                                                             </option>
-                                                                                            <option value="urgent"
-                                                                                                <%=dp==='urgent'
-                                                                                                ?'selected':'' %>>URGENT
-                                                                                            </option>
+                                                                                            
                                                                                         </select>
                                                                                         <% } %>
                                                                         </td>

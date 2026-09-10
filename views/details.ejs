@@ -133,11 +133,11 @@
                                         </div>
 
                                         <span class="badge <%= driver.profileStatus === 'approved' ? 'green white-text' : driver.profileStatus === 'rejected' ? 'red white-text' : 'orange white-text' %>">
-                                            <%= (driver.profileStatus || 'pending').toUpperCase() %>
+                                          <%= (driver.profileStatus || 'pending').charAt(0).toUpperCase() + (driver.profileStatus || 'pending').slice(1) %>
                                         </span>
 
                                         <span class="badge <%= driver.blockStatus?.isBlocked ? 'red white-text' : 'green white-text' %>">
-                                            <%= driver.blockStatus?.isBlocked ? 'BLOCKED' : 'UNBLOCKED' %>
+                                            <%= driver.blockStatus?.isBlocked ? 'Blocked' : 'Unblocked' %>
                                         </span>
                                     </div>
 
@@ -195,7 +195,7 @@
                                                     <th>Profile Approval</th>
                                                     <td>
                                                         <span class="badge <%= driver.profileStatus === 'approved' ? 'green white-text' : driver.profileStatus === 'rejected' ? 'red white-text' : 'orange white-text' %>">
-                                                            <%= (driver.profileStatus || 'pending').toUpperCase() %>
+                                                           <%= (driver.profileStatus || 'pending').charAt(0).toUpperCase() + (driver.profileStatus || 'pending').slice(1) %>
                                                         </span>
                                                     </td>
                                                 </tr>
@@ -209,7 +209,7 @@
                                                     <th>Block Status</th>
                                                     <td>
                                                         <span class="badge <%= driver.blockStatus?.isBlocked ? 'red white-text' : 'green white-text' %>">
-                                                            <%= driver.blockStatus?.isBlocked ? 'BLOCKED' : 'UNBLOCKED' %>
+                                                            <%= driver.blockStatus?.isBlocked ? 'Blocked' : 'Unblocked' %>
                                                         </span>
                                                     </td>
                                                 </tr>
