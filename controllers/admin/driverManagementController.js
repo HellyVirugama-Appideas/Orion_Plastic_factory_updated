@@ -640,7 +640,7 @@ exports.createDriver = async (req, res) => {
     const newDriver = new Driver({
       name: fullName,
       email: email.toLowerCase().trim(),
-      phone: number,                
+      phone: number,
       countryCode: code,
       licenseNumber,
       vehicleNumber: vehicleNumber || null,
@@ -783,9 +783,10 @@ exports.updateDriverDetails = async (req, res) => {
         throw new Error('Indian phone number must be exactly 10 digits');
       }
 
-      updates.phone = `${code}${number}`;
+      updates.phone = number; 
+      updates.countryCode = code; 
       delete updates.contactCountryCode;
-      delete updates.contactNumber;
+      delete updates.contactNumber;666666
     }
 
     if (updates.emiratesId !== undefined) {
