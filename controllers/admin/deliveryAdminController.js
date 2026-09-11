@@ -2231,7 +2231,19 @@ exports.renderDeliveriesList = async (req, res) => {
                 ? null
                 : (sortedItem ? sortedItem.distanceFromDriver : (del.distance ? `${del.distance.toFixed(1)} km` : null)),
               __hasRank: !!sortedItem,
-              __sortKey: sortedItem ? sortedItem.nearestRank : fallbackSortKey(del),
+              // ✅ FIX: Pehle ACTIVE/ASSIGNED items ka order getSortedUpcoming
+              // ForDriver()'s LIVE nearestRank se aata tha, aur DELIVERED
+              // items ka order chain-walk (fallbackSortKey) se — ye 2 ALAG,
+              // independently-coded algorithms the. Dono ka logic same hone
+              // ke bawajood kabhi-kabhi mismatch ho jaata (jaise 2 aur 3
+              // aapas me swap ho gaye), kyunki asli, authoritative order to
+              // pehle hi DB me stored chain (previousDeliveryId/nextDeliveryId,
+              // jo rebuildDriverRouteChain ne priority-first banayi hai) me
+              // maujood hai. Ab status chahe ASSIGNED ho ya DELIVERED — order
+              // HAMESHA usi ek stored chain se aayega (single source of truth).
+              // sortedItem sirf __distance/__nearestRank (info columns) ke
+              // liye use hota hai, ab ordering decide nahi karta.
+              __sortKey: fallbackSortKey(del),
               deliveryLocation: del.deliveryLocation
             };
           })
