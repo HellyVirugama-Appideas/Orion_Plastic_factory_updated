@@ -2074,27 +2074,75 @@ exports.renderDeliveriesList = async (req, res) => {
         const upcomingMap = new Map(sorted.upcoming.map(item => [item.id, item]));
  
         // ================================================================
-        // ✅ FIX: getSortedUpcomingForDriver() sirf UPCOMING (active/pending)
-        // deliveries ko rank deta hai. DELIVERED/completed deliveries kabhi
-        // us map me nahi hoti — isliye unka __sortKey hardcoded 999 (sabka
-        // same) ban jaata tha, aur wo priority ignore karke raw DB order
-        // (creation time) me dikhti thi — isi se "HIGH, LOW, MEDIUM" jaisa
-        // galat order aa raha tha.
+        // ✅ FIX (v2): Pehla fallback (tier*100000+distance) POORI driver
+        // history ko priority ke hisaab se globally mix kar raha tha —
+        // isse alag-alag DIN/BATCHES ke orders aapas me interleave ho
+        // jaate the (e.g. 11-09 ka HIGH, 10-09 ke HIGH se upar aa jaata
+        // tha). Priority sirf usi BATCH ke andar compare honi chahiye
+        // jisme woh orders ek saath assign hue the — batches khud purane-
+        // se-naye order me hi rehne chahiye.
         //
-        // Ab jab delivery upcoming-map me na mile (completed/delivered/
-        // cancelled), uska fallback __sortKey priority-tier se banate hain
-        // (HIGH/URGENT sabse pehle, MEDIUM beech me, LOW sabse aakhir me),
-        // aur same tier ke andar distance ko tie-breaker banaya hai. Agar
-        // priority set hi nahi hai, to tier 'medium' maan lete hain aur
-        // sirf distance decide karega — bilkul jaisa chahiye tha.
+        // Har delivery ka previousDeliveryId/nextDeliveryId already us
+        // exact batch ke andar sahi (priority-wise) chain bana chuka hai
+        // (rebuildDriverRouteChain ne assignment ke time), aur DELIVERED
+        // hote hi ye chain FREEZE ho jaati hai (future rebuilds sirf
+        // active deliveries ko touch karte hain) — isliye ye chain hi
+        // "us batch ka priority order" reliably batati hai.
+        //
+        // Isliye ab completed/non-upcoming delivery ke liye: uski chain
+        // ka ROOT (previousDeliveryId=null tak backward walk) dhoondo,
+        // root ka time hi batch ka time hai, aur chain ke andar apni
+        // position (0,1,2...) forward walk se nikalo. Sort key =
+        // batchRootTime + chainPosition — isse batches apne time-order
+        // me hi rehti hain, aur har batch ke ANDAR priority order (jo
+        // chain already encode karti hai) preserved rehta hai.
         // ================================================================
-        const FALLBACK_PRIORITY_TIER = { urgent: 0, high: 0, medium: 1, low: 2 };
+        const groupById = new Map(group.map(d => [d._id.toString(), d]));
+        const chainInfoCache = new Map();
+ 
+        const resolveChainInfo = (del) => {
+          const idStr = del._id.toString();
+          if (chainInfoCache.has(idStr)) return chainInfoCache.get(idStr);
+ 
+          // Chain root dhoondo (backward walk)
+          let root = del;
+          let guard = 0;
+          while (
+            root.previousDeliveryId &&
+            groupById.has(root.previousDeliveryId.toString()) &&
+            guard < 50
+          ) {
+            root = groupById.get(root.previousDeliveryId.toString());
+            guard++;
+          }
+ 
+          const rootTime = new Date(root.scheduledPickupTime || root.createdAt || 0).getTime();
+ 
+          // Root se forward walk karke pure batch ki positions ek saath cache kar do
+          let pos = 0;
+          let node = root;
+          const visited = new Set();
+          while (node && !visited.has(node._id.toString()) && pos < 50) {
+            visited.add(node._id.toString());
+            chainInfoCache.set(node._id.toString(), { rootTime, position: pos });
+            const nextIdStr = node.nextDeliveryId ? node.nextDeliveryId.toString() : null;
+            node = nextIdStr && groupById.has(nextIdStr) ? groupById.get(nextIdStr) : null;
+            pos++;
+          }
+ 
+          return chainInfoCache.get(idStr) || {
+            rootTime: new Date(del.scheduledPickupTime || del.createdAt || 0).getTime(),
+            position: 0
+          };
+        };
+ 
         const fallbackSortKey = (del) => {
-          const tier = FALLBACK_PRIORITY_TIER.hasOwnProperty(String(del.priority || '').toLowerCase())
-            ? FALLBACK_PRIORITY_TIER[String(del.priority || '').toLowerCase()]
-            : 1; // priority missing -> medium tier -> distance hi decide karega
-          const dist = typeof del.distance === 'number' ? del.distance : 0;
-          return (tier * 100000) + dist; // tier hamesha distance se pehle priority rakhta hai
+          const { rootTime, position } = resolveChainInfo(del);
+          // ✅ FIX: batch khud NAYE-se-PURANE order me chahiye (latest batch
+          // sabse upar — jaisa normal "newest first" list hoti hai), isliye
+          // rootTime negate kiya hai. Batch ke ANDAR priority order (position)
+          // hamesha ascending hi rahega (HIGH=0 pehle, phir MEDIUM, phir LOW).
+          return (-rootTime * 1000) + position;
         };
  
         const orderedGroup = group
@@ -3513,4 +3561,4 @@ exports.updateDeliveryPriority = async (req, res) => {
     console.error('=== PRIORITY UPDATE ERROR ===', error);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
-};
+}
