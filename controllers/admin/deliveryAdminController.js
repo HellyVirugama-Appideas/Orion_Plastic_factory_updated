@@ -1757,70 +1757,46 @@ const { calculateDistance } = require('../../utils/geoHelper');
  
  
 // ================================================================
-// ✅ GREEDY NEAREST-NEIGHBOR ROUTE CHAIN BUILDER
+// ✅ GREEDY NEAREST-NEIGHBOR ROUTE CHAIN BUILDER (FIXED)
 // ----------------------------------------------------------------
 // Jab bhi driver ko koi NAYI delivery assign hoti hai, yeh function
-// us driver ki SAARI ACTIVE (abhi tak delivered/cancelled na hui)
-// deliveries ko dobara, sahi order me chain karta hai:
+// us driver ki active deliveries ko sahi order me chain karta hai.
 //
-//   1) Pehla stop = driver ki ABHI ki LIVE location se sabse NEAREST
-//      delivery — iska pickup = Factory (apna originalPickupLocation).
-//   2) Dusra stop = pehle stop ke DROPOFF point se sabse NEAREST
-//      baaki delivery — iska pickup = pehle stop ka dropoff.
-//   3) Aise hi aage — har stop, pichle stop ke dropoff se sabse
-//      nearest wali delivery choose karta hai (classic greedy
-//      nearest-neighbor route).
+// ✅ NAYA FIX (is baar ka): "continuation from last completed delivery"
+// wala logic pehle BAHUT LOOSE tha — yeh sirf dekhta tha "kya aaj
+// driver ki koi delivery complete hui hai", aur agar haan to naye order
+// ko usi (ab COMPLETE ho chuke) delivery ke dropoff se "continue" kar
+// deta tha — CHAHE POORA PURANA BATCH (jaise 3/3) khatam ho chuka ho
+// aur yeh ek BILKUL NAYA, ALAG batch ho.
 //
-// Yeh chain sirf ISI MOMENT compute hoti hai (jab naya order assign
-// hota hai) aur phir previousDeliveryId/nextDeliveryId + pickupLocation
-// ke through DB me STORE ho jaati hai. Iske baad — jab tak koi naya
-// order is driver ko assign na ho — yeh chain FIX rehti hai. Refresh
-// karne se, driver GPS move hone se, ya ek delivery complete karne se
-// yeh dobara recompute NAHI hoti (completion sirf status change karta
-// hai, chain ko touch nahi karta) — isi se route chain UI me stops
-// remove/reshuffle nahi hote, sirf color/status change hota hai.
+// Isliye: "3 deliveries ek saath assign ki, driver ne teeno complete
+// kar di, uske baad NAYI delivery assign ki" — is case mein naya order
+// GALTI SE purani (ab poori tarah khatam ho chuki) chain se joined ho
+// raha tha, jabki usko ek FRESH/ALAG chain honi chahiye thi (Factory se
+// shuru), bilkul jaisa pehle (is continuation-feature se pehle) tha.
+//
+// SAHI RULE: continuation sirf TAB honi chahiye jab completed delivery
+// ke "next" mein koi delivery ABHI BHI ACTIVE/PENDING ho — matlab wo
+// batch genuinely BEECH MEIN hai (kuch complete, kuch baaki). Agar
+// completed delivery ka next hai hi nahi, ya wo next bhi already
+// complete/cancelled/returned ho chuka hai — to poora purana batch
+// khatam maana jaayega, aur naya order FRESH (Factory se) shuru hoga.
 // ================================================================
 async function rebuildDriverRouteChain(driverId) {
   const driver = await Driver.findById(driverId).select('currentLocation');
- 
+
   let currentPoint = (driver?.currentLocation?.latitude && driver?.currentLocation?.longitude)
     ? { latitude: driver.currentLocation.latitude, longitude: driver.currentLocation.longitude }
     : null;
- 
-  // ================================================================
-  // ✅ FIX: Ab tak, jab pehli delivery (A) DELIVERED ho chuki ho aur
-  // baaki active deliveries (B, C) ka priority change ho (rebuild
-  // trigger ho), to naye chain ke PEHLE item ka pickup hamesha uske
-  // "originalPickupLocation" (factory/start link) pe RESET ho jaata
-  // tha — chahe driver physically A ke dropoff se aage badh chuka ho.
-  // Chain ko pata hi nahi chalta tha ki koi delivery already complete
-  // ho chuki hai — isliye galat "wapas factory se" pickup dikhta tha.
-  //
-  // Ab is driver ki sabse RECENT DELIVERED delivery dhoondhte hain —
-  // agar mile, to uska dropoff address/coords hi naye chain ke pehle
-  // item ka "continuation point" banega (pickup + currentPoint dono),
-  // taaki chain sahi se wahi se continue ho jahan driver physically
-  // pahunch chuka hai. Agar koi delivered delivery nahi hai (din ki
-  // pehli hi delivery hai), to pehle jaisa hi behavior (originalPickup
-  // Location / driver GPS) rahega.
-  //
-  // ✅ FIX (v2): Pehle yeh query driver ki HAR-KABHI ki sabse recent
-  // delivered delivery utha leti thi — chahe wo 3+ din purani ho. Isse
-  // ek bilkul NAYA/fresh batch (jaise aaj ka) bhi kisi PURANE, unrelated
-  // delivered order (jaise 3 din pehle ka) se "continue" ho jaata tha —
-  // jo galat hai, kyunki wo purana order is naye batch se koi relation
-  // nahi rakhta. Continuation sirf tabhi honi chahiye jab last-completed
-  // delivery AAJ (same calendar day) ki ho — warna naya batch Factory
-  // (Start) se hi shuru hona chahiye.
-  // ================================================================
+
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
- 
+
   const lastCompletedDeliveryRaw = await Delivery.findOne({
     driverId,
     status: { $in: ['delivered', 'Delivered'] }
   }).sort({ actualDeliveryTime: -1, updatedAt: -1 });
- 
+
   let lastCompletedDelivery = null;
   if (lastCompletedDeliveryRaw) {
     const completedAt = lastCompletedDeliveryRaw.actualDeliveryTime || lastCompletedDeliveryRaw.updatedAt;
@@ -1830,33 +1806,44 @@ async function rebuildDriverRouteChain(driverId) {
       console.log(`[ROUTE-CHAIN] Driver ${driverId} — last completed delivery ${lastCompletedDeliveryRaw.trackingNumber} AAJ ki nahi hai (${completedAt}) — continuation SKIP, Factory (Start) se shuru hoga.`);
     }
   }
- 
+
   let continuationPickupLocation = null;
-  if (lastCompletedDelivery?.deliveryLocation?.address) {
-    continuationPickupLocation = lastCompletedDelivery.deliveryLocation;
- 
-    const lastCoords = lastCompletedDelivery.deliveryLocation?.coordinates;
-    if (!currentPoint && lastCoords?.latitude && lastCoords?.longitude) {
-      // Driver ki live GPS nahi hai to bhi, last-delivered dropoff hi
-      // sabse accurate "abhi driver kahan hai" wala estimate hai —
-      // ise currentPoint bana ke nearest-neighbor sorting bhi sahi hogi.
-      currentPoint = { latitude: lastCoords.latitude, longitude: lastCoords.longitude };
+
+  // ✅ FIX: continuation sirf tab lagegi jab is completed delivery ka
+  // "next" abhi bhi ACTIVE ho — yani us waqt yeh delivery genuinely
+  // ek ongoing batch ke BEECH mein thi, ANTIM (last) stop nahi thi.
+  if (lastCompletedDelivery?.nextDeliveryId) {
+    const nextStillActive = await Delivery.exists({
+      _id: lastCompletedDelivery.nextDeliveryId,
+      driverId,
+      status: {
+        $nin: [
+          'delivered', 'Delivered',
+          'completed', 'Completed',
+          'cancelled', 'Cancelled',
+          'returned_to_factory', 'Returned_to_Factory', 'Returned_To_Factory'
+        ]
+      }
+    });
+
+    if (nextStillActive && lastCompletedDelivery.deliveryLocation?.address) {
+      continuationPickupLocation = lastCompletedDelivery.deliveryLocation;
+
+      const lastCoords = lastCompletedDelivery.deliveryLocation?.coordinates;
+      if (!currentPoint && lastCoords?.latitude && lastCoords?.longitude) {
+        currentPoint = { latitude: lastCoords.latitude, longitude: lastCoords.longitude };
+      }
+
+      console.log(`[ROUTE-CHAIN] Driver ${driverId} — batch abhi BEECH mein hai (${lastCompletedDelivery.trackingNumber} ke baad ek active stop maujood hai) — continuation point: "${continuationPickupLocation.address}"`);
+    } else {
+      console.log(`[ROUTE-CHAIN] Driver ${driverId} — ${lastCompletedDelivery.trackingNumber} ka batch poora KHATAM ho chuka hai (next active nahi hai) — naya batch FRESH/Factory se shuru hoga.`);
     }
- 
-    console.log(`[ROUTE-CHAIN] Driver ${driverId} — last completed delivery ${lastCompletedDelivery.trackingNumber} ka dropoff hi continuation point banega: "${continuationPickupLocation.address}"`);
+  } else if (lastCompletedDelivery) {
+    console.log(`[ROUTE-CHAIN] Driver ${driverId} — ${lastCompletedDelivery.trackingNumber} chain ka last/akela stop tha (koi next nahi) — naya batch FRESH/Factory se shuru hoga.`);
   }
- 
+
   // Sirf abhi tak ACTIVE (delivered/cancelled/completed/returned-to-factory
-  // nahi) deliveries.
-  // ✅ FIX: 'Returned_to_Factory' status is exclusion list me MISSING tha —
-  // isliye purani, auto-returned deliveries bhi "active" maan li jaati
-  // thi aur chain-building (tier-grouping, nearest-neighbor) me GALTI SE
-  // shaamil ho jaati thi. Unki priority null/blank hoti hai (tierOf() se
-  // default "medium" tier ban jaati thi), isliye wo kisi bhi naye MEDIUM/LOW
-  // order se theek pehle chain me ghus jaati thi aur apna PURANA dropoff
-  // address agle item ka pickup bana deti thi — yehi "Millennium Plaza"
-  // jaisa galat pickup dikhne ki asli wajah thi.
-  // createdAt ascending fallback ke liye rakha hai (agar driver GPS na mile).
+  // nahi) deliveries. createdAt ascending fallback ke liye (agar driver GPS na mile).
   const activeDeliveries = await Delivery.find({
     driverId,
     status: {
@@ -1868,35 +1855,30 @@ async function rebuildDriverRouteChain(driverId) {
       ]
     }
   }).sort({ createdAt: 1 });
- 
+
   if (activeDeliveries.length === 0) {
     console.log(`[ROUTE-CHAIN] Driver ${driverId} — koi active delivery nahi, chain rebuild skip.`);
     return;
   }
- 
+
   const remaining = [...activeDeliveries];
   const orderedChain = [];
- 
-  // ✅ FIX: pehle priority ka koi asar route order pe nahi padta tha —
-  // sirf pure nearest-neighbor (jo bhi geographically closest ho) chain
-  // ban jaati thi, chahe wo 'low' priority hi kyun na ho. Ab pehle
-  // priority TIER ke hisaab se group karte hain (urgent/high sabse
-  // pehle, phir medium, phir low), aur HAR TIER ke ANDAR hi nearest-
-  // neighbor greedy routing hoti hai — driver ke current point se (ya
-  // pichle tier ke aakhri stop se) continue karke.
+
+  // Priority TIER ke hisaab se group (urgent/high sabse pehle, phir
+  // medium, phir low), har TIER ke ANDAR nearest-neighbor greedy routing.
   const PRIORITY_TIER_ORDER = { urgent: 0, high: 0, medium: 1, low: 2 };
   const tierOf = (del) => {
     const key = String(del.priority || '').toLowerCase().trim();
-    return PRIORITY_TIER_ORDER.hasOwnProperty(key) ? PRIORITY_TIER_ORDER[key] : 1; // unknown priority -> medium tier
+    return PRIORITY_TIER_ORDER.hasOwnProperty(key) ? PRIORITY_TIER_ORDER[key] : 1;
   };
- 
-  const tiers = [[], [], []]; // 0 = urgent/high, 1 = medium, 2 = low
+
+  const tiers = [[], [], []];
   remaining.forEach(del => tiers[tierOf(del)].push(del));
- 
+
   for (const tierGroup of tiers) {
     while (tierGroup.length > 0) {
-      let nextIndex = 0; // ✅ default: agar current point na mile, creation-order (already sorted) follow karo
- 
+      let nextIndex = 0;
+
       if (currentPoint) {
         let minDist = Infinity;
         tierGroup.forEach((del, idx) => {
@@ -1910,36 +1892,34 @@ async function rebuildDriverRouteChain(driverId) {
           }
         });
       }
- 
+
       const chosen = tierGroup.splice(nextIndex, 1)[0];
       orderedChain.push(chosen);
- 
-      // Agla "current point" — is stop ka dropoff (agar valid coords hain)
+
       const chosenCoords = chosen.deliveryLocation?.coordinates;
       if (chosenCoords?.latitude && chosenCoords?.longitude) {
         currentPoint = { latitude: chosenCoords.latitude, longitude: chosenCoords.longitude };
       }
     }
   }
- 
+
   console.log(`[ROUTE-CHAIN] Driver ${driverId} — rebuilt order: ${orderedChain.map(d => d.trackingNumber).join(' → ')} | priorities: ${orderedChain.map(d => d.priority).join(', ')}`);
- 
+
   for (let i = 0; i < orderedChain.length; i++) {
     const cur = orderedChain[i];
     const prev = i > 0 ? orderedChain[i - 1] : null;
     const next = i < orderedChain.length - 1 ? orderedChain[i + 1] : null;
- 
-    // ✅ FIX: Pehle sirf pehle item ka pickup ADDRESS (text) continuation
-    // se copy hota tha, lekin previousDeliveryId link (jo asli DB-level
-    // chain banata hai) set hi nahi hota tha — isliye ye naya chain
-    // khud ko ek ALAG "root/batch" maan leta tha, aur last-completed
-    // delivery se real link nahi banta tha. List-sorting isko 2 alag
-    // chains samajhti thi (1 completed batch + 1 naya batch), poori
-    // continuous chain nahi. Ab pehle item ko lastCompletedDelivery se
-    // ID-level bhi link kar rahe hain (dono taraf se).
-    cur.previousDeliveryId = prev ? prev._id : (i === 0 && lastCompletedDelivery ? lastCompletedDelivery._id : null);
+
+    // ✅ Pehla item — sirf tab lastCompletedDelivery se ID-link banega
+    // jab continuation genuinely lagu ho rahi ho (upar wala check pass
+    // hua ho). Warna previousDeliveryId null hi rahega — matlab yeh
+    // chain apna ek NAYA, ALAG "root/batch" hai — bilkul jaisa pehle
+    // (is continuation-feature se pehle) tha.
+    cur.previousDeliveryId = prev
+      ? prev._id
+      : (i === 0 && continuationPickupLocation && lastCompletedDelivery ? lastCompletedDelivery._id : null);
     cur.nextDeliveryId = next ? next._id : null;
- 
+
     if (prev) {
       cur.pickupLocation = {
         address: prev.deliveryLocation.address,
@@ -1952,9 +1932,6 @@ async function rebuildDriverRouteChain(driverId) {
         coordinates: prev.deliveryLocation.coordinates
       };
     } else if (continuationPickupLocation) {
-      // ✅ FIX: Chain ka PEHLA item — agar is driver ki koi delivery
-      // already DELIVERED ho chuki hai, to uske dropoff se hi continue
-      // karo (originalPickupLocation/factory se reset mat karo).
       cur.pickupLocation = {
         address: continuationPickupLocation.address,
         contactPerson: continuationPickupLocation.contactPerson,
@@ -1966,19 +1943,16 @@ async function rebuildDriverRouteChain(driverId) {
         coordinates: continuationPickupLocation.coordinates
       };
     } else if (cur.originalPickupLocation?.address) {
+      // ✅ Fresh/naya batch — apna asli factory pickup
       cur.pickupLocation = cur.originalPickupLocation;
     }
- 
+
     await cur.save();
- 
-    // ✅ FIX: lastCompletedDelivery khud "activeDeliveries" list me nahi
-    // hota (delivered hone ki wajah se), isliye uska nextDeliveryId is
-    // upar wale loop me kabhi update nahi hota — sirf ek taraf (naye
-    // item ka previousDeliveryId) set hone se chain-walk theek se kaam
-    // nahi karta. Ise ek baar, sirf pehle active item ke liye, alag se
-    // update kar dete hain — taaki completed → active link DONO taraf
-    // se complete ho.
-    if (i === 0 && lastCompletedDelivery && !prev) {
+
+    // Sirf tab lastCompletedDelivery.nextDeliveryId update karo jab
+    // continuation genuinely lagu hui ho (warna purani, khatam ho chuki
+    // delivery ko galti se is naye, unrelated batch se link mat karo).
+    if (i === 0 && continuationPickupLocation && lastCompletedDelivery && !prev) {
       try {
         await Delivery.findByIdAndUpdate(lastCompletedDelivery._id, { nextDeliveryId: cur._id });
       } catch (linkErr) {
@@ -1987,6 +1961,7 @@ async function rebuildDriverRouteChain(driverId) {
     }
   }
 }
+
  
 // ✅ Exported so a one-time repair script (scripts/fixRouteChains.js) can
 // call it directly for EVERY driver. This is needed because the priority-
