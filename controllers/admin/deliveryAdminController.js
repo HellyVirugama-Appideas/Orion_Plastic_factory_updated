@@ -1741,6 +1741,7 @@
 // };
 
 
+
 const Delivery = require('../../models/Delivery');
 const Order = require('../../models/Order');
 const Driver = require('../../models/Driver');
@@ -1802,11 +1803,33 @@ async function rebuildDriverRouteChain(driverId) {
   // pahunch chuka hai. Agar koi delivered delivery nahi hai (din ki
   // pehli hi delivery hai), to pehle jaisa hi behavior (originalPickup
   // Location / driver GPS) rahega.
+  //
+  // ✅ FIX (v2): Pehle yeh query driver ki HAR-KABHI ki sabse recent
+  // delivered delivery utha leti thi — chahe wo 3+ din purani ho. Isse
+  // ek bilkul NAYA/fresh batch (jaise aaj ka) bhi kisi PURANE, unrelated
+  // delivered order (jaise 3 din pehle ka) se "continue" ho jaata tha —
+  // jo galat hai, kyunki wo purana order is naye batch se koi relation
+  // nahi rakhta. Continuation sirf tabhi honi chahiye jab last-completed
+  // delivery AAJ (same calendar day) ki ho — warna naya batch Factory
+  // (Start) se hi shuru hona chahiye.
   // ================================================================
-  const lastCompletedDelivery = await Delivery.findOne({
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+ 
+  const lastCompletedDeliveryRaw = await Delivery.findOne({
     driverId,
     status: { $in: ['delivered', 'Delivered'] }
   }).sort({ actualDeliveryTime: -1, updatedAt: -1 });
+ 
+  let lastCompletedDelivery = null;
+  if (lastCompletedDeliveryRaw) {
+    const completedAt = lastCompletedDeliveryRaw.actualDeliveryTime || lastCompletedDeliveryRaw.updatedAt;
+    if (completedAt && new Date(completedAt) >= startOfToday) {
+      lastCompletedDelivery = lastCompletedDeliveryRaw;
+    } else {
+      console.log(`[ROUTE-CHAIN] Driver ${driverId} — last completed delivery ${lastCompletedDeliveryRaw.trackingNumber} AAJ ki nahi hai (${completedAt}) — continuation SKIP, Factory (Start) se shuru hoga.`);
+    }
+  }
  
   let continuationPickupLocation = null;
   if (lastCompletedDelivery?.deliveryLocation?.address) {
