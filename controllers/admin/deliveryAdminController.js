@@ -1846,11 +1846,27 @@ async function rebuildDriverRouteChain(driverId) {
     console.log(`[ROUTE-CHAIN] Driver ${driverId} — last completed delivery ${lastCompletedDelivery.trackingNumber} ka dropoff hi continuation point banega: "${continuationPickupLocation.address}"`);
   }
  
-  // Sirf abhi tak ACTIVE (delivered/cancelled/completed nahi) deliveries.
+  // Sirf abhi tak ACTIVE (delivered/cancelled/completed/returned-to-factory
+  // nahi) deliveries.
+  // ✅ FIX: 'Returned_to_Factory' status is exclusion list me MISSING tha —
+  // isliye purani, auto-returned deliveries bhi "active" maan li jaati
+  // thi aur chain-building (tier-grouping, nearest-neighbor) me GALTI SE
+  // shaamil ho jaati thi. Unki priority null/blank hoti hai (tierOf() se
+  // default "medium" tier ban jaati thi), isliye wo kisi bhi naye MEDIUM/LOW
+  // order se theek pehle chain me ghus jaati thi aur apna PURANA dropoff
+  // address agle item ka pickup bana deti thi — yehi "Millennium Plaza"
+  // jaisa galat pickup dikhne ki asli wajah thi.
   // createdAt ascending fallback ke liye rakha hai (agar driver GPS na mile).
   const activeDeliveries = await Delivery.find({
     driverId,
-    status: { $nin: ['delivered', 'completed', 'cancelled', 'Delivered', 'Completed', 'Cancelled'] }
+    status: {
+      $nin: [
+        'delivered', 'Delivered',
+        'completed', 'Completed',
+        'cancelled', 'Cancelled',
+        'returned_to_factory', 'Returned_to_Factory', 'Returned_To_Factory'
+      ]
+    }
   }).sort({ createdAt: 1 });
  
   if (activeDeliveries.length === 0) {
