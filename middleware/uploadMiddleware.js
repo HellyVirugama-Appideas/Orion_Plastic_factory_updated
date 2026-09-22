@@ -302,7 +302,8 @@ const fs = require('fs');
   'public/uploads/expenses',
   'public/uploads/onboarding',
   'public/uploads/chat',
-  'public/uploads/documents'
+  'public/uploads/documents',
+  'public/uploads/proof' 
 ].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -372,6 +373,7 @@ const smartStorage = multer.diskStorage({
     if (file.fieldname.includes('profile')) folder = 'public/uploads/profiles/';
     if (file.fieldname.includes('journey') || file.fieldname === 'image') folder = 'public/uploads/journey/';
     if (file.fieldname === 'signature') folder = 'public/uploads/signatures/';
+    if (['photos', 'companyStamp'].includes(file.fieldname)) folder = 'public/uploads/proof/';  
     if (['invoice', 'receipt', 'before_photo', 'after_photo', 'report', 'warranty', 'before_service_photo', 'after_service_photo', 'service_receipt'].includes(file.fieldname)) {
       folder = 'public/uploads/maintenance/';
     }
