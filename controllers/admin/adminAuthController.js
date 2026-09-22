@@ -635,15 +635,6 @@ exports.adminLogoutAll = async (req, res) => {
   }
 };
 
-// 
-// exports.getChangePass = (req, res) => {
-//   res.render('change_pass', {
-//     title: 'Change Password',
-//     url: req.originalUrl,
-//     messages: req.flash()
-//   });
-// };
-
 exports.getChangePass = (req, res) => {
   const msgs = req.flash();
   console.log('=== GET CHANGEPASS ===');
@@ -658,62 +649,6 @@ exports.getChangePass = (req, res) => {
   });
 };
 
-// exports.postChangePass = async (req, res) => {
-//   try {
-//     const { currentpass, newpass, cfnewpass } = req.body;
-
-//     if (!currentpass || !newpass || !cfnewpass) {
-//       req.flash('error', 'All fields are required');
-//       return res.redirect('/admin/changepass');
-//     }
-
-//     if (newpass !== cfnewpass) {
-//       req.flash('error', 'New password and confirm password do not match');
-//       return res.redirect('/admin/changepass');
-//     }
-
-//     if (newpass.length < 8) {
-//       req.flash('error', 'New password must be at least 8 characters long');
-//       return res.redirect('/admin/changepass');
-//     }
-//     if (newpass === currentpass) {
-//       req.flash('error', 'New password cannot be the same as current password');
-//       return res.redirect('/admin/changepass');
-//     }
-
-//     // 4. Find admin
-//     const admin = await Admin.findOne({ email: req.admin.email }).select('+password');
-
-//     if (!admin) {
-//       req.flash('error', 'Admin not found');
-//       return res.redirect('/admin/changepass');
-//     }
-
-//     const isMatch = await admin.comparePassword(currentpass);
-//     if (!isMatch) {
-//       req.flash('error', 'Current password is incorrect');
-//       return res.redirect('/admin/changepass');
-//     }
-
-//     admin.password = newpass;
-//     await admin.save();
-
-//     req.flash('success', 'Password changed successfully! Please login again with new password.');
-//     res.redirect('/admin/logout');
-//   } catch (error) {
-//     console.error('Change Password Error:', error);
-
-//     if (error.name === 'ValidationError') {
-//       Object.values(error.errors).forEach(err => {
-//         req.flash('error', err.message);
-//       });
-//     } else {
-//       req.flash('error', 'Something went wrong. Please try again.');
-//     }
-
-//     res.redirect('/admin/changepass');
-//   }
-// };
 exports.postChangePass = async (req, res) => {
   try {
     const { currentpass, newpass, cfnewpass } = req.body;
