@@ -289,7 +289,7 @@ app.use(session({
   store: MongoStore.create({
     mongoUrl: process.env.MONGO_URI,
     ttl: 24 * 60 * 60,
-    autoRemove: 'native', 
+    autoRemove: 'native',
     touchAfter: 24 * 3600
   }),
   cookie: {
@@ -342,6 +342,20 @@ app.use('/admin/drivers', driverApprovalRoutes);
 app.use("/admin/chat", communicationRoutes);
 app.use("/admin/cms", cmsRoutes);
 
+
+app.get('/request-delete', (req, res) => {
+  res.render('request-delete');
+});
+
+app.post('/request-delete', (req, res) => {
+  const { email, reason } = req.body;
+
+  if (!email) {
+    return res.render('request-delete', { errorMessage: "Email is required." });
+  }
+
+  res.render('request-delete', { successMessage: "Your deletion request has been submitted. We'll process it shortly." });
+});
 // ====================== HELPER ROUTES ======================
 // Test flash
 app.get('/test-flash', (req, res) => {
@@ -380,6 +394,10 @@ const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on PORT ${PORT}`);
   console.log(`🔌 Socket.IO ready`);
+
+
+
+
 
   // ================================================================
   // ✅ NAYA: "Returned to Factory" stale-delivery flush ab BACKGROUND
